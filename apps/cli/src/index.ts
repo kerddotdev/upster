@@ -9,6 +9,7 @@ import readline from "node:readline/promises"
 import {
   createFailure,
   createSuccess,
+  agentForbiddenError,
   controlPlaneUnavailableError,
   getAgentGuide,
   parseScopes,
@@ -61,7 +62,17 @@ export async function runCli(argv: Array<string>, io: Io = defaultIo()) {
 
   try {
     const result = await dispatch(parsed.command, parsed.options, io)
-    await writeCommandResult(result, parsed.options, io)
+    try {
+      await writeCommandResult(result, parsed.options, io)
+    } catch (error) {
+      const failure = localFailure(error, parsed.options.dashboardUrl)
+      await writeCommandResult(
+        failure,
+        { ...parsed.options, output: undefined },
+        io
+      )
+      return 1
+    }
     return result.ok ? 0 : 1
   } catch (error) {
     const failure = localFailure(error, parsed.options.dashboardUrl)
@@ -587,7 +598,10 @@ async function readStdin() {
 
 function assertInteractiveOnly(options: CliOptions, command: string) {
   if (options.input || options.json) {
-    throw new Error(`${command} is human-only and must run interactively.`)
+    throw agentForbiddenError({
+      action: `run ${command}`,
+      command,
+    })
   }
 }
 
@@ -746,6 +760,24 @@ function localFailure(error: unknown, dashboardUrl: string): ApiFailure {
   }
 
   const message = error instanceof Error ? error.message : String(error)
+  if (message.includes("Output file already exists")) {
+    return createFailure(
+      {
+        code: "OUTPUT_FILE_EXISTS",
+        message,
+        reason:
+          "The CLI refuses to overwrite an existing output file unless --force is set.",
+        cause:
+          "The --output path already exists on disk and the command did not include --force.",
+        remediation:
+          "Choose a new --output path or rerun the command with --force if overwriting the file is intended.",
+        humanActionRequired: false,
+        docsCommand: "upster --help",
+      },
+      LOCAL_REQUEST_ID
+    )
+  }
+
   return createFailure(
     {
       code: "CLI_ERROR",

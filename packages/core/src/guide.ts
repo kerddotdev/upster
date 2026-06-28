@@ -213,7 +213,7 @@ export function renderCliHelp() {
     "  Sensitive commands such as setup, login, vault save, and vault unlock reject --input and require interactive human input.",
     "  --output writes the full envelope or stream payload to a file. Existing files require --force.",
     "",
-    "Scopes:",
+    "Scope list:",
     ...accessScopes.map((scope) => {
       const marker = (agentAllowedScopes as Array<string>).includes(scope)
         ? "agent allowed"

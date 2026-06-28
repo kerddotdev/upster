@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Writable } from "node:stream"
@@ -46,7 +46,7 @@ describe("upster cli", () => {
     expect(stdout.output).toContain("Auth model:")
     expect(stdout.output).toContain("Agent-safe commands:")
     expect(stdout.output).toContain("upster agent doctor --json")
-    expect(stdout.output).toContain("Scopes:")
+    expect(stdout.output).toContain("Scope list:")
   })
 
   it("prints a readable agent guide without an extra success payload", async () => {
@@ -83,5 +83,45 @@ describe("upster cli", () => {
     expect(payload.error.cause).toBeTruthy()
     expect(payload.error.remediation).toContain("human operator")
     expect(payload.error.humanActionRequired).toBe(true)
+  })
+
+  it("returns a human approval envelope for non-interactive human-only commands", async () => {
+    const stdout = new Capture()
+    const stderr = new Capture()
+    const code = await runCli(["vault", "unlock", "--json"], {
+      stdout,
+      stderr,
+      stdin: process.stdin,
+    })
+    const payload = JSON.parse(stdout.output)
+
+    expect(code).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.error.code).toBe("HUMAN_APPROVAL_REQUIRED")
+    expect(payload.error.humanActionRequired).toBe(true)
+    expect(payload.error.reason).toBeTruthy()
+    expect(payload.error.cause).toBeTruthy()
+    expect(payload.error.remediation).toContain("upster vault unlock")
+  })
+
+  it("returns an envelope when output overwrite is refused", async () => {
+    const outputPath = join(configDir, "guide.output")
+    writeFileSync(outputPath, "{}\n")
+    const stdout = new Capture()
+    const stderr = new Capture()
+    const code = await runCli(
+      ["agent", "guide", "--json", "--output", outputPath],
+      {
+        stdout,
+        stderr,
+        stdin: process.stdin,
+      }
+    )
+    const payload = JSON.parse(stdout.output)
+
+    expect(code).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.error.code).toBe("OUTPUT_FILE_EXISTS")
+    expect(payload.error.remediation).toContain("--force")
   })
 })
