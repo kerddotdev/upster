@@ -5,8 +5,9 @@ Upster is a local Dockerized dashboard for publishing short-lived mini apps thro
 ## Repository layout
 
 Upster uses a Bun workspace layout. The dashboard app lives in `apps/web`, while
-the root `package.json` keeps the common commands for local development,
-validation, database tasks, and Docker builds.
+the CLI app lives in `apps/cli`, shared CLI/API contracts live in
+`packages/core`, and the root `package.json` keeps the common commands for local
+development, validation, database tasks, and Docker builds.
 
 ## Status
 
@@ -28,6 +29,10 @@ See [SECURITY.md](SECURITY.md) for the full security model, operator caveats, an
 - Restrict which executables pills may run with `UPSTER_ALLOWED_COMMANDS` (comma-separated, by exact name or full path). Leave empty to allow any executable.
 - Cloudflare DNS records created by Upster are tagged as `managed-by-upster`, and Upster refuses to overwrite a record it does not own. Deleting a pill with the vault unlocked also removes its tunnel and DNS record.
 - Override the session signing secret with `UPSTER_SESSION_SECRET`; otherwise one is generated and persisted locally.
+- The CLI talks to the local dashboard control plane over `/api/cli/v1`. Human
+  users can sign in with the admin passphrase, while AI agents should use
+  short-lived scoped bearer tokens created by a human operator. Agents cannot
+  unlock, save, delete, export, or decrypt the Cloudflare vault.
 
 ## Development
 
@@ -35,6 +40,12 @@ Run the local dashboard:
 
 ```bash
 bun run dev
+```
+
+Run the local CLI during development:
+
+```bash
+bun run --cwd apps/cli upster -- --help
 ```
 
 Run the full stack with Docker:

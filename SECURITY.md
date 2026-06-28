@@ -26,6 +26,12 @@ changes.
 - Access is gated by a signed (HMAC-SHA256), `HttpOnly`, `SameSite=Lax` session
   cookie. `SameSite=Lax` also blocks cross-site POSTs, which protects the
   mutating server functions from CSRF.
+- Dashboard, CLI, and agent access are backed by revocable rows in the
+  `access_sessions` table. CLI and agent sessions use bearer tokens whose
+  plaintext value is shown only when created. Upster stores only a token hash.
+- Agents should receive only scoped capability tokens. Agent tokens can read and
+  operate pills only within their scopes, and cannot receive vault write, vault
+  unlock, vault delete, or admin-only scopes.
 - Every protected TanStack Start server function carries the auth middleware,
   and the streaming and metrics server routes verify the session manually
   because route handlers do not run server-function middleware.
@@ -42,9 +48,15 @@ changes.
 ### Secret handling
 
 - Cloudflare credentials are encrypted in the browser with the vault passphrase
-  (Argon2id key derivation, XChaCha20-Poly1305) and stored only as ciphertext.
-- The plaintext config exists only in memory during an explicit runtime action
-  (validating the token or starting a tunnel) and is never persisted or logged.
+  or CLI with the vault passphrase (Argon2id key derivation,
+  XChaCha20-Poly1305) and stored only as ciphertext.
+- The plaintext config exists only in control plane memory during an explicit
+  vault unlock or runtime action (validating the token or starting a tunnel) and
+  is never persisted or logged.
+- Agents cannot unlock the vault, save the vault, delete the vault, read vault
+  ciphertext, read the vault passphrase, or read decrypted Cloudflare config.
+  They can only read vault status fields such as whether a vault exists, whether
+  it is unlocked, and the root domain.
 
 ### Database isolation
 
@@ -106,6 +118,13 @@ Read `AGENTS.md` first. These rules are mandatory:
 - Prefer argv arrays over shell strings for process execution.
 - Never log secrets, tokens, vault payloads, command env values, or decrypted
   config.
+- CLI API errors must use the agent-friendly error envelope with `reason`,
+  `cause`, `remediation`, and `humanActionRequired`, especially for auth, scope,
+  vault, and runtime failures.
+- A human admin token must not be given to an AI agent. On the same operating
+  system user account there is no perfect cryptographic human-vs-agent boundary,
+  so scoped capability tokens, short TTLs, and revocation are the intended
+  control.
 
 When making security-relevant changes:
 
