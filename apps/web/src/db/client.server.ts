@@ -14,6 +14,25 @@ export const db = drizzle(client, { schema })
 
 let initialized = false
 
+async function addColumnIfMissing(table: string, definition: string) {
+  try {
+    await client.execute(`ALTER TABLE ${table} ADD COLUMN ${definition}`)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+
+    if (!message.toLowerCase().includes("duplicate column")) {
+      throw error
+    }
+  }
+}
+
+async function recordMigration(id: string) {
+  await client.execute({
+    sql: `INSERT OR IGNORE INTO schema_migrations (id, applied_at) VALUES (?, CURRENT_TIMESTAMP)`,
+    args: [id],
+  })
+}
+
 export async function ensureDatabase() {
   if (initialized) {
     return
@@ -40,6 +59,7 @@ export async function ensureDatabase() {
         nonce TEXT NOT NULL,
         kdf TEXT NOT NULL,
         version INTEGER NOT NULL,
+        public_metadata_json TEXT NOT NULL DEFAULT '{}',
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`,
@@ -87,6 +107,8 @@ export async function ensureDatabase() {
         started_at TEXT NOT NULL,
         stopped_at TEXT,
         expires_at TEXT,
+        runtime_instance_id TEXT,
+        stop_reason TEXT,
         exit_code INTEGER,
         error TEXT
       )`,
@@ -103,13 +125,54 @@ export async function ensureDatabase() {
         type TEXT NOT NULL,
         pill_id TEXT,
         run_id TEXT,
+        actor_session_id TEXT,
+        actor_kind TEXT,
+        source TEXT,
         message TEXT NOT NULL,
         metadata_json TEXT NOT NULL,
         created_at TEXT NOT NULL
       )`,
+      `CREATE TABLE IF NOT EXISTS schema_migrations (
+        id TEXT PRIMARY KEY,
+        applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS access_sessions (
+        id TEXT PRIMARY KEY,
+        kind TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        label TEXT NOT NULL,
+        token_hash TEXT,
+        scopes_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        last_seen_at TEXT,
+        expires_at TEXT NOT NULL,
+        revoked_at TEXT,
+        user_agent TEXT,
+        remote_addr TEXT,
+        metadata_json TEXT NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS runtime_instances (
+        id TEXT PRIMARY KEY,
+        pid INTEGER NOT NULL,
+        started_at TEXT NOT NULL,
+        heartbeat_at TEXT NOT NULL,
+        version TEXT NOT NULL,
+        status TEXT NOT NULL
+      )`,
     ],
     "write"
   )
+
+  await addColumnIfMissing(
+    "secret_vaults",
+    `public_metadata_json TEXT NOT NULL DEFAULT '{}'`
+  )
+  await addColumnIfMissing("pill_runs", "runtime_instance_id TEXT")
+  await addColumnIfMissing("pill_runs", "stop_reason TEXT")
+  await addColumnIfMissing("events", "actor_session_id TEXT")
+  await addColumnIfMissing("events", "actor_kind TEXT")
+  await addColumnIfMissing("events", "source TEXT")
+  await recordMigration("0001_scoped_cli_sessions")
 
   initialized = true
 }

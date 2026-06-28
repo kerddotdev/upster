@@ -6,7 +6,7 @@ import {
   verifyPassphrase,
 } from "@/features/auth/passwords.server"
 import {
-  clearSessionCookie,
+  endCurrentSession,
   issueSessionCookie,
   readSession,
 } from "@/features/auth/session.server"
@@ -40,7 +40,7 @@ export async function startSession() {
 }
 
 export async function endSession() {
-  clearSessionCookie()
+  await endCurrentSession()
 }
 
 export async function getSession() {

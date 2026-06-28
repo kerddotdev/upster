@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto"
 
-import { and, desc, eq, isNull } from "drizzle-orm"
+import { and, desc, eq, isNull, sql } from "drizzle-orm"
+import type { AccessScope } from "@upster/core"
 
 import { db, ensureDatabase } from "@/db/client.server"
 import {
+  accessSessions,
   adminUsers,
   appSettings,
   cloudflareTunnels,
@@ -13,6 +15,7 @@ import {
   pillRuns,
   pills,
   runLogs,
+  runtimeInstances,
   secretVaults,
 } from "@/db/schema"
 import type {
@@ -305,6 +308,17 @@ export async function getActiveRun(pillId: string) {
   return row ? parseRun(row) : null
 }
 
+export async function listActiveRuns() {
+  await ensureDatabase()
+  const rows = await db
+    .select()
+    .from(pillRuns)
+    .where(isNull(pillRuns.stoppedAt))
+    .orderBy(desc(pillRuns.startedAt))
+
+  return rows.map(parseRun)
+}
+
 export async function appendRunLog(log: Omit<RunLog, "id" | "createdAt">) {
   await ensureDatabase()
 
@@ -316,6 +330,16 @@ export async function appendRunLog(log: Omit<RunLog, "id" | "createdAt">) {
 
   await db.insert(runLogs).values(record)
   return record
+}
+
+export async function getRunLogMaxSequence(runId: string) {
+  await ensureDatabase()
+  const [row] = await db
+    .select({ value: sql<number>`coalesce(max(${runLogs.sequence}), 0)` })
+    .from(runLogs)
+    .where(eq(runLogs.runId, runId))
+
+  return Number(row?.value ?? 0)
 }
 
 export async function getRunLogs(runId: string) {
@@ -337,6 +361,7 @@ export async function saveSecretVault(input: {
   nonce: string
   kdf: string
   version: number
+  publicMetadata?: Record<string, unknown>
 }) {
   await ensureDatabase()
 
@@ -346,7 +371,13 @@ export async function saveSecretVault(input: {
     .insert(secretVaults)
     .values({
       id: input.name,
-      ...input,
+      name: input.name,
+      ciphertext: input.ciphertext,
+      salt: input.salt,
+      nonce: input.nonce,
+      kdf: input.kdf,
+      version: input.version,
+      publicMetadataJson: JSON.stringify(input.publicMetadata ?? {}),
       createdAt: updatedAt,
       updatedAt,
     })
@@ -358,6 +389,7 @@ export async function saveSecretVault(input: {
         nonce: input.nonce,
         kdf: input.kdf,
         version: input.version,
+        publicMetadataJson: JSON.stringify(input.publicMetadata ?? {}),
         updatedAt,
       },
     })
@@ -433,6 +465,9 @@ export async function appendEvent(input: {
   type: string
   pillId?: string
   runId?: string
+  actorSessionId?: string
+  actorKind?: string
+  source?: string
   message: string
   metadata?: Record<string, unknown>
 }) {
@@ -442,8 +477,165 @@ export async function appendEvent(input: {
     type: input.type,
     pillId: input.pillId ?? null,
     runId: input.runId ?? null,
+    actorSessionId: input.actorSessionId ?? null,
+    actorKind: input.actorKind ?? null,
+    source: input.source ?? null,
     message: input.message,
     metadataJson: JSON.stringify(input.metadata ?? {}),
     createdAt: now(),
   })
+}
+
+export type AccessSessionKind = "dashboard" | "cli" | "agent"
+
+export type AccessSession = {
+  id: string
+  kind: AccessSessionKind
+  subject: string
+  label: string
+  tokenHash: string | null
+  scopes: Array<AccessScope>
+  createdAt: string
+  lastSeenAt: string | null
+  expiresAt: string
+  revokedAt: string | null
+  userAgent: string | null
+  remoteAddr: string | null
+  metadata: Record<string, unknown>
+}
+
+function parseAccessSession(
+  row: typeof accessSessions.$inferSelect
+): AccessSession {
+  return {
+    id: row.id,
+    kind: row.kind as AccessSessionKind,
+    subject: row.subject,
+    label: row.label,
+    tokenHash: row.tokenHash,
+    scopes: JSON.parse(row.scopesJson) as Array<AccessScope>,
+    createdAt: row.createdAt,
+    lastSeenAt: row.lastSeenAt,
+    expiresAt: row.expiresAt,
+    revokedAt: row.revokedAt,
+    userAgent: row.userAgent,
+    remoteAddr: row.remoteAddr,
+    metadata: JSON.parse(row.metadataJson) as Record<string, unknown>,
+  }
+}
+
+export async function createAccessSession(input: {
+  kind: AccessSessionKind
+  subject: string
+  label: string
+  tokenHash?: string | null
+  scopes: Array<AccessScope>
+  expiresAt: string
+  userAgent?: string | null
+  remoteAddr?: string | null
+  metadata?: Record<string, unknown>
+}) {
+  await ensureDatabase()
+  const createdAt = now()
+  const record = {
+    id: randomUUID(),
+    kind: input.kind,
+    subject: input.subject,
+    label: input.label,
+    tokenHash: input.tokenHash ?? null,
+    scopesJson: JSON.stringify(input.scopes),
+    createdAt,
+    lastSeenAt: createdAt,
+    expiresAt: input.expiresAt,
+    revokedAt: null,
+    userAgent: input.userAgent ?? null,
+    remoteAddr: input.remoteAddr ?? null,
+    metadataJson: JSON.stringify(input.metadata ?? {}),
+  }
+
+  await db.insert(accessSessions).values(record)
+  return parseAccessSession(record)
+}
+
+export async function getAccessSession(id: string) {
+  await ensureDatabase()
+  const [row] = await db
+    .select()
+    .from(accessSessions)
+    .where(eq(accessSessions.id, id))
+
+  return row ? parseAccessSession(row) : null
+}
+
+export async function getAccessSessionByTokenHash(tokenHash: string) {
+  await ensureDatabase()
+  const [row] = await db
+    .select()
+    .from(accessSessions)
+    .where(eq(accessSessions.tokenHash, tokenHash))
+
+  return row ? parseAccessSession(row) : null
+}
+
+export async function listAccessSessions() {
+  await ensureDatabase()
+  const rows = await db
+    .select()
+    .from(accessSessions)
+    .orderBy(desc(accessSessions.createdAt))
+
+  return rows.map(parseAccessSession)
+}
+
+export async function revokeAccessSession(id: string) {
+  await ensureDatabase()
+  await db
+    .update(accessSessions)
+    .set({ revokedAt: now() })
+    .where(eq(accessSessions.id, id))
+}
+
+export async function touchAccessSession(id: string) {
+  await ensureDatabase()
+  await db
+    .update(accessSessions)
+    .set({ lastSeenAt: now() })
+    .where(eq(accessSessions.id, id))
+}
+
+export async function upsertRuntimeInstance(input: {
+  id: string
+  pid: number
+  version: string
+  status: "running" | "stopping" | "stale"
+}) {
+  await ensureDatabase()
+  const ts = now()
+
+  await db
+    .insert(runtimeInstances)
+    .values({
+      id: input.id,
+      pid: input.pid,
+      startedAt: ts,
+      heartbeatAt: ts,
+      version: input.version,
+      status: input.status,
+    })
+    .onConflictDoUpdate({
+      target: runtimeInstances.id,
+      set: {
+        heartbeatAt: ts,
+        version: input.version,
+        status: input.status,
+      },
+    })
+}
+
+export async function listRuntimeInstances() {
+  await ensureDatabase()
+  return db
+    .select()
+    .from(runtimeInstances)
+    .orderBy(desc(runtimeInstances.heartbeatAt))
 }

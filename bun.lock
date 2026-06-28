@@ -11,6 +11,21 @@
         "typescript": "^6",
       },
     },
+    "apps/cli": {
+      "name": "@upster/cli",
+      "version": "0.0.7",
+      "bin": {
+        "upster": "./dist/upster",
+      },
+      "dependencies": {
+        "@upster/core": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^22",
+        "typescript": "^6",
+        "vitest": "^4",
+      },
+    },
     "apps/web": {
       "name": "@upster/web",
       "version": "0.0.7",
@@ -25,6 +40,7 @@
         "@tanstack/react-router-ssr-query": "1.167.1",
         "@tanstack/react-start": "1.168.26",
         "@tanstack/router-plugin": "1.168.18",
+        "@upster/core": "workspace:*",
         "@xterm/xterm": "^6.0.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -60,6 +76,17 @@
         "prettier-plugin-tailwindcss": "^0.8.0",
         "typescript": "^6",
         "vite": "^8",
+        "vitest": "^4",
+      },
+    },
+    "packages/core": {
+      "name": "@upster/core",
+      "version": "0.0.7",
+      "dependencies": {
+        "zod": "^4.4.3",
+      },
+      "devDependencies": {
+        "typescript": "^6",
         "vitest": "^4",
       },
     },
@@ -600,6 +627,10 @@
     "@unrs/resolver-binding-win32-ia32-msvc": ["@unrs/resolver-binding-win32-ia32-msvc@1.12.2", "", { "os": "win32", "cpu": "ia32" }, "sha512-WD9sY00OfpHVGfsnHZoA8jVT+esS/Bg8z8jzxp5BnDCjjwsuKsPQrzswwpFy4J1AUJbXPRfkpcX0mXrzeXW79g=="],
 
     "@unrs/resolver-binding-win32-x64-msvc": ["@unrs/resolver-binding-win32-x64-msvc@1.12.2", "", { "os": "win32", "cpu": "x64" }, "sha512-nAB74NfSNKknqQ1RrYj6uz8FcXEomu/MATJZxh/x+BArzN2U3JbOYC0APYzUIGhVY3m5hRxA8VPNdPBoG8txlA=="],
+
+    "@upster/cli": ["@upster/cli@workspace:apps/cli"],
+
+    "@upster/core": ["@upster/core@workspace:packages/core"],
 
     "@upster/web": ["@upster/web@workspace:apps/web"],
 
