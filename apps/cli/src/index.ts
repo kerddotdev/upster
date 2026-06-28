@@ -33,6 +33,9 @@ type CliOptions = {
 
 type CliConfig = {
   dashboardUrl?: string
+  dashboardPort?: string
+  databaseUrl?: string
+  databasePort?: string
 }
 
 type CliCredentials = {
@@ -83,6 +86,9 @@ function parseArgv(argv: Array<string>) {
     dashboardUrl:
       process.env.UPSTER_DASHBOARD_URL ??
       config.dashboardUrl ??
+      (config.dashboardPort
+        ? `http://127.0.0.1:${config.dashboardPort}`
+        : undefined) ??
       DEFAULT_DASHBOARD_URL,
     noColor: false,
     help: false,
@@ -159,11 +165,18 @@ async function dispatch(command: Array<string>, options: CliOptions, io: Io) {
     const value = command[3]
     const config = readConfig()
 
-    if (third !== "dashboardUrl") {
-      throw new Error("Supported config keys: dashboardUrl.")
+    if (
+      third !== "dashboardUrl" &&
+      third !== "dashboardPort" &&
+      third !== "databaseUrl" &&
+      third !== "databasePort"
+    ) {
+      throw new Error(
+        "Supported config keys: dashboardUrl, dashboardPort, databaseUrl, databasePort."
+      )
     }
 
-    writeConfig({ ...config, dashboardUrl: value })
+    writeConfig({ ...config, [third]: value })
     return createSuccess({ key: third, value }, LOCAL_REQUEST_ID)
   }
 
@@ -295,7 +308,9 @@ async function dispatch(command: Array<string>, options: CliOptions, io: Io) {
   }
 
   if (root === "pills" && sub === "add") {
-    const body = await readInputJson(options)
+    const body = options.input
+      ? await readInputJson(options)
+      : await promptPillInput(options, io)
     return apiRequest("POST", "/api/cli/v1/pills", options, body)
   }
 
@@ -543,6 +558,23 @@ async function readInputJson(options: CliOptions) {
   return JSON.parse(text) as unknown
 }
 
+async function promptPillInput(options: CliOptions, io: Io) {
+  if (options.json) {
+    throw new Error("Use --input <file|-> when creating a pill with --json.")
+  }
+
+  return {
+    name: await promptRequired(io, "Pill name: "),
+    slug: await promptOptional(io, "Slug (optional): "),
+    repoPath: await promptRequired(io, "Repository path: "),
+    defaultEnv: await promptRequired(io, "Default command name: "),
+    commandName: await promptRequired(io, "Command name: "),
+    command: await promptRequired(io, "Command: "),
+    cwd: await promptOptional(io, "Working directory (optional): "),
+    healthcheckPath: await promptOptional(io, "Healthcheck path (optional): "),
+  }
+}
+
 async function readStdin() {
   const chunks: Array<Buffer> = []
 
@@ -572,6 +604,20 @@ async function promptRequired(io: Io, label: string) {
     }
 
     return value
+  } finally {
+    rl.close()
+  }
+}
+
+async function promptOptional(io: Io, label: string) {
+  const rl = readline.createInterface({
+    input: io.stdin,
+    output: io.stdout,
+  })
+
+  try {
+    const value = (await rl.question(label)).trim()
+    return value || undefined
   } finally {
     rl.close()
   }
