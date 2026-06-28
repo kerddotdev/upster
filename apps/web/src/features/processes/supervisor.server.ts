@@ -16,6 +16,7 @@ import {
 import { getUpsterConfig } from "@/config/env.server"
 import { createCloudflareClient } from "@/features/cloudflare/client.server"
 import type {
+  CloudflareConfig,
   CloudflareTunnel,
   PillRun,
   RunLog,
@@ -25,6 +26,11 @@ import { assertAllowedCommand } from "@/features/pills/validation"
 import { findAvailablePort } from "@/features/pills/ports.server"
 import { buildProcessEnv } from "@/features/processes/process-env"
 import { emitRunLog, nextLogSequence } from "@/features/terminal/log-bus.server"
+import {
+  getRuntimeInstanceId,
+  reconcileRuntimeRuns,
+} from "@/features/runtime/instance.server"
+import { requireUnlockedCloudflareConfig } from "@/features/secrets/vault-session.server"
 
 type ManagedRun = {
   runId: string
@@ -45,7 +51,7 @@ async function logRun(runId: string, stream: RunLog["stream"], chunk: string) {
   const log = await appendRunLog({
     runId,
     stream,
-    sequence: nextLogSequence(runId),
+    sequence: await nextLogSequence(runId),
     chunk,
   })
   emitRunLog(log)
@@ -96,7 +102,7 @@ async function prepareCloudflareTunnel(input: {
   runId: string
   pillId: string
   appPort: number
-  config: StartPillInput["cloudflareConfig"]
+  config: CloudflareConfig
 }) {
   const pill = await getPillDetail(input.pillId)
   const client = createCloudflareClient(input.config)
@@ -238,6 +244,7 @@ function scheduleExpiry(run: PillRun, managed: ManagedRun) {
 }
 
 export async function startPillRuntime(input: StartPillInput) {
+  await reconcileRuntimeRuns()
   const activeRun = await getActiveRun(input.pillId)
 
   if (activeRun) {
@@ -249,6 +256,7 @@ export async function startPillRuntime(input: StartPillInput) {
 
   assertAllowedCommand(command.argv, getUpsterConfig().allowedCommands)
 
+  const cloudflareConfig = await requireUnlockedCloudflareConfig()
   const ports = await preparePorts(input.pillId, input.rotatePorts ?? false)
 
   await updatePillStatus(input.pillId, "starting")
@@ -261,6 +269,8 @@ export async function startPillRuntime(input: StartPillInput) {
     status: "starting",
     stoppedAt: null,
     expiresAt: input.expiresAt ?? null,
+    runtimeInstanceId: getRuntimeInstanceId(),
+    stopReason: null,
     exitCode: null,
     error: null,
   })
@@ -313,7 +323,7 @@ export async function startPillRuntime(input: StartPillInput) {
       runId: run.id,
       pillId: input.pillId,
       appPort: ports.appPort,
-      config: input.cloudflareConfig,
+      config: cloudflareConfig,
     })
 
     if (appExitCode !== undefined || appProcess.exitCode !== null) {
@@ -377,6 +387,7 @@ export async function startPillRuntime(input: StartPillInput) {
     await updateRun(run.id, {
       status: "error",
       stoppedAt: now(),
+      stopReason: "error",
       error: message,
     })
     await updatePillStatus(input.pillId, "error")
@@ -414,6 +425,7 @@ export async function stopPillRun(input: {
   await updateRun(runId, {
     status,
     stoppedAt: now(),
+    stopReason: input.reason ?? "manual",
   })
   await updatePillStatus(input.pillId, status)
   await appendEvent({
@@ -448,6 +460,7 @@ async function handleAppExit(
   await updateRun(runId, {
     status: code === 0 ? "idle" : "error",
     stoppedAt: now(),
+    stopReason: "process-exit",
     exitCode: code,
     error: code === 0 ? null : "App process exited unexpectedly.",
   })
@@ -472,6 +485,7 @@ async function handleTunnelExit(
   )
   await updateRun(runId, {
     status: "error",
+    stopReason: "process-exit",
     error: "cloudflared exited unexpectedly.",
   })
   await updatePillStatus(pillId, "error")

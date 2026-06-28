@@ -29,7 +29,7 @@ import {
   startPillFn,
   stopPillFn,
 } from "@/features/pills/pill.functions"
-import type { CloudflareConfig, PillListItem } from "@/features/pills/types"
+import type { PillListItem } from "@/features/pills/types"
 
 function getErrorMessage(err: unknown, fallback: string) {
   return err instanceof Error ? err.message : fallback
@@ -43,7 +43,7 @@ export function PillActions({
   expiresAt?: string | null
 }) {
   const router = useRouter()
-  const { config, requestUnlock } = useCloudflareVault()
+  const { isUnlocked, requestUnlock } = useCloudflareVault()
   const startPill = useServerFn(startPillFn)
   const stopPill = useServerFn(stopPillFn)
   const deletePill = useServerFn(deletePillFn)
@@ -51,7 +51,7 @@ export function PillActions({
   const [deleteOpen, setDeleteOpen] = useState(false)
   const isRunning = Boolean(pill.activeRun)
 
-  async function runStart(cloudflareConfig: CloudflareConfig) {
+  async function runStart() {
     setPending(true)
     try {
       await startPill({
@@ -60,7 +60,6 @@ export function PillActions({
           commandName: pill.defaultEnv,
           expiresAt: expiresAt ?? undefined,
           rotatePorts: false,
-          cloudflareConfig,
         },
       })
       await router.invalidate()
@@ -100,12 +99,12 @@ export function PillActions({
       ) : (
         <Button
           onClick={() => {
-            if (config) {
-              void runStart(config)
+            if (isUnlocked) {
+              void runStart()
               return
             }
 
-            requestUnlock({ onUnlocked: (cfg) => void runStart(cfg) })
+            requestUnlock({ onUnlocked: () => void runStart() })
           }}
           disabled={pending}
         >
@@ -145,7 +144,6 @@ export function PillActions({
                   const result = await deletePill({
                     data: {
                       pillId: pill.id,
-                      cloudflareConfig: config ?? undefined,
                     },
                   })
                   if (result.cloudflareCleanup === "failed") {

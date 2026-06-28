@@ -42,25 +42,24 @@ import { cn } from "@/lib/utils"
 import type { CloudflareConfig } from "@/features/pills/types"
 import { CloudflareSetupGuide } from "@/features/secrets/cloudflare-setup-guide"
 import { useCloudflareVault } from "@/features/secrets/cloudflare-vault-provider"
-import type { getCloudflareVaultFn } from "@/features/secrets/secret.functions"
+import type { getCloudflareVaultStatusFn } from "@/features/secrets/secret.functions"
 import {
   deleteCloudflareVaultFn,
   saveCloudflareVaultFn,
-  validateCloudflareConfigFn,
 } from "@/features/secrets/secret.functions"
-import { encryptCloudflareVault } from "@/features/secrets/vault"
 
-type StoredVault = Awaited<ReturnType<typeof getCloudflareVaultFn>>
+type VaultStatus = Awaited<ReturnType<typeof getCloudflareVaultStatusFn>>
 
-export function CloudflareSettingsForm({ vault }: { vault: StoredVault }) {
-  const hasVault = Boolean(vault)
+export function CloudflareSettingsForm({ status }: { status: VaultStatus }) {
+  const hasVault = status.hasVault
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-xl font-medium">Cloudflare</h1>
         <p className="text-sm text-muted-foreground">
-          Save an encrypted local vault and unlock it only in browser memory.
+          Save an encrypted local vault and unlock it only in control plane
+          memory.
         </p>
       </div>
 
@@ -96,11 +95,12 @@ function StatusRow({
 
 function VaultManager() {
   const router = useRouter()
-  const { config, isUnlocked, lock, requestUnlock, refreshVault } =
+  const { isUnlocked, rootDomain, lock, requestUnlock, refreshVault } =
     useCloudflareVault()
   const deleteVault = useServerFn(deleteCloudflareVaultFn)
   const [deleting, setDeleting] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [locking, setLocking] = useState(false)
 
   return (
     <Card className="max-w-2xl">
@@ -121,18 +121,29 @@ function VaultManager() {
           />
         </div>
 
-        {isUnlocked && config && (
+        {rootDomain && (
           <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
             <span className="text-xs text-muted-foreground">Root domain</span>
             <span className="truncate font-mono text-xs font-medium">
-              {config.rootDomain}
+              {rootDomain}
             </span>
           </div>
         )}
 
         <div className="flex flex-wrap gap-2">
           {isUnlocked ? (
-            <Button variant="outline" onClick={lock}>
+            <Button
+              variant="outline"
+              disabled={locking}
+              onClick={async () => {
+                setLocking(true)
+                try {
+                  await lock()
+                } finally {
+                  setLocking(false)
+                }
+              }}
+            >
               <LockIcon data-icon="inline-start" />
               Lock session
             </Button>
@@ -167,7 +178,6 @@ function VaultManager() {
                     setDeleting(true)
                     try {
                       await deleteVault()
-                      lock()
                       await refreshVault()
                       toast.success("Cloudflare vault deleted.")
                       setDeleteOpen(false)
@@ -196,9 +206,8 @@ function VaultManager() {
 
 function VaultSetup() {
   const router = useRouter()
-  const { unlock, refreshVault } = useCloudflareVault()
+  const { refreshVault } = useCloudflareVault()
   const saveVault = useServerFn(saveCloudflareVaultFn)
-  const validateConfig = useServerFn(validateCloudflareConfigFn)
   const [pending, setPending] = useState(false)
 
   async function handleSave(event: React.FormEvent<HTMLFormElement>) {
@@ -218,16 +227,15 @@ function VaultSetup() {
     }
 
     try {
-      await validateConfig({ data: cloudflareConfig })
-      const encrypted = await encryptCloudflareVault(
-        cloudflareConfig,
-        passphrase
-      )
-      await saveVault({ data: encrypted })
-      unlock(cloudflareConfig)
+      await saveVault({
+        data: {
+          config: cloudflareConfig,
+          passphrase,
+        },
+      })
       await refreshVault()
       toast.success(
-        "Cloudflare vault saved and unlocked for this browser session."
+        "Cloudflare vault saved and unlocked for this Upster session."
       )
       await router.invalidate()
     } catch (err) {
@@ -284,8 +292,8 @@ function VaultSetup() {
                   required
                 />
                 <FieldDescription>
-                  Use at least 12 characters. This decrypts the vault in your
-                  browser and is never sent to the server.
+                  Use at least 12 characters. This decrypts the vault in control
+                  plane memory only during explicit runtime actions.
                 </FieldDescription>
               </Field>
             </FieldGroup>
@@ -298,8 +306,8 @@ function VaultSetup() {
             <ShieldCheckIcon />
             <AlertTitle>Stored encrypted</AlertTitle>
             <AlertDescription>
-              The token is validated, then encrypted in your browser with your
-              passphrase. Only the ciphertext is stored, and it is never logged.
+              The token is validated, encrypted with your passphrase, and stored
+              only as ciphertext. It is never logged.
             </AlertDescription>
           </Alert>
         </CardContent>

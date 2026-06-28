@@ -21,7 +21,14 @@ export function CloudflareLockButton({ className }: { className?: string }) {
             variant={isUnlocked ? "secondary" : "outline"}
             size="sm"
             className={className}
-            onClick={() => (isUnlocked ? lock() : requestUnlock())}
+            onClick={() => {
+              if (isUnlocked) {
+                void lock()
+                return
+              }
+
+              requestUnlock()
+            }}
           />
         }
       >

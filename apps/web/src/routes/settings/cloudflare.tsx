@@ -1,15 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { CloudflareSettingsForm } from "@/features/secrets/cloudflare-settings-form"
-import { getCloudflareVaultFn } from "@/features/secrets/secret.functions"
+import { getCloudflareVaultStatusFn } from "@/features/secrets/secret.functions"
 
 export const Route = createFileRoute("/settings/cloudflare")({
-  loader: () => getCloudflareVaultFn(),
+  loader: () => getCloudflareVaultStatusFn(),
   component: CloudflareSettingsPage,
 })
 
 function CloudflareSettingsPage() {
-  const vault = Route.useLoaderData()
+  const status = Route.useLoaderData()
 
-  return <CloudflareSettingsForm vault={vault} />
+  return <CloudflareSettingsForm status={status} />
 }

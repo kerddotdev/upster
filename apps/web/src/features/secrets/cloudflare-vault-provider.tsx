@@ -22,51 +22,26 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import type { CloudflareConfig } from "@/features/pills/types"
 import {
-  getCloudflareVaultFn,
-  validateCloudflareConfigFn,
+  getCloudflareVaultStatusFn,
+  lockCloudflareVaultFn,
+  unlockCloudflareVaultFn,
 } from "@/features/secrets/secret.functions"
-import {
-  decryptCloudflareVault,
-  type EncryptedVaultInput,
-} from "@/features/secrets/vault"
 
-type StoredVault = Awaited<ReturnType<typeof getCloudflareVaultFn>> | null
+type VaultStatus = Awaited<ReturnType<typeof getCloudflareVaultStatusFn>>
 
 type UnlockRequest = {
-  onUnlocked?: (config: CloudflareConfig) => void
+  onUnlocked?: () => void
 } | null
 
-export function toEncryptedVault(
-  vault: StoredVault
-): EncryptedVaultInput | null {
-  if (!vault) {
-    return null
-  }
-
-  return {
-    name: "cloudflare",
-    ciphertext: vault.ciphertext,
-    salt: vault.salt,
-    nonce: vault.nonce,
-    kdf: "argon2id",
-    version: 1,
-  }
-}
-
 type CloudflareVaultContextValue = {
-  config: CloudflareConfig | null
+  status: VaultStatus | null
   isUnlocked: boolean
-  vault: StoredVault
   hasVault: boolean
-  unlock: (config: CloudflareConfig) => void
-  lock: () => void
-  setVault: (vault: StoredVault) => void
+  rootDomain: string | null
+  lock: () => Promise<void>
   refreshVault: () => Promise<void>
-  requestUnlock: (options?: {
-    onUnlocked?: (config: CloudflareConfig) => void
-  }) => void
+  requestUnlock: (options?: { onUnlocked?: () => void }) => void
 }
 
 const CloudflareVaultContext =
@@ -82,14 +57,14 @@ export function CloudflareVaultProvider({
 }: {
   children: React.ReactNode
 }) {
-  const getVault = useServerFn(getCloudflareVaultFn)
-  const [config, setConfig] = useState<CloudflareConfig | null>(null)
-  const [vault, setVault] = useState<StoredVault>(null)
+  const getStatus = useServerFn(getCloudflareVaultStatusFn)
+  const lockVault = useServerFn(lockCloudflareVaultFn)
+  const [status, setStatus] = useState<VaultStatus | null>(null)
   const [request, setRequest] = useState<UnlockRequest>(null)
 
   const refreshVault = useCallback(async () => {
-    setVault(await getVault())
-  }, [getVault])
+    setStatus(await getStatus())
+  }, [getStatus])
 
   useEffect(() => {
     void refreshVault()
@@ -97,17 +72,17 @@ export function CloudflareVaultProvider({
 
   const value = useMemo<CloudflareVaultContextValue>(
     () => ({
-      config,
-      isUnlocked: Boolean(config),
-      vault,
-      hasVault: Boolean(vault),
-      unlock: setConfig,
-      lock: () => setConfig(null),
-      setVault,
+      status,
+      isUnlocked: Boolean(status?.isUnlocked),
+      hasVault: Boolean(status?.hasVault),
+      rootDomain: status?.rootDomain ?? null,
+      lock: async () => {
+        setStatus(await lockVault())
+      },
       refreshVault,
       requestUnlock: (options) => setRequest(options ?? {}),
     }),
-    [config, vault, refreshVault]
+    [lockVault, refreshVault, status]
   )
 
   const requestValue = useMemo(
@@ -139,8 +114,8 @@ export function useCloudflareVault() {
 
 function CloudflareUnlockDialog() {
   const requestContext = useContext(UnlockRequestContext)
-  const { vault, hasVault, unlock } = useCloudflareVault()
-  const validateConfig = useServerFn(validateCloudflareConfigFn)
+  const { hasVault, refreshVault } = useCloudflareVault()
+  const unlockVault = useServerFn(unlockCloudflareVaultFn)
   const [pending, setPending] = useState(false)
 
   if (!requestContext) {
@@ -153,8 +128,7 @@ function CloudflareUnlockDialog() {
   async function handleUnlock(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    const encryptedVault = toEncryptedVault(vault)
-    if (!encryptedVault) {
+    if (!hasVault) {
       toast.error("No Cloudflare vault has been saved yet.")
       return
     }
@@ -165,12 +139,11 @@ function CloudflareUnlockDialog() {
     const onUnlocked = request?.onUnlocked
 
     try {
-      const config = await decryptCloudflareVault(encryptedVault, passphrase)
-      await validateConfig({ data: config })
-      unlock(config)
-      toast.success("Cloudflare vault unlocked for this browser session.")
+      await unlockVault({ data: { passphrase } })
+      await refreshVault()
+      toast.success("Cloudflare vault unlocked for this Upster session.")
       close()
-      onUnlocked?.(config)
+      onUnlocked?.()
     } catch {
       toast.error("Could not unlock the vault with that passphrase.")
     } finally {
@@ -184,8 +157,8 @@ function CloudflareUnlockDialog() {
         <DialogHeader>
           <DialogTitle>Unlock Cloudflare vault</DialogTitle>
           <DialogDescription>
-            The passphrase decrypts your config into browser memory for this
-            session only.
+            The passphrase decrypts your config into control plane memory for
+            this Upster session only.
           </DialogDescription>
         </DialogHeader>
         {hasVault ? (

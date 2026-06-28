@@ -13,6 +13,7 @@ import type {
   CreatePillInput,
   UpdatePillInput,
 } from "@/features/pills/types"
+import { getUnlockedCloudflareConfig } from "@/features/secrets/vault-session.server"
 import {
   assertAllowedCommand,
   assertValidHostnameLabel,
@@ -62,18 +63,16 @@ export async function updatePill(input: UpdatePillInput) {
 
 type CloudflareCleanup = "ok" | "failed" | "skipped"
 
-export async function deletePill(input: {
-  pillId: string
-  cloudflareConfig?: CloudflareConfig
-}) {
+export async function deletePill(input: { pillId: string }) {
   const activeRun = await getActiveRun(input.pillId)
 
   if (activeRun) {
     throw new Error("Stop the pill before deleting it.")
   }
 
-  const cloudflareCleanup: CloudflareCleanup = input.cloudflareConfig
-    ? await cleanupCloudflareResources(input.pillId, input.cloudflareConfig)
+  const cloudflareConfig = await getUnlockedCloudflareConfig()
+  const cloudflareCleanup: CloudflareCleanup = cloudflareConfig
+    ? await cleanupCloudflareResources(input.pillId, cloudflareConfig)
     : "skipped"
 
   await deletePillRecord(input.pillId)

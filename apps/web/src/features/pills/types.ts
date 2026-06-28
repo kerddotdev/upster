@@ -54,6 +54,8 @@ export type PillRun = {
   startedAt: string
   stoppedAt: string | null
   expiresAt: string | null
+  runtimeInstanceId: string | null
+  stopReason: string | null
   exitCode: number | null
   error: string | null
 }
@@ -109,5 +111,4 @@ export type StartPillInput = {
   commandName: string
   expiresAt?: string
   rotatePorts?: boolean
-  cloudflareConfig: CloudflareConfig
 }

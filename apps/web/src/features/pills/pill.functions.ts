@@ -15,13 +15,6 @@ import {
   stopPillRun,
 } from "@/features/processes/supervisor.server"
 
-const cloudflareConfigSchema = z.object({
-  accountId: z.string().min(1),
-  zoneId: z.string().min(1),
-  rootDomain: z.string().min(1),
-  apiToken: z.string().min(1),
-})
-
 const createPillSchema = z.object({
   name: z.string().min(1),
   slug: z.string().optional(),
@@ -45,7 +38,6 @@ const pillIdSchema = z.object({
 
 const deletePillSchema = z.object({
   pillId: z.string().min(1),
-  cloudflareConfig: cloudflareConfigSchema.optional(),
 })
 
 const startPillSchema = z.object({
@@ -53,7 +45,6 @@ const startPillSchema = z.object({
   commandName: z.string().min(1),
   expiresAt: z.string().optional(),
   rotatePorts: z.boolean().optional(),
-  cloudflareConfig: cloudflareConfigSchema,
 })
 
 const stopPillSchema = z.object({
