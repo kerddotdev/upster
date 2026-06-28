@@ -1,0 +1,23 @@
+{
+  "name": "@upster/cli",
+  "private": true,
+  "type": "module",
+  "version": "0.0.7",
+  "bin": {
+    "upster": "./dist/upster"
+  },
+  "scripts": {
+    "build": "bun build src/index.ts --target bun --outfile dist/upster",
+    "upster": "bun src/index.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@upster/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^6",
+    "vitest": "^4"
+  }
+}

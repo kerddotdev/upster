@@ -14,6 +14,8 @@ RUN apt-get update \
 
 COPY package.json bun.lock ./
 COPY apps/web/package.json apps/web/package.json
+COPY apps/cli/package.json apps/cli/package.json
+COPY packages/core/package.json packages/core/package.json
 RUN bun install --frozen-lockfile
 
 COPY . .
