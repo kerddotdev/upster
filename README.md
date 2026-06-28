@@ -48,6 +48,9 @@ Run the local CLI during development:
 bun run --cwd apps/cli upster -- --help
 ```
 
+See [docs/CLI.md](docs/CLI.md) for the full CLI command reference, scope list,
+agent token examples, JSON input/output rules, and common error remediation.
+
 Run the full stack with Docker:
 
 ```bash
