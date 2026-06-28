@@ -1,7 +1,13 @@
 #!/usr/bin/env bun
 
 import { spawn } from "node:child_process"
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs"
 import { homedir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import readline from "node:readline/promises"
@@ -10,11 +16,13 @@ import {
   createFailure,
   createSuccess,
   agentForbiddenError,
+  agentFullRuntimeScopes,
   controlPlaneUnavailableError,
   getAgentGuide,
   parseScopes,
   renderAgentGuideMarkdown,
   renderCliHelp,
+  type AccessScope,
   type ApiEnvelope,
   type ApiFailure,
   UpsterApiError,
@@ -28,6 +36,8 @@ type CliOptions = {
   dashboardUrl: string
   token?: string
   tokenFile?: string
+  agent?: string
+  human: boolean
   noColor: boolean
   help: boolean
 }
@@ -41,6 +51,21 @@ type CliConfig = {
 
 type CliCredentials = {
   token?: string
+}
+
+type AgentTokenEntry = {
+  token: string
+  dashboardUrl: string
+  scopes: Array<AccessScope>
+  expiresAt: string | null
+  createdAt: string
+  sessionId: string
+}
+
+type AgentTokenStore = {
+  version: 1
+  default?: string
+  tokens: Record<string, AgentTokenEntry>
 }
 
 type Io = {
@@ -101,6 +126,7 @@ function parseArgv(argv: Array<string>) {
         ? `http://127.0.0.1:${config.dashboardPort}`
         : undefined) ??
       DEFAULT_DASHBOARD_URL,
+    human: false,
     noColor: false,
     help: false,
   }
@@ -123,6 +149,10 @@ function parseArgv(argv: Array<string>) {
       options.token = argv[++i]
     } else if (arg === "--token-file") {
       options.tokenFile = argv[++i]
+    } else if (arg === "--agent") {
+      options.agent = argv[++i]
+    } else if (arg === "--human") {
+      options.human = true
     } else if (arg === "--no-color") {
       options.noColor = true
     } else if (arg === "--help" || arg === "-h") {
@@ -192,10 +222,16 @@ async function dispatch(command: Array<string>, options: CliOptions, io: Io) {
   }
 
   if (root === "auth" && sub === "status") {
+    const selectedAgent = selectedAgentName(options)
     return createSuccess(
       {
         dashboardUrl: options.dashboardUrl,
-        hasToken: Boolean(resolveToken(options)),
+        hasExplicitToken: Boolean(
+          options.token || options.tokenFile || process.env.UPSTER_TOKEN
+        ),
+        hasHumanToken: Boolean(readCredentials().token),
+        hasAgentToken: Boolean(selectedAgent && readAgentToken(selectedAgent)),
+        selectedAgent,
       },
       LOCAL_REQUEST_ID
     )
@@ -222,48 +258,130 @@ async function dispatch(command: Array<string>, options: CliOptions, io: Io) {
   }
 
   if (root === "auth" && sub === "logout") {
-    const result = await apiRequest("POST", "/api/cli/v1/auth/logout", options)
+    const result = await apiRequest("POST", "/api/cli/v1/auth/logout", {
+      ...options,
+      human: true,
+    })
     writeCredentials({})
     return result
   }
 
   if (root === "sessions" && sub === "list") {
-    return apiRequest("GET", "/api/cli/v1/sessions", options)
+    return apiRequest("GET", "/api/cli/v1/sessions", {
+      ...options,
+      human: true,
+    })
   }
 
   if (root === "sessions" && sub === "revoke" && third) {
     return apiRequest(
       "POST",
       `/api/cli/v1/sessions/${encodeURIComponent(third)}/revoke`,
-      options
+      { ...options, human: true }
     )
   }
 
   if (root === "agents" && sub === "create") {
     const flags = parseCommandFlags(command.slice(2))
     const label = flags.label
-    const scopes = flags.scopes
+    const scopes = resolveCreateAgentScopes(flags)
     const ttlSeconds = parseDuration(flags.ttl ?? "24h")
 
-    if (!label || !scopes) {
+    if (!label || !scopes.length) {
       throw new Error(
-        "Usage: upster agents create --label <label> --ttl 24h --scopes <scopes>."
+        "Usage: upster agents create --label <label> --ttl 24h --scopes <scopes> or --preset agent-full-runtime."
       )
     }
 
-    return apiRequest("POST", "/api/cli/v1/agent-sessions", options, {
-      label,
-      scopes: parseScopes(scopes),
-      ttlSeconds,
-    })
+    const result = await apiRequest(
+      "POST",
+      "/api/cli/v1/agent-sessions",
+      { ...options, human: true },
+      {
+        label,
+        scopes,
+        ttlSeconds,
+      }
+    )
+
+    if (result.ok && flags.save === "true") {
+      saveAgentTokenFromCreate(result, {
+        name: flags["save-as"] ?? label,
+        dashboardUrl: options.dashboardUrl,
+        makeDefault: flags.default === "true",
+      })
+    }
+
+    return result
   }
 
   if (root === "agents" && sub === "revoke" && third) {
     return apiRequest(
       "POST",
       `/api/cli/v1/sessions/${encodeURIComponent(third)}/revoke`,
-      options
+      { ...options, human: true }
     )
+  }
+
+  if (root === "agents" && sub === "local" && third === "list") {
+    const store = readAgentTokenStore()
+    return createSuccess(
+      Object.entries(store.tokens).map(([name, entry]) => ({
+        name,
+        dashboardUrl: entry.dashboardUrl,
+        scopes: entry.scopes,
+        expiresAt: entry.expiresAt,
+        createdAt: entry.createdAt,
+        sessionId: entry.sessionId,
+        default: store.default === name,
+      })),
+      LOCAL_REQUEST_ID
+    )
+  }
+
+  if (root === "agents" && sub === "local" && third === "current") {
+    const store = readAgentTokenStore()
+    const name = selectedAgentName(options)
+    return createSuccess(
+      {
+        selectedAgent: name,
+        default: store.default ?? null,
+        hasToken: Boolean(name && store.tokens[name]),
+      },
+      LOCAL_REQUEST_ID
+    )
+  }
+
+  if (root === "agents" && sub === "local" && third === "use") {
+    const name = command[3]
+    if (!name) {
+      throw new Error("Usage: upster agents local use <name>.")
+    }
+
+    const store = readAgentTokenStore()
+    if (!store.tokens[name]) {
+      throw new Error(`No local agent token is saved as ${name}.`)
+    }
+
+    writeAgentTokenStore({ ...store, default: name })
+    return createSuccess({ default: name }, LOCAL_REQUEST_ID)
+  }
+
+  if (root === "agents" && sub === "local" && third === "remove") {
+    const name = command[3]
+    if (!name) {
+      throw new Error("Usage: upster agents local remove <name>.")
+    }
+
+    const store = readAgentTokenStore()
+    const tokens = { ...store.tokens }
+    delete tokens[name]
+    writeAgentTokenStore({
+      version: 1,
+      tokens,
+      default: store.default === name ? undefined : store.default,
+    })
+    return createSuccess({ removed: name }, LOCAL_REQUEST_ID)
   }
 
   if (root === "vault" && sub === "status") {
@@ -280,10 +398,15 @@ async function dispatch(command: Array<string>, options: CliOptions, io: Io) {
     }
     const passphrase = await promptRequired(io, "Vault passphrase: ")
 
-    return apiRequest("POST", "/api/cli/v1/vault/save", options, {
-      config,
-      passphrase,
-    })
+    return apiRequest(
+      "POST",
+      "/api/cli/v1/vault/save",
+      { ...options, human: true },
+      {
+        config,
+        passphrase,
+      }
+    )
   }
 
   if (root === "vault" && sub === "unlock") {
@@ -291,19 +414,30 @@ async function dispatch(command: Array<string>, options: CliOptions, io: Io) {
     const flags = parseCommandFlags(command.slice(2))
     const passphrase = await promptRequired(io, "Vault passphrase: ")
 
-    return apiRequest("POST", "/api/cli/v1/vault/unlock", options, {
-      passphrase,
-      ttlSeconds: flags.ttl ? parseDuration(flags.ttl) : undefined,
-    })
+    return apiRequest(
+      "POST",
+      "/api/cli/v1/vault/unlock",
+      { ...options, human: true },
+      {
+        passphrase,
+        ttlSeconds: flags.ttl ? parseDuration(flags.ttl) : undefined,
+      }
+    )
   }
 
   if (root === "vault" && sub === "lock") {
-    return apiRequest("POST", "/api/cli/v1/vault/lock", options)
+    return apiRequest("POST", "/api/cli/v1/vault/lock", {
+      ...options,
+      human: true,
+    })
   }
 
   if (root === "vault" && sub === "delete") {
     assertInteractiveOnly(options, "upster vault delete")
-    return apiRequest("DELETE", "/api/cli/v1/vault", options)
+    return apiRequest("DELETE", "/api/cli/v1/vault", {
+      ...options,
+      human: true,
+    })
   }
 
   if (root === "pills" && sub === "list") {
@@ -673,6 +807,26 @@ function parseDuration(value: string) {
   return amount * multiplier
 }
 
+function resolveCreateAgentScopes(flags: Record<string, string>) {
+  if (flags.preset) {
+    if (flags.preset !== "agent-full-runtime") {
+      throw new Error("Supported agent presets: agent-full-runtime.")
+    }
+
+    if (flags.scopes) {
+      throw new Error("Use either --preset or --scopes, not both.")
+    }
+
+    return [...agentFullRuntimeScopes]
+  }
+
+  if (!flags.scopes) {
+    return []
+  }
+
+  return parseScopes(flags.scopes)
+}
+
 function startDaemon(options: CliOptions) {
   if (options.json) {
     throw controlPlaneUnavailableError({ dashboardUrl: options.dashboardUrl })
@@ -711,7 +865,114 @@ function resolveToken(options: CliOptions) {
     return process.env.UPSTER_TOKEN.trim()
   }
 
-  return readCredentials().token
+  if (!options.human) {
+    const agentName = selectedAgentName(options)
+    const agentToken = agentName ? readAgentToken(agentName) : undefined
+    if (agentToken) {
+      return agentToken
+    }
+  }
+
+  if (options.human || !selectedAgentName(options)) {
+    const humanToken = readCredentials().token
+    if (!humanToken) {
+      return undefined
+    }
+
+    if (!canUseSavedHumanCredential()) {
+      throw humanCredentialBlockedError()
+    }
+
+    return humanToken
+  }
+
+  return undefined
+}
+
+function selectedAgentName(options: CliOptions) {
+  return (
+    options.agent ?? process.env.UPSTER_AGENT ?? readAgentTokenStore().default
+  )
+}
+
+function readAgentToken(name: string) {
+  return readAgentTokenStore().tokens[name]?.token
+}
+
+function readAgentTokenStore(): AgentTokenStore {
+  const stored = readJsonFile<Partial<AgentTokenStore>>(agentTokenStoreFile())
+
+  return {
+    version: 1,
+    default: stored.default,
+    tokens: stored.tokens ?? {},
+  }
+}
+
+function writeAgentTokenStore(store: AgentTokenStore) {
+  writeJsonFile(agentTokenStoreFile(), store)
+  chmodSync(agentTokenStoreFile(), 0o600)
+}
+
+function saveAgentTokenFromCreate(
+  envelope: ApiEnvelope<unknown>,
+  options: { name: string; dashboardUrl: string; makeDefault: boolean }
+) {
+  if (!envelope.ok) {
+    return
+  }
+
+  const data = envelope.data as {
+    token?: string
+    session?: {
+      id: string
+      scopes: Array<AccessScope>
+      expiresAt: string | null
+      createdAt: string
+    }
+  }
+
+  if (!data.token || !data.session) {
+    return
+  }
+
+  const store = readAgentTokenStore()
+  writeAgentTokenStore({
+    version: 1,
+    default:
+      options.makeDefault || !store.default ? options.name : store.default,
+    tokens: {
+      ...store.tokens,
+      [options.name]: {
+        token: data.token,
+        dashboardUrl: options.dashboardUrl,
+        scopes: data.session.scopes,
+        expiresAt: data.session.expiresAt,
+        createdAt: data.session.createdAt,
+        sessionId: data.session.id,
+      },
+    },
+  })
+}
+
+function canUseSavedHumanCredential() {
+  return Boolean(process.stdin.isTTY && process.stdout.isTTY)
+}
+
+function humanCredentialBlockedError() {
+  return new UpsterApiError({
+    status: 401,
+    code: "HUMAN_CREDENTIAL_BLOCKED",
+    message: "Saved human CLI credentials are not available here.",
+    reason:
+      "The CLI is running without an interactive terminal, so it will not use the saved human admin token.",
+    cause:
+      "Non-interactive commands may be run by agents or automation and must use scoped agent tokens instead of the human CLI session.",
+    remediation:
+      "Use --agent <name>, UPSTER_AGENT, --token, --token-file, or UPSTER_TOKEN. For human admin actions, run the command from an interactive terminal.",
+    humanActionRequired: true,
+    docsCommand: "upster agent guide",
+  })
 }
 
 function readConfig(): CliConfig {
@@ -807,6 +1068,10 @@ function configFile() {
 
 function credentialsFile() {
   return join(configDir(), "credentials.json")
+}
+
+function agentTokenStoreFile() {
+  return join(configDir(), "agent-tokens.json")
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

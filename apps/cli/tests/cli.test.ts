@@ -1,9 +1,9 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Writable } from "node:stream"
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { runCli } from "../src/index"
 
@@ -28,7 +28,9 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.restoreAllMocks()
   delete process.env.UPSTER_CLI_CONFIG_DIR
+  delete process.env.UPSTER_AGENT
   rmSync(configDir, { recursive: true, force: true })
 })
 
@@ -123,5 +125,134 @@ describe("upster cli", () => {
     expect(payload.ok).toBe(false)
     expect(payload.error.code).toBe("OUTPUT_FILE_EXISTS")
     expect(payload.error.remediation).toContain("--force")
+  })
+
+  it("blocks saved human credentials in non-interactive admin commands", async () => {
+    writeFileSync(
+      join(configDir, "credentials.json"),
+      '{"token":"upst_human"}\n'
+    )
+    const stdout = new Capture()
+    const stderr = new Capture()
+    const code = await runCli(["sessions", "list", "--json"], {
+      stdout,
+      stderr,
+      stdin: process.stdin,
+    })
+    const payload = JSON.parse(stdout.output)
+
+    expect(code).toBe(1)
+    expect(payload.ok).toBe(false)
+    expect(payload.error.code).toBe("HUMAN_CREDENTIAL_BLOCKED")
+    expect(payload.error.remediation).toContain("--agent")
+  })
+
+  it("uses the default local agent token before saved human credentials", async () => {
+    writeFileSync(
+      join(configDir, "credentials.json"),
+      '{"token":"upst_human"}\n'
+    )
+    writeFileSync(
+      join(configDir, "agent-tokens.json"),
+      JSON.stringify({
+        version: 1,
+        default: "Codex",
+        tokens: {
+          Codex: {
+            token: "upst_agent",
+            dashboardUrl: "http://127.0.0.1:3377",
+            scopes: ["pills:read"],
+            expiresAt: null,
+            createdAt: "2026-06-28T00:00:00.000Z",
+            sessionId: "agent-session",
+          },
+        },
+      })
+    )
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          data: {
+            authorization: (init?.headers as Record<string, string>)
+              ?.Authorization,
+          },
+          meta: {
+            generatedAt: "2026-06-28T00:00:00.000Z",
+            requestId: "test",
+          },
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      )
+    })
+    vi.stubGlobal("fetch", fetchMock)
+    const stdout = new Capture()
+    const stderr = new Capture()
+    const code = await runCli(["pills", "list", "--json"], {
+      stdout,
+      stderr,
+      stdin: process.stdin,
+    })
+    const payload = JSON.parse(stdout.output)
+
+    expect(code).toBe(0)
+    expect(payload.data.authorization).toBe("Bearer upst_agent")
+  })
+
+  it("saves created agent tokens to the local agent store", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            data: {
+              token: "upst_created",
+              session: {
+                id: "created-session",
+                scopes: ["pills:read", "runs:start"],
+                expiresAt: "2026-07-28T00:00:00.000Z",
+                createdAt: "2026-06-28T00:00:00.000Z",
+              },
+            },
+            meta: {
+              generatedAt: "2026-06-28T00:00:00.000Z",
+              requestId: "test",
+            },
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        )
+      })
+    )
+    const stdout = new Capture()
+    const stderr = new Capture()
+    const code = await runCli(
+      [
+        "agents",
+        "create",
+        "--label",
+        "Codex",
+        "--ttl",
+        "1d",
+        "--preset",
+        "agent-full-runtime",
+        "--save",
+        "--default",
+        "--json",
+      ],
+      {
+        stdout,
+        stderr,
+        stdin: process.stdin,
+      }
+    )
+    const store = JSON.parse(
+      readFileSync(join(configDir, "agent-tokens.json"), "utf-8")
+    )
+
+    expect(code).toBe(0)
+    expect(store.default).toBe("Codex")
+    expect(store.tokens.Codex.token).toBe("upst_created")
+    expect(store.tokens.Codex.sessionId).toBe("created-session")
   })
 })

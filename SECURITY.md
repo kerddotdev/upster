@@ -32,6 +32,10 @@ changes.
 - Agents should receive only scoped capability tokens. Agent tokens can read and
   operate pills only within their scopes, and cannot receive vault write, vault
   unlock, vault delete, or admin-only scopes.
+- The CLI stores local agent tokens separately from the human CLI credential.
+  Non-interactive commands do not automatically use the saved human credential,
+  so agent and automation processes must use scoped tokens through `--agent`,
+  `UPSTER_AGENT`, `--token`, `--token-file`, or `UPSTER_TOKEN`.
 - Every protected TanStack Start server function carries the auth middleware,
   and the streaming and metrics server routes verify the session manually
   because route handlers do not run server-function middleware.
@@ -125,6 +129,9 @@ Read `AGENTS.md` first. These rules are mandatory:
   system user account there is no perfect cryptographic human-vs-agent boundary,
   so scoped capability tokens, short TTLs, and revocation are the intended
   control.
+- Agent workflows must not rely on the saved human CLI credential. Use a saved
+  local agent token or an explicit scoped token, and keep human admin commands in
+  an interactive terminal.
 
 When making security-relevant changes:
 

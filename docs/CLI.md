@@ -92,6 +92,8 @@ Most commands accept these options:
 --dashboard-url <url>     Override the control plane URL
 --token <token>           Use a bearer token for this command
 --token-file <file>       Read a bearer token from a file
+--agent <name>            Use a saved local agent token
+--human                   Use the saved human credential, interactive terminal only
 --no-color                Disable terminal color
 --help                    Show help
 ```
@@ -105,6 +107,7 @@ upster pills list --json --output pills.output --force
 upster status --dashboard-url http://127.0.0.1:4591
 UPSTER_TOKEN=upst_xxx upster pills list --json
 upster pills list --token-file ./agent-token.txt --json
+upster --agent Codex pills list --json
 ```
 
 When `--output` is used, the CLI writes the full envelope to the file. Existing files are never overwritten unless `--force` is present.
@@ -192,9 +195,11 @@ Logout revokes the current CLI token:
 upster auth logout
 ```
 
-The CLI stores the human CLI session token in its local credentials file. Do not store an agent token as the human admin credential. Agents should use `--token`, `--token-file`, or `UPSTER_TOKEN`.
+The CLI stores the human CLI session token in its local credentials file. Do not store an agent token as the human admin credential. Agents should use `--agent`, `UPSTER_AGENT`, `--token`, `--token-file`, or `UPSTER_TOKEN`.
 
 Important: a human admin token has full access. Do not give it to an AI agent.
+
+Saved human credentials are blocked in non-interactive runs. This prevents agent or automation processes from silently reusing a human CLI session. Human admin commands must be run from an interactive terminal.
 
 ## Interactive-Only Commands
 
@@ -213,7 +218,7 @@ upster vault delete
 These commands require a human CLI or dashboard session with the required admin scope. Agents cannot run them, but a human admin can use JSON output for automation around the CLI itself.
 
 ```sh
-upster agents create --label <label> --ttl <duration> --scopes <scopes>
+upster agents create --label <label> --ttl <duration> --preset agent-full-runtime --save --default
 upster sessions revoke <id>
 upster agents revoke <id>
 upster vault lock
@@ -276,8 +281,14 @@ AGENT_FULL_RUNTIME_SCOPES="pills:read,pills:write,pills:delete,runs:start,runs:s
 Create a full runtime agent token:
 
 ```sh
+upster agents create --label "Codex" --ttl 1d --preset agent-full-runtime --save --default
+```
+
+The long form is still supported:
+
+```sh
 AGENT_FULL_RUNTIME_SCOPES="pills:read,pills:write,pills:delete,runs:start,runs:stop,logs:read,metrics:read,runtime:read,vault:status"
-upster agents create --label "Codex" --ttl 1d --scopes "$AGENT_FULL_RUNTIME_SCOPES"
+upster agents create --label "Codex" --ttl 1d --scopes "$AGENT_FULL_RUNTIME_SCOPES" --save --default
 ```
 
 Create a read-only agent token:
@@ -304,6 +315,50 @@ Maximum agent token TTL: 30 days.
 
 ## Agent Token Usage
 
+Saved local agent token store:
+
+```txt
+~/.upster/agent-tokens.json
+```
+
+When `UPSTER_CLI_CONFIG_DIR` is set, the store is written inside that directory instead.
+
+Save a created token:
+
+```sh
+upster agents create --label "Codex" --ttl 30d --preset agent-full-runtime --save --default
+```
+
+Save under another local profile name:
+
+```sh
+upster agents create --label "Codex" --ttl 30d --preset agent-full-runtime --save --save-as codex-local --default
+```
+
+List local saved agent tokens:
+
+```sh
+upster agents local list
+```
+
+Show the selected local agent token:
+
+```sh
+upster agents local current
+```
+
+Set the default local agent token:
+
+```sh
+upster agents local use Codex
+```
+
+Remove a local saved agent token:
+
+```sh
+upster agents local remove Codex
+```
+
 Use a token through an environment variable:
 
 ```sh
@@ -323,18 +378,43 @@ Use a token directly:
 upster pills list --token upst_xxx --json
 ```
 
+Use a saved local agent token:
+
+```sh
+upster --agent Codex agent doctor --json
+upster --agent Codex pills list --json
+```
+
+Use the default saved local agent token:
+
+```sh
+upster agent doctor --json
+upster pills list --json
+```
+
 Token source priority:
 
 1. `--token`
 2. `--token-file`
 3. `UPSTER_TOKEN`
-4. saved human CLI credential
+4. `--agent`
+5. `UPSTER_AGENT`
+6. default saved local agent token
+7. saved human CLI credential, interactive terminal only
 
 Recommended first diagnostic command for agents:
 
 ```sh
 upster agent doctor --json
 ```
+
+To force human credentials for admin commands from an interactive terminal:
+
+```sh
+upster --human sessions list
+```
+
+`--human` is blocked in non-interactive runs.
 
 ## Agent Guide
 
@@ -649,8 +729,8 @@ upster auth login
 Agent fix:
 
 ```sh
-upster agents create --label "Codex" --ttl 1d --scopes "$AGENT_FULL_RUNTIME_SCOPES"
-UPSTER_TOKEN=upst_xxx upster agent doctor --json
+upster agents create --label "Codex" --ttl 1d --preset agent-full-runtime --save --default
+upster agent doctor --json
 ```
 
 ### `AUTH_TOKEN_INVALID`
@@ -666,7 +746,7 @@ The token TTL elapsed.
 Fix:
 
 ```sh
-upster agents create --label "Codex" --ttl 1d --scopes "$AGENT_FULL_RUNTIME_SCOPES"
+upster agents create --label "Codex" --ttl 1d --preset agent-full-runtime --save --default
 ```
 
 ### `AUTH_TOKEN_REVOKED`
@@ -686,6 +766,18 @@ The error includes:
 - `remediation`
 
 Fix: create a new token with the required scope.
+
+### `HUMAN_CREDENTIAL_BLOCKED`
+
+The CLI found a saved human credential, but the command is running without an interactive terminal.
+
+Fix for agents:
+
+```sh
+upster --agent Codex agent doctor --json
+```
+
+Fix for humans: run the admin command from an interactive terminal, or use an explicit scoped token when automation is intended.
 
 ### `VAULT_MISSING`
 
@@ -772,33 +864,32 @@ upster vault unlock --ttl 8h
 4. Create an agent token:
 
 ```sh
-AGENT_FULL_RUNTIME_SCOPES="pills:read,pills:write,pills:delete,runs:start,runs:stop,logs:read,metrics:read,runtime:read,vault:status"
-upster agents create --label "Codex" --ttl 1d --scopes "$AGENT_FULL_RUNTIME_SCOPES"
+upster agents create --label "Codex" --ttl 1d --preset agent-full-runtime --save --default
 ```
 
 5. Agent diagnostic:
 
 ```sh
-UPSTER_TOKEN=upst_xxx upster agent doctor --json
+upster agent doctor --json
 ```
 
 6. List pills:
 
 ```sh
-UPSTER_TOKEN=upst_xxx upster pills list --json
+upster pills list --json
 ```
 
 7. Start a pill:
 
 ```sh
-UPSTER_TOKEN=upst_xxx upster pills run <pillId> --json
+upster pills run <pillId> --json
 ```
 
 8. Read logs and metrics:
 
 ```sh
-UPSTER_TOKEN=upst_xxx upster runs logs <runId> --json --output run.output
-UPSTER_TOKEN=upst_xxx upster runs metrics <runId> --json --output metrics.output
+upster runs logs <runId> --json --output run.output
+upster runs metrics <runId> --json --output metrics.output
 ```
 
 9. Revoke the agent token:
@@ -838,7 +929,12 @@ upster sessions list
 upster sessions revoke <id>
 
 upster agents create --label <label> --ttl <duration> --scopes <scopes>
+upster agents create --label <label> --ttl <duration> --preset agent-full-runtime --save --default
 upster agents revoke <id>
+upster agents local list
+upster agents local current
+upster agents local use <name>
+upster agents local remove <name>
 
 upster agent guide
 upster agent guide --json
