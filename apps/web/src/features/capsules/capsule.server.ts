@@ -10,6 +10,7 @@ import {
   createCapsule,
   deleteCapsuleById,
   deleteCapsulesByPill,
+  getActiveRun,
   getCapsuleById,
   getPillCommand,
   getPillDetail,
@@ -244,11 +245,25 @@ export async function deleteCapsuleVersion(capsuleId: string) {
     return
   }
 
+  const activeRun = await getActiveRun(capsule.pillId)
+
+  if (activeRun?.capsuleId === capsuleId) {
+    throw new Error(
+      "This snapshot is currently deployed. Stop the deployment before deleting it."
+    )
+  }
+
   await rm(capsuleVersionRoot(capsule.pillId, capsuleId), {
     recursive: true,
     force: true,
   })
   await deleteCapsuleById(capsuleId)
+  await appendEvent({
+    type: "capsule.deleted",
+    pillId: capsule.pillId,
+    message: "Deleted pill capsule.",
+    metadata: { capsuleId },
+  })
 }
 
 export async function removeAllCapsules(pillId: string) {

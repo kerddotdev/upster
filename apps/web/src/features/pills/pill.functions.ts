@@ -45,6 +45,8 @@ const startPillSchema = z.object({
   commandName: z.string().min(1),
   expiresAt: z.string().optional(),
   rotatePorts: z.boolean().optional(),
+  useCapsule: z.boolean().optional(),
+  capsuleId: z.string().optional(),
 })
 
 const stopPillSchema = z.object({

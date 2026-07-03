@@ -4,6 +4,7 @@ import { z } from "zod"
 import { authMiddleware } from "@/features/auth/auth-middleware"
 import {
   buildCapsule,
+  deleteCapsuleVersion,
   getCapsuleInfo,
 } from "@/features/capsules/capsule.server"
 
@@ -18,6 +19,10 @@ const buildCapsuleSchema = z.object({
   label: z.string().optional(),
 })
 
+const capsuleIdSchema = z.object({
+  capsuleId: z.string().min(1),
+})
+
 export const getCapsuleInfoFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((data: unknown) => capsuleInfoSchema.parse(data))
@@ -27,3 +32,8 @@ export const buildCapsuleFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((data: unknown) => buildCapsuleSchema.parse(data))
   .handler(({ data }) => buildCapsule(data))
+
+export const deleteCapsuleFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((data: unknown) => capsuleIdSchema.parse(data))
+  .handler(({ data }) => deleteCapsuleVersion(data.capsuleId))
