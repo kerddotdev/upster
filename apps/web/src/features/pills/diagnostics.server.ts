@@ -1,4 +1,9 @@
-import { listCapsules, listRuns } from "@/db/repositories.server"
+import {
+  deleteInactiveRuns,
+  listCapsules,
+  listRuns,
+} from "@/db/repositories.server"
+import { deleteCapsuleVersion } from "@/features/capsules/capsule.server"
 import type { Capsule } from "@/features/capsules/types"
 import type { PillRun } from "@/features/pills/types"
 
@@ -19,4 +24,15 @@ export async function getPillDiagnostics(
     runs,
     capsuleErrors: capsules.filter((capsule) => capsule.status === "error"),
   }
+}
+
+export async function clearPillDiagnostics(pillId: string) {
+  await deleteInactiveRuns(pillId)
+
+  const capsules = await listCapsules(pillId)
+  for (const capsule of capsules.filter((entry) => entry.status === "error")) {
+    await deleteCapsuleVersion(capsule.id).catch(() => undefined)
+  }
+
+  return getPillDiagnostics(pillId)
 }

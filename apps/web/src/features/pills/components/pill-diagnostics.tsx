@@ -2,14 +2,26 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useServerFn } from "@tanstack/react-start"
-import { ChevronRightIcon } from "lucide-react"
+import { ChevronRightIcon, Trash2Icon } from "lucide-react"
 import { toast } from "sonner"
 
 import { LogOutput } from "@/components/log-output"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
+  clearPillDiagnosticsFn,
   getPillDiagnosticsFn,
   getRunLogsFn,
 } from "@/features/pills/pill.functions"
@@ -134,7 +146,9 @@ function CapsuleErrorRow({ capsule }: { capsule: Capsule }) {
 
 export function PillDiagnostics({ pillId }: { pillId: string }) {
   const getDiagnostics = useServerFn(getPillDiagnosticsFn)
+  const clearDiagnostics = useServerFn(clearPillDiagnosticsFn)
   const [data, setData] = useState<Diagnostics | null>(null)
+  const [clearing, setClearing] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -148,12 +162,59 @@ export function PillDiagnostics({ pillId }: { pillId: string }) {
     void load()
   }, [load])
 
+  async function clear() {
+    setClearing(true)
+    try {
+      setData(await clearDiagnostics({ data: { pillId } }))
+      toast.success("Diagnostics cleared.")
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to clear diagnostics."))
+    } finally {
+      setClearing(false)
+    }
+  }
+
   if (!data) {
     return <Skeleton className="h-24 w-full" />
   }
 
+  const hasEntries = data.runs.length > 0 || data.capsuleErrors.length > 0
+
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
+        <AlertDialog>
+          <AlertDialogTrigger
+            render={
+              <Button size="sm" variant="outline" disabled={!hasEntries} />
+            }
+          >
+            <Trash2Icon data-icon="inline-start" />
+            Clear diagnostics
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Clear diagnostics?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This removes stopped run history, their logs, and failed capsule
+                builds for this pill. The active run and successful snapshots
+                are kept.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={clearing}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                disabled={clearing}
+                onClick={() => void clear()}
+              >
+                Clear
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
       {data.capsuleErrors.length ? (
         <div className="flex flex-col gap-2">
           <h3 className="text-xs font-medium text-muted-foreground">

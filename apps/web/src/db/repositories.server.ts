@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 
-import { and, desc, eq, isNull, sql } from "drizzle-orm"
+import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm"
 import type { AccessScope } from "@upster/core"
 
 import { db, ensureDatabase } from "@/db/client.server"
@@ -506,6 +506,13 @@ export async function listRuns(pillId: string, limit = 20) {
     .limit(limit)
 
   return rows.map(parseRun)
+}
+
+export async function deleteInactiveRuns(pillId: string) {
+  await ensureDatabase()
+  await db
+    .delete(pillRuns)
+    .where(and(eq(pillRuns.pillId, pillId), isNotNull(pillRuns.stoppedAt)))
 }
 
 export async function appendRunLog(log: Omit<RunLog, "id" | "createdAt">) {

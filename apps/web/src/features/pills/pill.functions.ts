@@ -11,7 +11,10 @@ import {
   getRuntimeSettings,
   updatePill,
 } from "@/features/pills/pills.server"
-import { getPillDiagnostics } from "@/features/pills/diagnostics.server"
+import {
+  clearPillDiagnostics,
+  getPillDiagnostics,
+} from "@/features/pills/diagnostics.server"
 import {
   startPillRuntime,
   stopPillRun,
@@ -87,6 +90,11 @@ export const getRunLogsFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((data: unknown) => runIdSchema.parse(data))
   .handler(({ data }) => getRunLogs(data.runId))
+
+export const clearPillDiagnosticsFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((data: unknown) => pillIdSchema.parse(data))
+  .handler(({ data }) => clearPillDiagnostics(data.pillId))
 
 export const createPillFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
