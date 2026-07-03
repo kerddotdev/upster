@@ -99,30 +99,45 @@ export async function getCapsuleInfo(pillId: string): Promise<CapsuleInfo> {
 }
 
 function runInstall(argv: Array<string>, cwd: string) {
-  return new Promise<{ code: number | null; output: string }>(
-    (resolvePromise) => {
-      const child = spawn(argv[0], argv.slice(1), {
-        cwd,
-        env: buildInheritedEnv(),
-        stdio: ["ignore", "pipe", "pipe"],
-      })
+  return new Promise<{
+    code: number | null
+    output: string
+    spawnError: string | null
+  }>((resolvePromise) => {
+    const child = spawn(argv[0], argv.slice(1), {
+      cwd,
+      env: buildInheritedEnv(),
+      stdio: ["ignore", "pipe", "pipe"],
+    })
 
-      let output = ""
-      const append = (chunk: Buffer) => {
-        output = (output + chunk.toString()).slice(-BUILD_LOG_LIMIT)
-      }
-
-      child.stdout.on("data", append)
-      child.stderr.on("data", append)
-      child.on("error", (error) => {
-        output = (output + `\n${error.message}\n`).slice(-BUILD_LOG_LIMIT)
-        resolvePromise({ code: -1, output })
-      })
-      child.on("exit", (code) => {
-        resolvePromise({ code, output })
-      })
+    let output = ""
+    const append = (chunk: Buffer) => {
+      output = (output + chunk.toString()).slice(-BUILD_LOG_LIMIT)
     }
-  )
+
+    child.stdout.on("data", append)
+    child.stderr.on("data", append)
+    child.on("error", (error) => {
+      output = (output + `\n${error.message}\n`).slice(-BUILD_LOG_LIMIT)
+      resolvePromise({ code: null, output, spawnError: error.message })
+    })
+    child.on("exit", (code) => {
+      resolvePromise({ code, output, spawnError: null })
+    })
+  })
+}
+
+function describeInstallFailure(
+  manager: string,
+  result: { code: number | null; spawnError: string | null }
+) {
+  if (result.spawnError) {
+    if (result.spawnError.includes("ENOENT")) {
+      return `The "${manager}" package manager is not available in the Upster runtime. Use a manager that is installed, or copy node_modules instead of installing.`
+    }
+    return `Could not run "${manager}" install: ${result.spawnError}.`
+  }
+  return `Dependency install with "${manager}" failed (exit ${result.code ?? "unknown"}). See the build log for details.`
 }
 
 export async function buildCapsule(input: BuildCapsuleInput): Promise<Capsule> {
@@ -159,6 +174,7 @@ export async function buildCapsule(input: BuildCapsuleInput): Promise<Capsule> {
   })
 
   const startedAt = Date.now()
+  let buildLog: string | null = null
 
   try {
     mkdirSync(sourceDir, { recursive: true })
@@ -180,18 +196,14 @@ export async function buildCapsule(input: BuildCapsuleInput): Promise<Capsule> {
       },
     })
 
-    let buildLog: string | null = null
-
     if (installDeps && detected) {
       assertAllowedCommand(detected.installArgv, config.allowedCommands)
       const installCwd = resolveCapsuleCwd(repoPath, cwd, sourceDir)
       const result = await runInstall(detected.installArgv, installCwd)
       buildLog = result.output
 
-      if (result.code !== 0) {
-        throw new Error(
-          `Dependency install failed (${detected.manager}, exit ${result.code ?? "null"}).`
-        )
+      if (result.spawnError || result.code !== 0) {
+        throw new Error(describeInstallFailure(detected.manager, result))
       }
     }
 
@@ -241,6 +253,7 @@ export async function buildCapsule(input: BuildCapsuleInput): Promise<Capsule> {
     await updateCapsule(capsuleId, {
       status: "error",
       error: message,
+      buildLog,
       buildDurationMs: Date.now() - startedAt,
     })
 
