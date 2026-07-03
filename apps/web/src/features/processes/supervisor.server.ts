@@ -156,6 +156,8 @@ async function prepareCloudflareTunnel(input: {
   }
 }
 
+type ProcessDiagnostics = { spawnError: string | null; stderrTail: string }
+
 function spawnLoggedProcess(input: {
   runId: string
   command: string
@@ -170,13 +172,18 @@ function spawnLoggedProcess(input: {
     stdio: "pipe",
   })
 
+  const diag: ProcessDiagnostics = { spawnError: null, stderrTail: "" }
+
   child.stdout.on("data", (chunk: Buffer) => {
     void logRun(input.runId, "stdout", chunk.toString())
   })
   child.stderr.on("data", (chunk: Buffer) => {
-    void logRun(input.runId, "stderr", chunk.toString())
+    const text = chunk.toString()
+    diag.stderrTail = (diag.stderrTail + text).slice(-2000)
+    void logRun(input.runId, "stderr", text)
   })
   child.on("error", (error) => {
+    diag.spawnError = error.message
     void logRun(
       input.runId,
       "system",
@@ -184,7 +191,7 @@ function spawnLoggedProcess(input: {
     )
   })
 
-  return child
+  return { child, diag }
 }
 
 function killProcess(child: ChildProcessWithoutNullStreams | null) {
@@ -221,8 +228,17 @@ function waitForEarlyExit(
   })
 }
 
-function appExitError(code: number | null) {
-  return new Error(`App process exited with code ${code ?? "null"}.`)
+function describeAppFailure(code: number | null, diag: ProcessDiagnostics) {
+  if (diag.spawnError) {
+    if (diag.spawnError.includes("ENOENT")) {
+      return `Could not start the app: the command was not found (${diag.spawnError}). Check the pill command and that its executable is available in the runtime.`
+    }
+    return `Could not start the app process: ${diag.spawnError}.`
+  }
+
+  const base = `App process exited with code ${code ?? "unknown"}`
+  const tail = diag.stderrTail.trim()
+  return tail ? `${base}. Last output:\n${tail.slice(-800)}` : `${base}.`
 }
 
 function scheduleExpiry(run: PillRun, managed: ManagedRun) {
@@ -321,7 +337,7 @@ export async function startPillRuntime(input: StartPillInput) {
       }\n`
     )
 
-    const appProcess = spawnLoggedProcess({
+    const { child: appProcess, diag: appDiag } = spawnLoggedProcess({
       runId: run.id,
       command: command.argv[0],
       args: command.argv.slice(1),
@@ -345,7 +361,7 @@ export async function startPillRuntime(input: StartPillInput) {
 
     const earlyExitCode = await waitForEarlyExit(appProcess, 1000)
     if (earlyExitCode !== undefined) {
-      throw appExitError(earlyExitCode)
+      throw new Error(describeAppFailure(earlyExitCode, appDiag))
     }
 
     const { token } = await prepareCloudflareTunnel({
@@ -356,11 +372,13 @@ export async function startPillRuntime(input: StartPillInput) {
     })
 
     if (appExitCode !== undefined || appProcess.exitCode !== null) {
-      throw appExitError(appExitCode ?? appProcess.exitCode)
+      throw new Error(
+        describeAppFailure(appExitCode ?? appProcess.exitCode, appDiag)
+      )
     }
 
     const config = getUpsterConfig()
-    const tunnelProcess = spawnLoggedProcess({
+    const { child: tunnelProcess } = spawnLoggedProcess({
       runId: run.id,
       command: config.cloudflaredBin,
       args: [
