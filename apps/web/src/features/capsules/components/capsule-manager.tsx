@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start"
 import {
   CheckIcon,
   DownloadIcon,
+  EllipsisIcon,
   FilesIcon,
   GitBranchIcon,
   PackagePlusIcon,
@@ -17,6 +18,12 @@ import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useCloudflareVault } from "@/features/secrets/cloudflare-vault-provider"
@@ -294,12 +301,75 @@ export function CapsuleManager({
                       {capsule.git.dirty ? "*" : ""}
                     </span>
                   ) : null}
-                  <span className="ml-auto text-[0.65rem] text-muted-foreground">
+                  <span className="text-[0.65rem] text-muted-foreground">
                     {formatBytes(capsule.sizeBytes)}
                     {capsule.builtAt
                       ? ` - ${new Date(capsule.builtAt).toLocaleString()}`
                       : ""}
                   </span>
+                  <div className="ml-auto flex items-center gap-1">
+                    <Button
+                      variant={deployed ? "secondary" : "default"}
+                      onClick={() => startVersion(capsule)}
+                      disabled={isBusy || running || capsule.status !== "ready"}
+                    >
+                      <PlayIcon data-icon="inline-start" />
+                      {deployed ? "Deployed" : "Start"}
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            aria-label="More snapshot actions"
+                          />
+                        }
+                      >
+                        <EllipsisIcon />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => void togglePin(capsule)}
+                        >
+                          <PinIcon />
+                          {capsule.pinned ? "Unpin" : "Pin"}
+                        </DropdownMenuItem>
+                        {allowBrowse ? (
+                          <DropdownMenuItem
+                            disabled={capsule.status !== "ready"}
+                            onClick={() =>
+                              setBrowseId(
+                                browseId === capsule.id ? null : capsule.id
+                              )
+                            }
+                          >
+                            <FilesIcon />
+                            {browseId === capsule.id ? "Hide files" : "Files"}
+                          </DropdownMenuItem>
+                        ) : null}
+                        <DropdownMenuItem
+                          render={
+                            <a
+                              href={`/api/capsules/${capsule.id}/archive`}
+                              download
+                            />
+                          }
+                        >
+                          <DownloadIcon />
+                          Export
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          variant="destructive"
+                          disabled={isBusy || deployed}
+                          onClick={() => void removeVersion(capsule)}
+                        >
+                          <Trash2Icon />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
 
                 {capsule.status === "error" && capsule.error ? (
@@ -307,62 +377,6 @@ export function CapsuleManager({
                     {capsule.error}
                   </p>
                 ) : null}
-
-                <div className="flex flex-wrap gap-1">
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    onClick={() => startVersion(capsule)}
-                    disabled={isBusy || running || capsule.status !== "ready"}
-                  >
-                    <PlayIcon data-icon="inline-start" />
-                    {deployed ? "Deployed" : "Start"}
-                  </Button>
-                  <Button
-                    size="xs"
-                    variant="ghost"
-                    onClick={() => void togglePin(capsule)}
-                    disabled={isBusy}
-                  >
-                    <PinIcon data-icon="inline-start" />
-                    {capsule.pinned ? "Unpin" : "Pin"}
-                  </Button>
-                  {allowBrowse ? (
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      onClick={() =>
-                        setBrowseId(browseId === capsule.id ? null : capsule.id)
-                      }
-                      disabled={capsule.status !== "ready"}
-                    >
-                      <FilesIcon data-icon="inline-start" />
-                      {browseId === capsule.id ? "Hide files" : "Files"}
-                    </Button>
-                  ) : null}
-                  <Button
-                    size="xs"
-                    variant="ghost"
-                    render={
-                      <a
-                        href={`/api/capsules/${capsule.id}/archive`}
-                        download
-                      />
-                    }
-                  >
-                    <DownloadIcon data-icon="inline-start" />
-                    Export
-                  </Button>
-                  <Button
-                    size="xs"
-                    variant="ghost"
-                    onClick={() => void removeVersion(capsule)}
-                    disabled={isBusy || deployed}
-                  >
-                    <Trash2Icon data-icon="inline-start" />
-                    Delete
-                  </Button>
-                </div>
 
                 {allowBrowse && browseId === capsule.id ? (
                   <CapsuleFileBrowser capsuleId={capsule.id} />
