@@ -25,9 +25,7 @@ import { getPillStatusFn } from "@/features/pills/pill.functions"
 import { TerminalOutput } from "@/features/terminal/terminal-output"
 
 export const Route = createFileRoute("/pills/$pillId")({
-  validateSearch: (
-    search: Record<string, unknown>
-  ): { tab?: string } =>
+  validateSearch: (search: Record<string, unknown>): { tab?: string } =>
     typeof search.tab === "string" ? { tab: search.tab } : {},
   loader: ({ params }) => getPillStatusFn({ data: { pillId: params.pillId } }),
   component: PillDetailPage,
