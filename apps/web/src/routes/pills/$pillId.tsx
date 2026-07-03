@@ -19,6 +19,7 @@ import {
 } from "@/features/metrics/metrics-panel"
 import { CapsuleManager } from "@/features/capsules/components/capsule-manager"
 import { PillActions } from "@/features/pills/components/pill-actions"
+import { PillDiagnostics } from "@/features/pills/components/pill-diagnostics"
 import { StatusBadge } from "@/features/pills/components/status-badge"
 import { getPillStatusFn } from "@/features/pills/pill.functions"
 import { TerminalOutput } from "@/features/terminal/terminal-output"
@@ -85,6 +86,7 @@ function PillDetailPage() {
         <TabsList variant="line">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="capsules">Capsules</TabsTrigger>
+          <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>
           <TabsTrigger value="terminal">Terminal</TabsTrigger>
           <TabsTrigger value="metrics">Metrics</TabsTrigger>
         </TabsList>
@@ -173,6 +175,21 @@ function PillDetailPage() {
                 }
                 onChanged={() => router.invalidate()}
               />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="diagnostics" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Diagnostics</CardTitle>
+              <CardDescription>
+                Recent runs, exit codes, error output, and capsule build
+                failures for this pill.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PillDiagnostics pillId={pill.id} />
             </CardContent>
           </Card>
         </TabsContent>
