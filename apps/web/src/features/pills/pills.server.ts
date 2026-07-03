@@ -55,10 +55,71 @@ export async function createPill(input: CreatePillInput) {
 }
 
 export async function updatePill(input: UpdatePillInput) {
+  const config = getUpsterConfig()
+  const pill = await getPillDetail(input.pillId)
+  const currentCommand =
+    pill.commands.find((command) => command.name === pill.defaultEnv) ??
+    pill.commands[0]
+
+  const editsCommand =
+    input.command !== undefined ||
+    input.commandName !== undefined ||
+    input.cwd !== undefined ||
+    input.env !== undefined ||
+    input.healthcheckPath !== undefined
+
+  let command:
+    | {
+        commandId: string
+        name: string
+        cwd: string
+        argv: Array<string>
+        env: Record<string, string>
+        healthcheckPath: string | null
+      }
+    | undefined
+
+  if (editsCommand && currentCommand) {
+    const argv =
+      input.command !== undefined
+        ? parseCommand(input.command)
+        : currentCommand.argv
+
+    assertAllowedCommand(argv, config.allowedCommands)
+
+    const cwd =
+      input.cwd !== undefined
+        ? ensureWorkspacePath(
+            input.cwd,
+            config.workspaceRoots,
+            config.hostWorkspaceRoot
+          )
+        : currentCommand.cwd
+
+    command = {
+      commandId: currentCommand.id,
+      name: (input.commandName ?? currentCommand.name).trim(),
+      cwd,
+      argv,
+      env: input.env ?? currentCommand.env,
+      healthcheckPath:
+        input.healthcheckPath !== undefined
+          ? input.healthcheckPath
+          : currentCommand.healthcheckPath,
+    }
+  }
+
+  const defaultEnv = (
+    input.defaultEnv?.trim() ||
+    command?.name ||
+    pill.defaultEnv
+  ).trim()
+
   return updatePillRecord({
-    ...input,
+    pillId: input.pillId,
     name: input.name.trim(),
-    defaultEnv: input.defaultEnv.trim(),
+    defaultEnv,
+    command,
   })
 }
 

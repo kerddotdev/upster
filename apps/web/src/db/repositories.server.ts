@@ -30,7 +30,6 @@ import type {
   PillRun,
   PillStatus,
   RunLog,
-  UpdatePillInput,
 } from "@/features/pills/types"
 import type { Capsule } from "@/features/capsules/types"
 
@@ -226,7 +225,19 @@ export async function getPillDetail(pillId: string): Promise<PillDetail> {
   }
 }
 
-export async function updatePillRecord(input: UpdatePillInput) {
+export async function updatePillRecord(input: {
+  pillId: string
+  name: string
+  defaultEnv: string
+  command?: {
+    commandId: string
+    name: string
+    cwd: string
+    argv: Array<string>
+    env: Record<string, string>
+    healthcheckPath: string | null
+  }
+}) {
   await ensureDatabase()
 
   await db
@@ -237,6 +248,19 @@ export async function updatePillRecord(input: UpdatePillInput) {
       updatedAt: now(),
     })
     .where(eq(pills.id, input.pillId))
+
+  if (input.command) {
+    await db
+      .update(pillCommands)
+      .set({
+        name: input.command.name,
+        cwd: input.command.cwd,
+        argvJson: JSON.stringify(input.command.argv),
+        envJson: JSON.stringify(input.command.env),
+        healthcheckPath: input.command.healthcheckPath,
+      })
+      .where(eq(pillCommands.id, input.command.commandId))
+  }
 
   return getPillDetail(input.pillId)
 }

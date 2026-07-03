@@ -30,6 +30,11 @@ const updatePillSchema = z.object({
   pillId: z.string().min(1),
   name: z.string().min(1),
   defaultEnv: z.string().min(1),
+  commandName: z.string().min(1).optional(),
+  command: z.string().min(1).optional(),
+  cwd: z.string().optional(),
+  env: z.record(z.string(), z.string()).optional(),
+  healthcheckPath: z.string().nullable().optional(),
 })
 
 const pillIdSchema = z.object({

@@ -108,6 +108,11 @@ export type UpdatePillInput = {
   pillId: string
   name: string
   defaultEnv: string
+  commandName?: string
+  command?: string
+  cwd?: string
+  env?: Record<string, string>
+  healthcheckPath?: string | null
 }
 
 export type StartPillInput = {
