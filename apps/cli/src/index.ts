@@ -480,6 +480,12 @@ async function dispatch(command: Array<string>, options: CliOptions, io: Io) {
         useCapsule:
           flags.useCapsule === "true" || flags.capsule ? true : undefined,
         capsuleId: flags.capsule,
+        deployTarget:
+          flags.target === "preview"
+            ? "preview"
+            : flags.target === "production"
+              ? "production"
+              : undefined,
       }
     )
   }

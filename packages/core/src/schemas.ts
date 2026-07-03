@@ -65,6 +65,7 @@ export const startPillSchema = z.object({
   rotatePorts: z.boolean().optional(),
   useCapsule: z.boolean().optional(),
   capsuleId: z.string().optional(),
+  deployTarget: z.enum(["production", "preview"]).optional(),
 })
 
 export const buildCapsuleSchema = z.object({
