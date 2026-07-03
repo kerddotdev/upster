@@ -17,11 +17,13 @@ import {
   listCapsules,
   updateCapsule,
 } from "@/db/repositories.server"
+import { createCloudflareClient } from "@/features/cloudflare/client.server"
 import {
   detectPackageManager,
   resolveCapsuleCwd,
 } from "@/features/capsules/detect"
 import { captureGitMetadata } from "@/features/capsules/git.server"
+import { getUnlockedCloudflareConfig } from "@/features/secrets/vault-session.server"
 import { buildInheritedEnv } from "@/features/processes/process-env"
 import {
   assertAllowedCommand,
@@ -261,6 +263,30 @@ export async function buildCapsule(input: BuildCapsuleInput): Promise<Capsule> {
   }
 }
 
+async function cleanupPreviewTunnel(capsule: Capsule) {
+  if (!capsule.previewTunnelId && !capsule.previewDnsRecordId) {
+    return
+  }
+
+  const config = await getUnlockedCloudflareConfig()
+
+  if (!config) {
+    return
+  }
+
+  const client = createCloudflareClient(config)
+
+  if (capsule.previewDnsRecordId) {
+    await client
+      .deleteDnsRecord(capsule.previewDnsRecordId)
+      .catch(() => undefined)
+  }
+
+  if (capsule.previewTunnelId) {
+    await client.deleteTunnel(capsule.previewTunnelId).catch(() => undefined)
+  }
+}
+
 export async function deleteCapsuleVersion(capsuleId: string) {
   const capsule = await getCapsuleById(capsuleId)
 
@@ -276,6 +302,7 @@ export async function deleteCapsuleVersion(capsuleId: string) {
     )
   }
 
+  await cleanupPreviewTunnel(capsule)
   await rm(capsuleVersionRoot(capsule.pillId, capsuleId), {
     recursive: true,
     force: true,
@@ -290,6 +317,11 @@ export async function deleteCapsuleVersion(capsuleId: string) {
 }
 
 export async function removeAllCapsules(pillId: string) {
+  const capsules = await listCapsules(pillId)
+  for (const capsule of capsules) {
+    await cleanupPreviewTunnel(capsule)
+  }
+
   await rm(pillCapsulesRoot(pillId), { recursive: true, force: true })
   await deleteCapsulesByPill(pillId)
 }
