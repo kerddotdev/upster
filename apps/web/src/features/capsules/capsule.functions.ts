@@ -7,6 +7,7 @@ import {
   deleteCapsuleVersion,
   getCapsuleInfo,
   relabelCapsule,
+  runPrune,
   setCapsulePinned,
 } from "@/features/capsules/capsule.server"
 
@@ -59,3 +60,13 @@ export const pinCapsuleFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((data: unknown) => pinCapsuleSchema.parse(data))
   .handler(({ data }) => setCapsulePinned(data.capsuleId, data.pinned))
+
+const prunePillSchema = z.object({
+  pillId: z.string().min(1),
+  keep: z.number().int().min(0).optional(),
+})
+
+export const prunePillCapsulesFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((data: unknown) => prunePillSchema.parse(data))
+  .handler(({ data }) => runPrune(data.pillId, data.keep))

@@ -17,6 +17,16 @@ export type UpsterConfig = {
   metricsPortRange: PortRange
   publicOrigin: string
   cloudflaredBin: string
+  capsuleRetention: number
+}
+
+function parseRetention(value: string | undefined) {
+  if (value === undefined || value.trim() === "") {
+    return 10
+  }
+
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : 10
 }
 
 function parseAllowedCommands(value: string | undefined) {
@@ -80,5 +90,6 @@ export function getUpsterConfig(): UpsterConfig {
     }),
     publicOrigin: process.env.UPSTER_PUBLIC_ORIGIN ?? "https://localhost:3377",
     cloudflaredBin: process.env.CLOUDFLARED_BIN ?? "cloudflared",
+    capsuleRetention: parseRetention(process.env.UPSTER_CAPSULE_RETENTION),
   }
 }

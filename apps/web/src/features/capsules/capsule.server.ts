@@ -224,6 +224,10 @@ export async function buildCapsule(input: BuildCapsuleInput): Promise<Capsule> {
       },
     })
 
+    await pruneCapsules(input.pillId, config.capsuleRetention).catch(
+      () => undefined
+    )
+
     return capsule as Capsule
   } catch (error) {
     const message =
@@ -275,6 +279,31 @@ export async function deleteCapsuleVersion(capsuleId: string) {
 export async function removeAllCapsules(pillId: string) {
   await rm(pillCapsulesRoot(pillId), { recursive: true, force: true })
   await deleteCapsulesByPill(pillId)
+}
+
+export async function pruneCapsules(pillId: string, keep: number) {
+  if (!keep || keep <= 0) {
+    return
+  }
+
+  const all = await listCapsules(pillId)
+  const activeRun = await getActiveRun(pillId)
+  const deletable = all.filter(
+    (capsule) =>
+      capsule.status === "ready" &&
+      !capsule.pinned &&
+      capsule.id !== activeRun?.capsuleId
+  )
+
+  for (const capsule of deletable.slice(keep)) {
+    await deleteCapsuleVersion(capsule.id).catch(() => undefined)
+  }
+}
+
+export async function runPrune(pillId: string, keep?: number) {
+  const limit = keep ?? getUpsterConfig().capsuleRetention
+  await pruneCapsules(pillId, limit)
+  return getCapsuleInfo(pillId)
 }
 
 export async function relabelCapsule(capsuleId: string, label: string | null) {
