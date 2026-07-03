@@ -276,3 +276,12 @@ export async function removeAllCapsules(pillId: string) {
   await rm(pillCapsulesRoot(pillId), { recursive: true, force: true })
   await deleteCapsulesByPill(pillId)
 }
+
+export async function relabelCapsule(capsuleId: string, label: string | null) {
+  const trimmed = label?.trim()
+  return updateCapsule(capsuleId, { label: trimmed ? trimmed : null })
+}
+
+export async function setCapsulePinned(capsuleId: string, pinned: boolean) {
+  return updateCapsule(capsuleId, { pinned })
+}

@@ -6,6 +6,8 @@ import {
   buildCapsule,
   deleteCapsuleVersion,
   getCapsuleInfo,
+  relabelCapsule,
+  setCapsulePinned,
 } from "@/features/capsules/capsule.server"
 
 const capsuleInfoSchema = z.object({
@@ -37,3 +39,23 @@ export const deleteCapsuleFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((data: unknown) => capsuleIdSchema.parse(data))
   .handler(({ data }) => deleteCapsuleVersion(data.capsuleId))
+
+const relabelCapsuleSchema = z.object({
+  capsuleId: z.string().min(1),
+  label: z.string().nullable(),
+})
+
+export const relabelCapsuleFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((data: unknown) => relabelCapsuleSchema.parse(data))
+  .handler(({ data }) => relabelCapsule(data.capsuleId, data.label))
+
+const pinCapsuleSchema = z.object({
+  capsuleId: z.string().min(1),
+  pinned: z.boolean(),
+})
+
+export const pinCapsuleFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((data: unknown) => pinCapsuleSchema.parse(data))
+  .handler(({ data }) => setCapsulePinned(data.capsuleId, data.pinned))
