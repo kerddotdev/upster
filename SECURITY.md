@@ -107,6 +107,13 @@ changes.
 - Old, unpinned snapshots are pruned automatically per pill
   (`UPSTER_CAPSULE_RETENTION`); pinned snapshots and the currently deployed
   snapshot are never pruned or deletable while running.
+- A snapshot can be deployed to the pill's production hostname
+  (`slug.rootDomain`) or to a per-snapshot preview hostname
+  (`slug-<capsuleId>.rootDomain`) backed by its own Cloudflare tunnel and DNS
+  record, stored on the capsule. Deleting or pruning a snapshot removes its
+  preview tunnel and DNS record when the vault is unlocked, mirroring pill
+  deletion; if the vault is locked the cleanup is skipped and the resources are
+  left in Cloudflare, exactly like pill tunnels.
 
 ### Cloudflare resource ownership
 

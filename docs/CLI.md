@@ -650,6 +650,14 @@ upster pills run <pillId> --use-capsule
 upster pills run <pillId> --capsule <capsuleId>
 ```
 
+Choose where a capsule is served with `--target` (defaults to production). Preview
+serves it at a per-snapshot hostname (`slug-<capsuleId>.rootDomain`):
+
+```sh
+upster pills run <pillId> --capsule <capsuleId> --target preview
+upster pills run <pillId> --capsule <capsuleId> --target production
+```
+
 Stop a pill:
 
 ```sh
