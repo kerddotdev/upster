@@ -24,6 +24,7 @@ import { Route as ApiCliV1SessionsRouteImport } from './routes/api/cli/v1/sessio
 import { Route as ApiCliV1RuntimeRouteImport } from './routes/api/cli/v1/runtime'
 import { Route as ApiCliV1PillsRouteImport } from './routes/api/cli/v1/pills'
 import { Route as ApiCliV1AgentSessionsRouteImport } from './routes/api/cli/v1/agent-sessions'
+import { Route as ApiCapsulesCapsuleIdArchiveRouteImport } from './routes/api/capsules/$capsuleId/archive'
 import { Route as ApiCliV1VaultUnlockRouteImport } from './routes/api/cli/v1/vault/unlock'
 import { Route as ApiCliV1VaultStatusRouteImport } from './routes/api/cli/v1/vault/status'
 import { Route as ApiCliV1VaultSaveRouteImport } from './routes/api/cli/v1/vault/save'
@@ -115,6 +116,12 @@ const ApiCliV1AgentSessionsRoute = ApiCliV1AgentSessionsRouteImport.update({
   path: '/api/cli/v1/agent-sessions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCapsulesCapsuleIdArchiveRoute =
+  ApiCapsulesCapsuleIdArchiveRouteImport.update({
+    id: '/api/capsules/$capsuleId/archive',
+    path: '/api/capsules/$capsuleId/archive',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiCliV1VaultUnlockRoute = ApiCliV1VaultUnlockRouteImport.update({
   id: '/unlock',
   path: '/unlock',
@@ -203,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/pills/$pillId': typeof PillsPillIdRoute
   '/settings/cloudflare': typeof SettingsCloudflareRoute
   '/settings/runtime': typeof SettingsRuntimeRoute
+  '/api/capsules/$capsuleId/archive': typeof ApiCapsulesCapsuleIdArchiveRoute
   '/api/cli/v1/agent-sessions': typeof ApiCliV1AgentSessionsRoute
   '/api/cli/v1/pills': typeof ApiCliV1PillsRouteWithChildren
   '/api/cli/v1/runtime': typeof ApiCliV1RuntimeRoute
@@ -235,6 +243,7 @@ export interface FileRoutesByTo {
   '/pills/$pillId': typeof PillsPillIdRoute
   '/settings/cloudflare': typeof SettingsCloudflareRoute
   '/settings/runtime': typeof SettingsRuntimeRoute
+  '/api/capsules/$capsuleId/archive': typeof ApiCapsulesCapsuleIdArchiveRoute
   '/api/cli/v1/agent-sessions': typeof ApiCliV1AgentSessionsRoute
   '/api/cli/v1/pills': typeof ApiCliV1PillsRouteWithChildren
   '/api/cli/v1/runtime': typeof ApiCliV1RuntimeRoute
@@ -268,6 +277,7 @@ export interface FileRoutesById {
   '/pills/$pillId': typeof PillsPillIdRoute
   '/settings/cloudflare': typeof SettingsCloudflareRoute
   '/settings/runtime': typeof SettingsRuntimeRoute
+  '/api/capsules/$capsuleId/archive': typeof ApiCapsulesCapsuleIdArchiveRoute
   '/api/cli/v1/agent-sessions': typeof ApiCliV1AgentSessionsRoute
   '/api/cli/v1/pills': typeof ApiCliV1PillsRouteWithChildren
   '/api/cli/v1/runtime': typeof ApiCliV1RuntimeRoute
@@ -302,6 +312,7 @@ export interface FileRouteTypes {
     | '/pills/$pillId'
     | '/settings/cloudflare'
     | '/settings/runtime'
+    | '/api/capsules/$capsuleId/archive'
     | '/api/cli/v1/agent-sessions'
     | '/api/cli/v1/pills'
     | '/api/cli/v1/runtime'
@@ -334,6 +345,7 @@ export interface FileRouteTypes {
     | '/pills/$pillId'
     | '/settings/cloudflare'
     | '/settings/runtime'
+    | '/api/capsules/$capsuleId/archive'
     | '/api/cli/v1/agent-sessions'
     | '/api/cli/v1/pills'
     | '/api/cli/v1/runtime'
@@ -366,6 +378,7 @@ export interface FileRouteTypes {
     | '/pills/$pillId'
     | '/settings/cloudflare'
     | '/settings/runtime'
+    | '/api/capsules/$capsuleId/archive'
     | '/api/cli/v1/agent-sessions'
     | '/api/cli/v1/pills'
     | '/api/cli/v1/runtime'
@@ -399,6 +412,7 @@ export interface RootRouteChildren {
   PillsPillIdRoute: typeof PillsPillIdRoute
   SettingsCloudflareRoute: typeof SettingsCloudflareRoute
   SettingsRuntimeRoute: typeof SettingsRuntimeRoute
+  ApiCapsulesCapsuleIdArchiveRoute: typeof ApiCapsulesCapsuleIdArchiveRoute
   ApiCliV1AgentSessionsRoute: typeof ApiCliV1AgentSessionsRoute
   ApiCliV1PillsRoute: typeof ApiCliV1PillsRouteWithChildren
   ApiCliV1RuntimeRoute: typeof ApiCliV1RuntimeRoute
@@ -518,6 +532,13 @@ declare module '@tanstack/react-router' {
       path: '/api/cli/v1/agent-sessions'
       fullPath: '/api/cli/v1/agent-sessions'
       preLoaderRoute: typeof ApiCliV1AgentSessionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/capsules/$capsuleId/archive': {
+      id: '/api/capsules/$capsuleId/archive'
+      path: '/api/capsules/$capsuleId/archive'
+      fullPath: '/api/capsules/$capsuleId/archive'
+      preLoaderRoute: typeof ApiCapsulesCapsuleIdArchiveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/cli/v1/vault/unlock': {
@@ -716,6 +737,7 @@ const rootRouteChildren: RootRouteChildren = {
   PillsPillIdRoute: PillsPillIdRoute,
   SettingsCloudflareRoute: SettingsCloudflareRoute,
   SettingsRuntimeRoute: SettingsRuntimeRoute,
+  ApiCapsulesCapsuleIdArchiveRoute: ApiCapsulesCapsuleIdArchiveRoute,
   ApiCliV1AgentSessionsRoute: ApiCliV1AgentSessionsRoute,
   ApiCliV1PillsRoute: ApiCliV1PillsRouteWithChildren,
   ApiCliV1RuntimeRoute: ApiCliV1RuntimeRoute,
