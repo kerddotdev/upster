@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react"
 import { useServerFn } from "@tanstack/react-start"
 import { PackageIcon } from "lucide-react"
-import { toast } from "sonner"
 
+import { useErrorReporter } from "@/components/error-report"
 import {
   Dialog,
   DialogContent,
@@ -19,10 +19,6 @@ import { Switch } from "@/components/ui/switch"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getCapsuleInfoFn } from "@/features/capsules/capsule.functions"
 import type { CapsuleInfo } from "@/features/capsules/types"
-
-function getErrorMessage(err: unknown, fallback: string) {
-  return err instanceof Error ? err.message : fallback
-}
 
 export type CapsuleBuildOptions = {
   includeNodeModules: boolean
@@ -44,6 +40,7 @@ export function CapsuleDialog({
   onConfirm: (options: CapsuleBuildOptions) => Promise<void>
 }) {
   const getInfo = useServerFn(getCapsuleInfoFn)
+  const reportError = useErrorReporter()
   const [info, setInfo] = useState<CapsuleInfo | null>(null)
   const [loading, setLoading] = useState(false)
   const [pending, setPending] = useState(false)
@@ -75,7 +72,10 @@ export function CapsuleDialog({
       })
       .catch((err) => {
         if (!cancelled) {
-          toast.error(getErrorMessage(err, "Failed to load capsule info."))
+          reportError(err, {
+            fallback: "Failed to load capsule info.",
+            pillId,
+          })
         }
       })
       .finally(() => {
@@ -104,7 +104,7 @@ export function CapsuleDialog({
       })
       onOpenChange(false)
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to build capsule."))
+      reportError(err, { fallback: "Failed to build capsule.", pillId })
     } finally {
       setPending(false)
     }
@@ -115,7 +115,7 @@ export function CapsuleDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            <PackageIcon data-icon="inline-start" />
+            <PackageIcon data-icon="inline-start" className="mb-2" />
             Capsule
           </DialogTitle>
           <DialogDescription>

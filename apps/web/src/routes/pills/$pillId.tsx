@@ -25,12 +25,18 @@ import { getPillStatusFn } from "@/features/pills/pill.functions"
 import { TerminalOutput } from "@/features/terminal/terminal-output"
 
 export const Route = createFileRoute("/pills/$pillId")({
+  validateSearch: (
+    search: Record<string, unknown>
+  ): { tab?: string } =>
+    typeof search.tab === "string" ? { tab: search.tab } : {},
   loader: ({ params }) => getPillStatusFn({ data: { pillId: params.pillId } }),
   component: PillDetailPage,
 })
 
 function PillDetailPage() {
   const router = useRouter()
+  const navigate = Route.useNavigate()
+  const { tab } = Route.useSearch()
   const pill = Route.useLoaderData()
   const runId = pill.activeRun?.id ?? null
   const expiresAt = pill.activeRun?.expiresAt ?? null
@@ -82,7 +88,10 @@ function PillDetailPage() {
 
       <MetricsSummary metrics={metrics} />
 
-      <Tabs defaultValue="overview">
+      <Tabs
+        value={tab ?? "overview"}
+        onValueChange={(value) => void navigate({ search: { tab: value } })}
+      >
         <TabsList variant="line">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="capsules">Capsules</TabsTrigger>

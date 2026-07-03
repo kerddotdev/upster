@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { useErrorReporter } from "@/components/error-report"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -48,10 +49,6 @@ import {
 } from "@/features/pills/pill.functions"
 import type { PillDetail, PillListItem } from "@/features/pills/types"
 
-function getErrorMessage(err: unknown, fallback: string) {
-  return err instanceof Error ? err.message : fallback
-}
-
 type CapsuleAction = {
   confirmLabel: string
   run: (options: CapsuleBuildOptions) => Promise<void>
@@ -73,6 +70,7 @@ export function PillActions({
   editPill?: PillDetail
 }) {
   const router = useRouter()
+  const reportError = useErrorReporter()
   const { isUnlocked, requestUnlock } = useCloudflareVault()
   const startPill = useServerFn(startPillFn)
   const stopPill = useServerFn(stopPillFn)
@@ -107,7 +105,7 @@ export function PillActions({
       })
       await router.invalidate()
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to start pill."))
+      reportError(err, { fallback: "Failed to start pill.", pillId: pill.id })
     } finally {
       setPending(false)
     }
@@ -144,7 +142,10 @@ export function PillActions({
         },
       })
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to start capsule."))
+      reportError(err, {
+        fallback: "Failed to start capsule.",
+        pillId: pill.id,
+      })
     } finally {
       setPending(false)
     }
@@ -207,7 +208,10 @@ export function PillActions({
                 })
                 await router.invalidate()
               } catch (err) {
-                toast.error(getErrorMessage(err, "Failed to stop pill."))
+                reportError(err, {
+                  fallback: "Failed to stop pill.",
+                  pillId: pill.id,
+                })
               } finally {
                 setPending(false)
               }
@@ -325,7 +329,10 @@ export function PillActions({
                     setDeleteOpen(false)
                     await router.invalidate()
                   } catch (err) {
-                    toast.error(getErrorMessage(err, "Failed to delete pill."))
+                    reportError(err, {
+                      fallback: "Failed to delete pill.",
+                      pillId: pill.id,
+                    })
                   } finally {
                     setPending(false)
                   }

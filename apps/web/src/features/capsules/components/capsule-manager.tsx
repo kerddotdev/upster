@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
+import { useErrorReporter } from "@/components/error-report"
 import { LogOutput } from "@/components/log-output"
 import { Button } from "@/components/ui/button"
 import {
@@ -58,10 +59,6 @@ import { startPillFn } from "@/features/pills/pill.functions"
 import type { Capsule, CapsuleInfo } from "@/features/capsules/types"
 import { cn } from "@/lib/utils"
 
-function getErrorMessage(err: unknown, fallback: string) {
-  return err instanceof Error ? err.message : fallback
-}
-
 function formatBytes(bytes: number | null) {
   if (bytes === null) {
     return "-"
@@ -92,6 +89,7 @@ export function CapsuleManager({
   onChanged?: () => Promise<void> | void
 }) {
   const { isUnlocked, requestUnlock } = useCloudflareVault()
+  const reportError = useErrorReporter()
   const getInfo = useServerFn(getCapsuleInfoFn)
   const buildCapsule = useServerFn(buildCapsuleFn)
   const deleteCapsule = useServerFn(deleteCapsuleFn)
@@ -112,7 +110,7 @@ export function CapsuleManager({
     try {
       setInfo(await getInfo({ data: { pillId } }))
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to load capsules."))
+      reportError(err, { fallback: "Failed to load capsules.", pillId })
     }
   }, [getInfo, pillId])
 
@@ -147,7 +145,7 @@ export function CapsuleManager({
         })
         await refresh()
       } catch (err) {
-        toast.error(getErrorMessage(err, "Failed to start capsule."))
+        reportError(err, { fallback: "Failed to start capsule.", pillId })
       } finally {
         setBusy(null)
       }
@@ -163,7 +161,7 @@ export function CapsuleManager({
       }
       await refresh()
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to delete capsule."))
+      reportError(err, { fallback: "Failed to delete capsule.", pillId })
     } finally {
       setBusy(null)
     }
@@ -177,7 +175,7 @@ export function CapsuleManager({
       })
       await load()
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to update capsule."))
+      reportError(err, { fallback: "Failed to update capsule.", pillId })
     } finally {
       setBusy(null)
     }
@@ -192,7 +190,7 @@ export function CapsuleManager({
       setRenaming(null)
       await load()
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to rename capsule."))
+      reportError(err, { fallback: "Failed to rename capsule.", pillId })
     } finally {
       setBusy(null)
     }
@@ -205,7 +203,7 @@ export function CapsuleManager({
       toast.success("Pruned old snapshots.")
       await refresh()
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to prune."))
+      reportError(err, { fallback: "Failed to prune.", pillId })
     } finally {
       setBusy(null)
     }

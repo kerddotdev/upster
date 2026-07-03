@@ -6,6 +6,7 @@ import { useServerFn } from "@tanstack/react-start"
 import { PencilIcon } from "lucide-react"
 import { toast } from "sonner"
 
+import { useErrorReporter } from "@/components/error-report"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -62,6 +63,7 @@ function parseEnvText(text: string): Record<string, string> {
 
 export function EditPillDialog({ pill }: { pill: PillDetail }) {
   const router = useRouter()
+  const reportError = useErrorReporter()
   const updatePill = useServerFn(updatePillFn)
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(false)
@@ -72,7 +74,7 @@ export function EditPillDialog({ pill }: { pill: PillDetail }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="outline" size="sm" />}>
+      <DialogTrigger render={<Button variant="outline" />}>
         <PencilIcon data-icon="inline-start" />
         Edit
       </DialogTrigger>
@@ -109,9 +111,10 @@ export function EditPillDialog({ pill }: { pill: PillDetail }) {
               setOpen(false)
               await router.invalidate()
             } catch (err) {
-              toast.error(
-                err instanceof Error ? err.message : "Failed to update pill."
-              )
+              reportError(err, {
+                fallback: "Failed to update pill.",
+                pillId: pill.id,
+              })
             } finally {
               setPending(false)
             }

@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react"
 import { useServerFn } from "@tanstack/react-start"
 import { ChevronRightIcon, FileIcon, FolderIcon } from "lucide-react"
-import { toast } from "sonner"
 
+import { useErrorReporter } from "@/components/error-report"
 import {
   Collapsible,
   CollapsibleContent,
@@ -20,10 +20,6 @@ import type {
   CapsuleTreeEntry,
 } from "@/features/capsules/types"
 import { cn } from "@/lib/utils"
-
-function getErrorMessage(err: unknown, fallback: string) {
-  return err instanceof Error ? err.message : fallback
-}
 
 function formatBytes(bytes: number | null) {
   if (bytes === null) {
@@ -52,6 +48,7 @@ function DirContents({
   onSelectFile: (entry: CapsuleTreeEntry) => void
 }) {
   const listDir = useServerFn(capsuleDirFn)
+  const reportError = useErrorReporter()
   const [entries, setEntries] = useState<Array<CapsuleTreeEntry> | null>(null)
   const [openDirs, setOpenDirs] = useState<Record<string, boolean>>({})
 
@@ -65,7 +62,7 @@ function DirContents({
       })
       .catch((err) => {
         if (!cancelled) {
-          toast.error(getErrorMessage(err, "Failed to read directory."))
+          reportError(err, { fallback: "Failed to read directory." })
         }
       })
     return () => {
@@ -153,6 +150,7 @@ function DirContents({
 
 export function CapsuleFileBrowser({ capsuleId }: { capsuleId: string }) {
   const readFile = useServerFn(capsuleFileFn)
+  const reportError = useErrorReporter()
   const [selected, setSelected] = useState<string | null>(null)
   const [preview, setPreview] = useState<CapsuleFilePreview | null>(null)
   const [loading, setLoading] = useState(false)
@@ -164,7 +162,7 @@ export function CapsuleFileBrowser({ capsuleId }: { capsuleId: string }) {
     try {
       setPreview(await readFile({ data: { capsuleId, path: entry.path } }))
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to read file."))
+      reportError(err, { fallback: "Failed to read file." })
     } finally {
       setLoading(false)
     }
