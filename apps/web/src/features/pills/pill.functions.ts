@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
 import { authMiddleware } from "@/features/auth/auth-middleware"
+import { getRunLogs } from "@/db/repositories.server"
 import {
   createPill,
   deletePill,
@@ -10,6 +11,7 @@ import {
   getRuntimeSettings,
   updatePill,
 } from "@/features/pills/pills.server"
+import { getPillDiagnostics } from "@/features/pills/diagnostics.server"
 import {
   startPillRuntime,
   stopPillRun,
@@ -39,6 +41,10 @@ const updatePillSchema = z.object({
 
 const pillIdSchema = z.object({
   pillId: z.string().min(1),
+})
+
+const runIdSchema = z.object({
+  runId: z.string().min(1),
 })
 
 const deletePillSchema = z.object({
@@ -71,6 +77,16 @@ export const getPillStatusFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((data: unknown) => pillIdSchema.parse(data))
   .handler(({ data }) => getPillStatus(data))
+
+export const getPillDiagnosticsFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator((data: unknown) => pillIdSchema.parse(data))
+  .handler(({ data }) => getPillDiagnostics(data.pillId))
+
+export const getRunLogsFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator((data: unknown) => runIdSchema.parse(data))
+  .handler(({ data }) => getRunLogs(data.runId))
 
 export const createPillFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])

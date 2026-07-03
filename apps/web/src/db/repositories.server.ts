@@ -496,6 +496,18 @@ export async function listActiveRuns() {
   return rows.map(parseRun)
 }
 
+export async function listRuns(pillId: string, limit = 20) {
+  await ensureDatabase()
+  const rows = await db
+    .select()
+    .from(pillRuns)
+    .where(eq(pillRuns.pillId, pillId))
+    .orderBy(desc(pillRuns.startedAt))
+    .limit(limit)
+
+  return rows.map(parseRun)
+}
+
 export async function appendRunLog(log: Omit<RunLog, "id" | "createdAt">) {
   await ensureDatabase()
 
