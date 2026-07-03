@@ -177,7 +177,7 @@ function PillTableRow({ pill }: { pill: PillListItem }) {
           />
         </TableCell>
         <TableCell className="text-right">
-          <PillActions pill={pill} expiresAt={expiresAt} />
+          <PillActions pill={pill} expiresAt={expiresAt} showDelete={false} />
         </TableCell>
       </TableRow>
       {expanded ? (
