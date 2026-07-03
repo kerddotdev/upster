@@ -18,7 +18,6 @@ import {
   useTunnelMetrics,
 } from "@/features/metrics/metrics-panel"
 import { CapsuleManager } from "@/features/capsules/components/capsule-manager"
-import { EditPillDialog } from "@/features/pills/components/edit-pill-dialog"
 import { PillActions } from "@/features/pills/components/pill-actions"
 import { StatusBadge } from "@/features/pills/components/status-badge"
 import { getPillStatusFn } from "@/features/pills/pill.functions"
@@ -53,10 +52,13 @@ function PillDetailPage() {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <EditPillDialog pill={pill} />
-          <PillActions pill={pill} expiresAt={expiresAt} />
-        </div>
+        <PillActions
+          pill={pill}
+          expiresAt={expiresAt}
+          showEdit
+          editPill={pill}
+          showDetails={false}
+        />
       </header>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

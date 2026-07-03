@@ -40,12 +40,13 @@ import {
   CapsuleDialog,
   type CapsuleBuildOptions,
 } from "@/features/capsules/components/capsule-dialog"
+import { EditPillDialog } from "@/features/pills/components/edit-pill-dialog"
 import {
   deletePillFn,
   startPillFn,
   stopPillFn,
 } from "@/features/pills/pill.functions"
-import type { PillListItem } from "@/features/pills/types"
+import type { PillDetail, PillListItem } from "@/features/pills/types"
 
 function getErrorMessage(err: unknown, fallback: string) {
   return err instanceof Error ? err.message : fallback
@@ -59,9 +60,17 @@ type CapsuleAction = {
 export function PillActions({
   pill,
   expiresAt,
+  showDelete = true,
+  showDetails = true,
+  showEdit = false,
+  editPill,
 }: {
   pill: PillListItem
   expiresAt?: string | null
+  showDelete?: boolean
+  showDetails?: boolean
+  showEdit?: boolean
+  editPill?: PillDetail
 }) {
   const router = useRouter()
   const { isUnlocked, requestUnlock } = useCloudflareVault()
@@ -246,7 +255,7 @@ export function PillActions({
               render={
                 <Button
                   size="icon"
-                  className="rounded-l-none border-l border-primary-foreground/20"
+                  className="rounded-l-none border-l border-primary-foreground/20 ring-0 outline-none focus:outline-none"
                   disabled={pending}
                   aria-label="More start options"
                 />
@@ -267,62 +276,67 @@ export function PillActions({
           </DropdownMenu>
         </div>
       )}
-      <Button
-        variant="outline"
-        render={<Link to="/pills/$pillId" params={{ pillId: pill.id }} />}
-      >
-        <ExternalLinkIcon data-icon="inline-start" />
-        Details
-      </Button>
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogTrigger render={<Button variant="outline" />}>
-          <Trash2Icon data-icon="inline-start" />
-          Delete
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete {pill.name}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This removes the pill, command profile, ports, runs, capsule copy,
-              and local log records. When the Cloudflare vault is unlocked, its
-              tunnel and DNS record are removed too; otherwise they are left in
-              Cloudflare.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={pending || isRunning}
-              onClick={async () => {
-                setPending(true)
-                try {
-                  const result = await deletePill({
-                    data: {
-                      pillId: pill.id,
-                    },
-                  })
-                  if (result.cloudflareCleanup === "failed") {
-                    toast.warning(
-                      "Pill deleted, but its Cloudflare tunnel or DNS record may remain. Check your Cloudflare dashboard."
-                    )
-                  } else {
-                    toast.success("Pill deleted.")
+      {showEdit && editPill ? <EditPillDialog pill={editPill} /> : null}
+      {showDetails ? (
+        <Button
+          variant="outline"
+          render={<Link to="/pills/$pillId" params={{ pillId: pill.id }} />}
+        >
+          <ExternalLinkIcon data-icon="inline-start" />
+          Details
+        </Button>
+      ) : null}
+      {showDelete && (
+        <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <AlertDialogTrigger render={<Button variant="outline" />}>
+            <Trash2Icon data-icon="inline-start" />
+            Delete
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete {pill.name}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This removes the pill, command profile, ports, runs, capsule
+                copy, and local log records. When the Cloudflare vault is
+                unlocked, its tunnel and DNS record are removed too; otherwise
+                they are left in Cloudflare.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                disabled={pending || isRunning}
+                onClick={async () => {
+                  setPending(true)
+                  try {
+                    const result = await deletePill({
+                      data: {
+                        pillId: pill.id,
+                      },
+                    })
+                    if (result.cloudflareCleanup === "failed") {
+                      toast.warning(
+                        "Pill deleted, but its Cloudflare tunnel or DNS record may remain. Check your Cloudflare dashboard."
+                      )
+                    } else {
+                      toast.success("Pill deleted.")
+                    }
+                    setDeleteOpen(false)
+                    await router.invalidate()
+                  } catch (err) {
+                    toast.error(getErrorMessage(err, "Failed to delete pill."))
+                  } finally {
+                    setPending(false)
                   }
-                  setDeleteOpen(false)
-                  await router.invalidate()
-                } catch (err) {
-                  toast.error(getErrorMessage(err, "Failed to delete pill."))
-                } finally {
-                  setPending(false)
-                }
-              }}
-            >
-              Delete pill
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+                }}
+              >
+                Delete pill
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
       {capsuleAction ? (
         <CapsuleDialog
           pillId={pill.id}
