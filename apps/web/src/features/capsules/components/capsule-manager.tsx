@@ -12,11 +12,11 @@ import {
   PencilIcon,
   PinIcon,
   PlayIcon,
+  RocketIcon,
   Trash2Icon,
 } from "lucide-react"
 import { toast } from "sonner"
 
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -26,6 +26,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { useCloudflareVault } from "@/features/secrets/cloudflare-vault-provider"
 import {
   CapsuleDialog,
@@ -253,47 +258,87 @@ export function CapsuleManager({
                 className="flex flex-col gap-1 rounded-md border border-border p-2"
               >
                 <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      "size-2 shrink-0 rounded-full",
-                      statusDot[capsule.status]
-                    )}
-                  />
-                  {renaming === capsule.id ? (
-                    <span className="flex items-center gap-1">
-                      <Input
-                        value={renameValue}
-                        onChange={(event) => setRenameValue(event.target.value)}
-                        className="h-6 w-40"
-                        placeholder="Label"
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "size-2 shrink-0 rounded-full",
+                          statusDot[capsule.status]
+                        )}
                       />
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        onClick={() => void saveRename(capsule)}
-                        disabled={isBusy}
-                      >
-                        <CheckIcon />
-                      </Button>
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      className="flex items-center gap-1 text-xs font-medium hover:underline"
-                      onClick={() => {
-                        setRenaming(capsule.id)
-                        setRenameValue(capsule.label ?? "")
-                      }}
-                    >
-                      {capsule.label ?? capsule.id.slice(0, 8)}
-                      <PencilIcon className="size-3 text-muted-foreground" />
-                    </button>
-                  )}
-                  {deployed ? <Badge variant="default">deployed</Badge> : null}
-                  {capsule.pinned ? (
-                    <Badge variant="outline">pinned</Badge>
-                  ) : null}
-                  <div className="ml-auto flex items-center gap-1">
+                      {renaming === capsule.id ? (
+                        <span className="flex items-center gap-1">
+                          <Input
+                            value={renameValue}
+                            onChange={(event) =>
+                              setRenameValue(event.target.value)
+                            }
+                            className="h-6 w-40"
+                            placeholder="Label"
+                          />
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            onClick={() => void saveRename(capsule)}
+                            disabled={isBusy}
+                          >
+                            <CheckIcon />
+                          </Button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="flex items-center gap-2 text-xs font-medium hover:underline"
+                          onClick={() => {
+                            setRenaming(capsule.id)
+                            setRenameValue(capsule.label ?? "")
+                          }}
+                        >
+                          {capsule.label ?? capsule.id.slice(0, 8)}
+                          <PencilIcon className="size-3 text-muted-foreground" />
+                        </button>
+                      )}
+                      {deployed ? (
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={<span className="inline-flex" />}
+                          >
+                            <RocketIcon className="size-3.5 text-primary" />
+                          </TooltipTrigger>
+                          <TooltipContent>Deployed</TooltipContent>
+                        </Tooltip>
+                      ) : null}
+                      {capsule.pinned ? (
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={<span className="inline-flex" />}
+                          >
+                            <PinIcon className="size-3.5 text-muted-foreground" />
+                          </TooltipTrigger>
+                          <TooltipContent>Pinned</TooltipContent>
+                        </Tooltip>
+                      ) : null}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-4 text-[0.65rem] text-muted-foreground">
+                      {capsule.git.commit ? (
+                        <span className="inline-flex items-center gap-1">
+                          <GitBranchIcon className="size-3" />
+                          {capsule.git.branch ?? "?"}@
+                          {capsule.git.commit.slice(0, 7)}
+                          {capsule.git.dirty ? "*" : ""}
+                        </span>
+                      ) : null}
+                      <span>
+                        {formatBytes(capsule.sizeBytes)}
+                        {capsule.builtAt
+                          ? ` - ${new Date(capsule.builtAt).toLocaleString()}`
+                          : ""}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-1">
                     <Button
                       variant={deployed ? "secondary" : "default"}
                       onClick={() => startVersion(capsule)}
@@ -356,23 +401,6 @@ export function CapsuleManager({
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-4 text-[0.65rem] text-muted-foreground">
-                  {capsule.git.commit ? (
-                    <span className="inline-flex items-center gap-1">
-                      <GitBranchIcon className="size-3" />
-                      {capsule.git.branch ?? "?"}@
-                      {capsule.git.commit.slice(0, 7)}
-                      {capsule.git.dirty ? "*" : ""}
-                    </span>
-                  ) : null}
-                  <span>
-                    {formatBytes(capsule.sizeBytes)}
-                    {capsule.builtAt
-                      ? ` - ${new Date(capsule.builtAt).toLocaleString()}`
-                      : ""}
-                  </span>
                 </div>
 
                 {capsule.status === "error" && capsule.error ? (
