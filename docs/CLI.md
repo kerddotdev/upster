@@ -643,6 +643,13 @@ Request port rotation:
 upster pills run <pillId> --rotatePorts true
 ```
 
+Deploy from a capsule instead of the live source:
+
+```sh
+upster pills run <pillId> --use-capsule
+upster pills run <pillId> --capsule <capsuleId>
+```
+
 Stop a pill:
 
 ```sh
@@ -659,6 +666,35 @@ Starting a run requires:
 - valid pill config
 - allowed command when `UPSTER_ALLOWED_COMMANDS` is configured
 - available port or successful port rotation
+
+## Capsules
+
+A capsule is a frozen, versioned snapshot of a pill's source. Deploy from one
+with `pills run --use-capsule` (latest ready snapshot) or `--capsule <id>` (a
+specific snapshot for rollback).
+
+List the snapshots and disk usage for a pill (`pills:read`):
+
+```sh
+upster capsules list <pillId> --json
+```
+
+Build a new snapshot (`pills:write`). `--node-modules` copies node_modules,
+`--install` installs dependencies when the project supports it, `--label` names
+the snapshot:
+
+```sh
+upster capsules build <pillId>
+upster capsules build <pillId> --install --label "demo build"
+upster capsules build <pillId> --node-modules
+```
+
+Delete a snapshot (`pills:delete`). The currently deployed snapshot cannot be
+deleted while it is running:
+
+```sh
+upster capsules delete <capsuleId>
+```
 
 ## Runs, Logs, And Metrics
 
