@@ -30,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { CapsuleActions } from "@/features/capsules/components/capsule-actions"
 import { CapsuleManager } from "@/features/capsules/components/capsule-manager"
 import { CreatePillDialog } from "@/features/pills/components/create-pill-dialog"
 import { ExpiryPicker } from "@/features/pills/components/expiry-picker"
@@ -115,6 +116,7 @@ function PillTableRow({ pill }: { pill: PillListItem }) {
     pill.activeRun?.expiresAt ?? null
   )
   const [expanded, setExpanded] = useState(false)
+  const [capsuleKey, setCapsuleKey] = useState(0)
   const isRunning = Boolean(pill.activeRun)
 
   return (
@@ -183,20 +185,32 @@ function PillTableRow({ pill }: { pill: PillListItem }) {
       {expanded ? (
         <TableRow className="bg-muted/30 hover:bg-muted/30">
           <TableCell colSpan={6} className="p-4">
-            <CapsuleManager
-              pillId={pill.id}
-              commandName={pill.defaultEnv}
-              activeRun={
-                pill.activeRun
-                  ? {
-                      id: pill.activeRun.id,
-                      capsuleId: pill.activeRun.capsuleId,
-                    }
-                  : null
-              }
-              allowBrowse={false}
-              onChanged={() => router.invalidate()}
-            />
+            <div className="flex flex-col gap-3">
+              <div className="flex justify-end">
+                <CapsuleActions
+                  pillId={pill.id}
+                  onChanged={() => {
+                    setCapsuleKey((value) => value + 1)
+                    void router.invalidate()
+                  }}
+                />
+              </div>
+              <CapsuleManager
+                key={capsuleKey}
+                pillId={pill.id}
+                commandName={pill.defaultEnv}
+                activeRun={
+                  pill.activeRun
+                    ? {
+                        id: pill.activeRun.id,
+                        capsuleId: pill.activeRun.capsuleId,
+                      }
+                    : null
+                }
+                allowBrowse={false}
+                onChanged={() => router.invalidate()}
+              />
+            </div>
           </TableCell>
         </TableRow>
       ) : null}

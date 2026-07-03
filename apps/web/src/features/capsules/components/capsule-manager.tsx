@@ -8,7 +8,6 @@ import {
   EllipsisIcon,
   FilesIcon,
   GitBranchIcon,
-  PackagePlusIcon,
   PencilIcon,
   PinIcon,
   PlayIcon,
@@ -16,7 +15,6 @@ import {
   Trash2Icon,
   TriangleAlertIcon,
 } from "lucide-react"
-import { toast } from "sonner"
 
 import { useErrorReporter } from "@/components/error-report"
 import { LogOutput } from "@/components/log-output"
@@ -42,17 +40,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useCloudflareVault } from "@/features/secrets/cloudflare-vault-provider"
-import {
-  CapsuleDialog,
-  type CapsuleBuildOptions,
-} from "@/features/capsules/components/capsule-dialog"
 import { CapsuleFileBrowser } from "@/features/capsules/components/capsule-file-browser"
 import {
-  buildCapsuleFn,
   deleteCapsuleFn,
   getCapsuleInfoFn,
   pinCapsuleFn,
-  prunePillCapsulesFn,
   relabelCapsuleFn,
 } from "@/features/capsules/capsule.functions"
 import { startPillFn } from "@/features/pills/pill.functions"
@@ -91,16 +83,13 @@ export function CapsuleManager({
   const { isUnlocked, requestUnlock } = useCloudflareVault()
   const reportError = useErrorReporter()
   const getInfo = useServerFn(getCapsuleInfoFn)
-  const buildCapsule = useServerFn(buildCapsuleFn)
   const deleteCapsule = useServerFn(deleteCapsuleFn)
   const pinCapsule = useServerFn(pinCapsuleFn)
   const relabelCapsule = useServerFn(relabelCapsuleFn)
-  const prunePill = useServerFn(prunePillCapsulesFn)
   const startPill = useServerFn(startPillFn)
 
   const [info, setInfo] = useState<CapsuleInfo | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
-  const [dialogOpen, setDialogOpen] = useState(false)
   const [browseId, setBrowseId] = useState<string | null>(null)
   const [renaming, setRenaming] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState("")
@@ -196,29 +185,6 @@ export function CapsuleManager({
     }
   }
 
-  async function prune() {
-    setBusy("prune")
-    try {
-      await prunePill({ data: { pillId } })
-      toast.success("Pruned old snapshots.")
-      await refresh()
-    } catch (err) {
-      reportError(err, { fallback: "Failed to prune.", pillId })
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  function openBuild() {
-    ensureUnlocked(() => setDialogOpen(true))
-  }
-
-  const buildConfirm = async (options: CapsuleBuildOptions) => {
-    await buildCapsule({ data: { pillId, ...options } })
-    toast.success("Capsule built.")
-    await refresh()
-  }
-
   if (!info) {
     return <Skeleton className="h-16 w-full" />
   }
@@ -227,28 +193,11 @@ export function CapsuleManager({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs text-muted-foreground">
-          {info.capsules.length} snapshot
-          {info.capsules.length === 1 ? "" : "s"} -{" "}
-          {formatBytes(info.diskBytes)}
-          {" on disk"}
-        </span>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={openBuild}>
-            <PackagePlusIcon data-icon="inline-start" />
-            Build snapshot
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => void prune()}
-            disabled={busy === "prune" || info.capsules.length === 0}
-          >
-            Prune
-          </Button>
-        </div>
-      </div>
+      <span className="text-xs text-muted-foreground">
+        {info.capsules.length} snapshot
+        {info.capsules.length === 1 ? "" : "s"} - {formatBytes(info.diskBytes)}
+        {" on disk"}
+      </span>
 
       {info.capsules.length === 0 ? (
         <p className="text-xs text-muted-foreground">
@@ -437,14 +386,6 @@ export function CapsuleManager({
           })}
         </div>
       )}
-
-      <CapsuleDialog
-        pillId={pillId}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        confirmLabel="Build snapshot"
-        onConfirm={buildConfirm}
-      />
 
       <Dialog
         open={Boolean(errorCapsule)}
