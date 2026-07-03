@@ -14,10 +14,18 @@ import {
   PlayIcon,
   RocketIcon,
   Trash2Icon,
+  TriangleAlertIcon,
 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -97,6 +105,7 @@ export function CapsuleManager({
   const [browseId, setBrowseId] = useState<string | null>(null)
   const [renaming, setRenaming] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState("")
+  const [errorCapsule, setErrorCapsule] = useState<Capsule | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -339,6 +348,24 @@ export function CapsuleManager({
                   </div>
 
                   <div className="flex shrink-0 items-center gap-1">
+                    {capsule.status === "error" ? (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="text-destructive"
+                              onClick={() => setErrorCapsule(capsule)}
+                              aria-label="View build error"
+                            />
+                          }
+                        >
+                          <TriangleAlertIcon />
+                        </TooltipTrigger>
+                        <TooltipContent>Build failed</TooltipContent>
+                      </Tooltip>
+                    ) : null}
                     <Button
                       variant={deployed ? "secondary" : "default"}
                       onClick={() => startVersion(capsule)}
@@ -403,12 +430,6 @@ export function CapsuleManager({
                   </div>
                 </div>
 
-                {capsule.status === "error" && capsule.error ? (
-                  <p className="text-[0.65rem] text-destructive">
-                    {capsule.error}
-                  </p>
-                ) : null}
-
                 {allowBrowse && browseId === capsule.id ? (
                   <CapsuleFileBrowser capsuleId={capsule.id} />
                 ) : null}
@@ -425,6 +446,29 @@ export function CapsuleManager({
         confirmLabel="Build snapshot"
         onConfirm={buildConfirm}
       />
+
+      <Dialog
+        open={Boolean(errorCapsule)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setErrorCapsule(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Build failed</DialogTitle>
+            <DialogDescription>
+              {errorCapsule?.error ?? "The capsule build did not complete."}
+            </DialogDescription>
+          </DialogHeader>
+          {errorCapsule?.buildLog ? (
+            <pre className="max-h-72 overflow-auto rounded-md border border-border bg-muted/30 p-2 text-xs break-all whitespace-pre-wrap">
+              {errorCapsule.buildLog}
+            </pre>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
