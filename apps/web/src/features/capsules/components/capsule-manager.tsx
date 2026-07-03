@@ -250,9 +250,9 @@ export function CapsuleManager({
             return (
               <div
                 key={capsule.id}
-                className="flex flex-col gap-2 rounded-md border border-border p-2"
+                className="flex flex-col gap-1 rounded-md border border-border p-2"
               >
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2">
                   <span
                     className={cn(
                       "size-2 shrink-0 rounded-full",
@@ -293,20 +293,6 @@ export function CapsuleManager({
                   {capsule.pinned ? (
                     <Badge variant="outline">pinned</Badge>
                   ) : null}
-                  {capsule.git.commit ? (
-                    <span className="inline-flex items-center gap-1 text-[0.65rem] text-muted-foreground">
-                      <GitBranchIcon className="size-3" />
-                      {capsule.git.branch ?? "?"}@
-                      {capsule.git.commit.slice(0, 7)}
-                      {capsule.git.dirty ? "*" : ""}
-                    </span>
-                  ) : null}
-                  <span className="text-[0.65rem] text-muted-foreground">
-                    {formatBytes(capsule.sizeBytes)}
-                    {capsule.builtAt
-                      ? ` - ${new Date(capsule.builtAt).toLocaleString()}`
-                      : ""}
-                  </span>
                   <div className="ml-auto flex items-center gap-1">
                     <Button
                       variant={deployed ? "secondary" : "default"}
@@ -370,6 +356,23 @@ export function CapsuleManager({
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-4 text-[0.65rem] text-muted-foreground">
+                  {capsule.git.commit ? (
+                    <span className="inline-flex items-center gap-1">
+                      <GitBranchIcon className="size-3" />
+                      {capsule.git.branch ?? "?"}@
+                      {capsule.git.commit.slice(0, 7)}
+                      {capsule.git.dirty ? "*" : ""}
+                    </span>
+                  ) : null}
+                  <span>
+                    {formatBytes(capsule.sizeBytes)}
+                    {capsule.builtAt
+                      ? ` - ${new Date(capsule.builtAt).toLocaleString()}`
+                      : ""}
+                  </span>
                 </div>
 
                 {capsule.status === "error" && capsule.error ? (
