@@ -188,6 +188,8 @@ function PillDetailPage() {
                 key={capsuleKey}
                 pillId={pill.id}
                 commandName={pill.defaultEnv}
+                slug={pill.slug}
+                expiresAt={expiresAt}
                 activeRun={
                   pill.activeRun
                     ? {

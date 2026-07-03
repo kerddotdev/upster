@@ -41,6 +41,7 @@ import {
   CapsuleDialog,
   type CapsuleBuildOptions,
 } from "@/features/capsules/components/capsule-dialog"
+import { DeployCapsuleDialog } from "@/features/capsules/components/deploy-capsule-dialog"
 import { EditPillDialog } from "@/features/pills/components/edit-pill-dialog"
 import {
   deletePillFn,
@@ -80,6 +81,7 @@ export function PillActions({
   const [pending, setPending] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [capsuleAction, setCapsuleAction] = useState<CapsuleAction | null>(null)
+  const [deployCapsuleId, setDeployCapsuleId] = useState<string | null>(null)
   const isRunning = Boolean(pill.activeRun)
 
   function ensureUnlocked(action: () => void) {
@@ -115,12 +117,10 @@ export function PillActions({
     setPending(true)
     try {
       const info = await getCapsuleInfo({ data: { pillId: pill.id } })
-      const hasReady = info.capsules.some(
-        (capsule) => capsule.status === "ready"
-      )
+      const ready = info.capsules.find((capsule) => capsule.status === "ready")
 
-      if (hasReady) {
-        await runStart(true)
+      if (ready) {
+        setDeployCapsuleId(ready.id)
         return
       }
 
@@ -355,6 +355,22 @@ export function PillActions({
           }}
           confirmLabel={capsuleAction.confirmLabel}
           onConfirm={capsuleAction.run}
+        />
+      ) : null}
+      {deployCapsuleId ? (
+        <DeployCapsuleDialog
+          pillId={pill.id}
+          capsuleId={deployCapsuleId}
+          commandName={pill.defaultEnv}
+          slug={pill.slug}
+          expiresAt={expiresAt}
+          open={Boolean(deployCapsuleId)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDeployCapsuleId(null)
+            }
+          }}
+          onDeployed={() => router.invalidate()}
         />
       ) : null}
     </div>

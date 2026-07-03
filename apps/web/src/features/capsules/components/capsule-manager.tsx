@@ -6,6 +6,7 @@ import {
   CheckIcon,
   DownloadIcon,
   EllipsisIcon,
+  ExternalLinkIcon,
   FilesIcon,
   GitBranchIcon,
   PencilIcon,
@@ -41,13 +42,13 @@ import {
 } from "@/components/ui/tooltip"
 import { useCloudflareVault } from "@/features/secrets/cloudflare-vault-provider"
 import { CapsuleFileBrowser } from "@/features/capsules/components/capsule-file-browser"
+import { DeployCapsuleDialog } from "@/features/capsules/components/deploy-capsule-dialog"
 import {
   deleteCapsuleFn,
   getCapsuleInfoFn,
   pinCapsuleFn,
   relabelCapsuleFn,
 } from "@/features/capsules/capsule.functions"
-import { startPillFn } from "@/features/pills/pill.functions"
 import type { Capsule, CapsuleInfo } from "@/features/capsules/types"
 import { cn } from "@/lib/utils"
 
@@ -70,13 +71,17 @@ const statusDot: Record<Capsule["status"], string> = {
 export function CapsuleManager({
   pillId,
   commandName,
+  slug,
   activeRun,
+  expiresAt,
   allowBrowse = true,
   onChanged,
 }: {
   pillId: string
   commandName: string
+  slug: string
   activeRun: { id: string; capsuleId: string | null } | null
+  expiresAt?: string | null
   allowBrowse?: boolean
   onChanged?: () => Promise<void> | void
 }) {
@@ -86,7 +91,6 @@ export function CapsuleManager({
   const deleteCapsule = useServerFn(deleteCapsuleFn)
   const pinCapsule = useServerFn(pinCapsuleFn)
   const relabelCapsule = useServerFn(relabelCapsuleFn)
-  const startPill = useServerFn(startPillFn)
 
   const [info, setInfo] = useState<CapsuleInfo | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -94,6 +98,7 @@ export function CapsuleManager({
   const [renaming, setRenaming] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState("")
   const [errorCapsule, setErrorCapsule] = useState<Capsule | null>(null)
+  const [deployCapsule, setDeployCapsule] = useState<Capsule | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -121,24 +126,7 @@ export function CapsuleManager({
   }
 
   function startVersion(capsule: Capsule) {
-    ensureUnlocked(async () => {
-      setBusy(capsule.id)
-      try {
-        await startPill({
-          data: {
-            pillId,
-            commandName,
-            useCapsule: true,
-            capsuleId: capsule.id,
-          },
-        })
-        await refresh()
-      } catch (err) {
-        reportError(err, { fallback: "Failed to start capsule.", pillId })
-      } finally {
-        setBusy(null)
-      }
-    })
+    ensureUnlocked(() => setDeployCapsule(capsule))
   }
 
   async function removeVersion(capsule: Capsule) {
@@ -335,6 +323,20 @@ export function CapsuleManager({
                         <EllipsisIcon />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {capsule.previewHostname ? (
+                          <DropdownMenuItem
+                            render={
+                              <a
+                                href={`https://${capsule.previewHostname}`}
+                                target="_blank"
+                                rel="noreferrer"
+                              />
+                            }
+                          >
+                            <ExternalLinkIcon />
+                            Open preview
+                          </DropdownMenuItem>
+                        ) : null}
                         <DropdownMenuItem
                           onClick={() => void togglePin(capsule)}
                         >
@@ -407,6 +409,23 @@ export function CapsuleManager({
           ) : null}
         </DialogContent>
       </Dialog>
+
+      {deployCapsule ? (
+        <DeployCapsuleDialog
+          pillId={pillId}
+          capsuleId={deployCapsule.id}
+          commandName={commandName}
+          slug={slug}
+          expiresAt={expiresAt}
+          open={Boolean(deployCapsule)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDeployCapsule(null)
+            }
+          }}
+          onDeployed={refresh}
+        />
+      ) : null}
     </div>
   )
 }
