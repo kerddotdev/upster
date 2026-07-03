@@ -31,10 +31,7 @@ function runGit(args: Array<string>, cwd: string) {
 export async function captureGitMetadata(
   repoPath: string
 ): Promise<CapsuleGitMetadata> {
-  const inside = await runGit(
-    ["rev-parse", "--is-inside-work-tree"],
-    repoPath
-  )
+  const inside = await runGit(["rev-parse", "--is-inside-work-tree"], repoPath)
 
   if (inside.code !== 0 || inside.stdout.trim() !== "true") {
     return EMPTY_METADATA

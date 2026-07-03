@@ -50,3 +50,24 @@ export type BuildCapsuleInput = {
   installDeps: boolean
   label?: string
 }
+
+export type CapsuleTreeEntry = {
+  name: string
+  path: string
+  type: "dir" | "file"
+  size: number | null
+}
+
+export type CapsuleDirListing = {
+  capsuleId: string
+  path: string
+  entries: Array<CapsuleTreeEntry>
+}
+
+export type CapsuleFilePreview = {
+  path: string
+  size: number
+  truncated: boolean
+  binary: boolean
+  content: string | null
+}

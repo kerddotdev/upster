@@ -10,6 +10,10 @@ import {
   runPrune,
   setCapsulePinned,
 } from "@/features/capsules/capsule.server"
+import {
+  listCapsuleDir,
+  readCapsuleFile,
+} from "@/features/capsules/capsule-files.server"
 
 const capsuleInfoSchema = z.object({
   pillId: z.string().min(1),
@@ -70,3 +74,23 @@ export const prunePillCapsulesFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((data: unknown) => prunePillSchema.parse(data))
   .handler(({ data }) => runPrune(data.pillId, data.keep))
+
+const capsuleDirSchema = z.object({
+  capsuleId: z.string().min(1),
+  path: z.string().optional(),
+})
+
+export const capsuleDirFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator((data: unknown) => capsuleDirSchema.parse(data))
+  .handler(({ data }) => listCapsuleDir(data.capsuleId, data.path ?? ""))
+
+const capsuleFileSchema = z.object({
+  capsuleId: z.string().min(1),
+  path: z.string().min(1),
+})
+
+export const capsuleFileFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator((data: unknown) => capsuleFileSchema.parse(data))
+  .handler(({ data }) => readCapsuleFile(data.capsuleId, data.path))
