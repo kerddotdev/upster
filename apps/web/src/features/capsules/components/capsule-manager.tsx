@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
+import { LogOutput } from "@/components/log-output"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -463,9 +464,7 @@ export function CapsuleManager({
             </DialogDescription>
           </DialogHeader>
           {errorCapsule?.buildLog ? (
-            <pre className="max-h-72 overflow-auto rounded-md border border-border bg-muted/30 p-2 text-xs break-all whitespace-pre-wrap">
-              {errorCapsule.buildLog}
-            </pre>
+            <LogOutput text={errorCapsule.buildLog} />
           ) : null}
         </DialogContent>
       </Dialog>

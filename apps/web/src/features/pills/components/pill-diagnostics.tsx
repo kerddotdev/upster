@@ -5,9 +5,9 @@ import { useServerFn } from "@tanstack/react-start"
 import { ChevronRightIcon } from "lucide-react"
 import { toast } from "sonner"
 
+import { LogOutput } from "@/components/log-output"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   getPillDiagnosticsFn,
@@ -24,16 +24,6 @@ function getErrorMessage(err: unknown, fallback: string) {
 type Diagnostics = {
   runs: Array<PillRun>
   capsuleErrors: Array<Capsule>
-}
-
-function LogView({ text }: { text: string }) {
-  return (
-    <ScrollArea className="mt-1 max-h-64 rounded-md border border-border bg-muted/30">
-      <pre className="p-2 text-xs break-all whitespace-pre-wrap">
-        {text || "No output captured."}
-      </pre>
-    </ScrollArea>
-  )
 }
 
 function RunRow({ run }: { run: PillRun }) {
@@ -85,14 +75,15 @@ function RunRow({ run }: { run: PillRun }) {
           Logs
         </Button>
       </div>
-      {run.error ? (
+      {run.error && !open ? (
         <p className="mt-1 text-xs text-destructive">{run.error}</p>
       ) : null}
       {open ? (
         loading ? (
-          <Skeleton className="mt-1 h-16 w-full" />
+          <Skeleton className="mt-3 h-16 w-full" />
         ) : (
-          <LogView
+          <LogOutput
+            className="mt-3"
             text={(logs ?? [])
               .map((entry) => entry.chunk)
               .join("")
@@ -131,10 +122,12 @@ function CapsuleErrorRow({ capsule }: { capsule: Capsule }) {
           </Button>
         ) : null}
       </div>
-      {capsule.error ? (
+      {capsule.error && !open ? (
         <p className="mt-1 text-xs text-destructive">{capsule.error}</p>
       ) : null}
-      {open && capsule.buildLog ? <LogView text={capsule.buildLog} /> : null}
+      {open && capsule.buildLog ? (
+        <LogOutput className="mt-3" text={capsule.buildLog} />
+      ) : null}
     </div>
   )
 }
