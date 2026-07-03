@@ -210,7 +210,8 @@ export function CapsuleManager({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground">
           {info.capsules.length} snapshot
-          {info.capsules.length === 1 ? "" : "s"} - {formatBytes(info.diskBytes)}
+          {info.capsules.length === 1 ? "" : "s"} -{" "}
+          {formatBytes(info.diskBytes)}
           {" on disk"}
         </span>
         <div className="flex gap-2">
@@ -281,16 +282,15 @@ export function CapsuleManager({
                       <PencilIcon className="size-3 text-muted-foreground" />
                     </button>
                   )}
-                  {deployed ? (
-                    <Badge variant="default">deployed</Badge>
-                  ) : null}
+                  {deployed ? <Badge variant="default">deployed</Badge> : null}
                   {capsule.pinned ? (
                     <Badge variant="outline">pinned</Badge>
                   ) : null}
                   {capsule.git.commit ? (
                     <span className="inline-flex items-center gap-1 text-[0.65rem] text-muted-foreground">
                       <GitBranchIcon className="size-3" />
-                      {capsule.git.branch ?? "?"}@{capsule.git.commit.slice(0, 7)}
+                      {capsule.git.branch ?? "?"}@
+                      {capsule.git.commit.slice(0, 7)}
                       {capsule.git.dirty ? "*" : ""}
                     </span>
                   ) : null}
@@ -313,9 +313,7 @@ export function CapsuleManager({
                     size="xs"
                     variant="outline"
                     onClick={() => startVersion(capsule)}
-                    disabled={
-                      isBusy || running || capsule.status !== "ready"
-                    }
+                    disabled={isBusy || running || capsule.status !== "ready"}
                   >
                     <PlayIcon data-icon="inline-start" />
                     {deployed ? "Deployed" : "Start"}

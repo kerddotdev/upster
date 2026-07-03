@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router"
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router"
 import { ArrowLeftIcon, ExternalLinkIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -17,6 +17,7 @@ import {
   MetricsSummary,
   useTunnelMetrics,
 } from "@/features/metrics/metrics-panel"
+import { CapsuleManager } from "@/features/capsules/components/capsule-manager"
 import { PillActions } from "@/features/pills/components/pill-actions"
 import { StatusBadge } from "@/features/pills/components/status-badge"
 import { getPillStatusFn } from "@/features/pills/pill.functions"
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/pills/$pillId")({
 })
 
 function PillDetailPage() {
+  const router = useRouter()
   const pill = Route.useLoaderData()
   const runId = pill.activeRun?.id ?? null
   const expiresAt = pill.activeRun?.expiresAt ?? null
@@ -76,6 +78,7 @@ function PillDetailPage() {
       <Tabs defaultValue="overview">
         <TabsList variant="line">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="capsules">Capsules</TabsTrigger>
           <TabsTrigger value="terminal">Terminal</TabsTrigger>
           <TabsTrigger value="metrics">Metrics</TabsTrigger>
         </TabsList>
@@ -139,6 +142,33 @@ function PillDetailPage() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="capsules" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Capsules</CardTitle>
+              <CardDescription>
+                Frozen, isolated snapshots of the source. Deploy, browse, or
+                roll back to any version.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CapsuleManager
+                pillId={pill.id}
+                commandName={pill.defaultEnv}
+                activeRun={
+                  pill.activeRun
+                    ? {
+                        id: pill.activeRun.id,
+                        capsuleId: pill.activeRun.capsuleId,
+                      }
+                    : null
+                }
+                onChanged={() => router.invalidate()}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="terminal" className="mt-4">

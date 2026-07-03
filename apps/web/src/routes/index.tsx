@@ -1,7 +1,12 @@
 import { useState } from "react"
-import { createFileRoute, Link } from "@tanstack/react-router"
-import { ExternalLinkIcon, PlusCircleIcon } from "lucide-react"
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router"
+import {
+  ChevronRightIcon,
+  ExternalLinkIcon,
+  PlusCircleIcon,
+} from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -25,12 +30,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { CapsuleManager } from "@/features/capsules/components/capsule-manager"
 import { CreatePillDialog } from "@/features/pills/components/create-pill-dialog"
 import { ExpiryPicker } from "@/features/pills/components/expiry-picker"
 import { PillActions } from "@/features/pills/components/pill-actions"
 import { StatusBadge } from "@/features/pills/components/status-badge"
 import { listPillsFn } from "@/features/pills/pill.functions"
 import type { PillListItem } from "@/features/pills/types"
+import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/")({
   loader: () => listPillsFn(),
@@ -103,57 +110,97 @@ function App() {
 }
 
 function PillTableRow({ pill }: { pill: PillListItem }) {
+  const router = useRouter()
   const [expiresAt, setExpiresAt] = useState<string | null>(
     pill.activeRun?.expiresAt ?? null
   )
+  const [expanded, setExpanded] = useState(false)
   const isRunning = Boolean(pill.activeRun)
 
   return (
-    <TableRow>
-      <TableCell>
-        <div className="flex flex-col">
-          <Link
-            to="/pills/$pillId"
-            params={{ pillId: pill.id }}
-            className="font-medium hover:underline"
-          >
-            {pill.name}
-          </Link>
-          <span className="text-xs text-muted-foreground">{pill.repoPath}</span>
-        </div>
-      </TableCell>
-      <TableCell>
-        <StatusBadge status={pill.status} />
-      </TableCell>
-      <TableCell>
-        {pill.hostname ? (
-          <a
-            href={`https://${pill.hostname}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-          >
-            {pill.hostname}
-            <ExternalLinkIcon className="size-3" />
-          </a>
-        ) : (
-          "-"
-        )}
-      </TableCell>
-      <TableCell>
-        <PortSummary appPort={pill.appPort} metricsPort={pill.metricsPort} />
-      </TableCell>
-      <TableCell className="min-w-[15rem]">
-        <ExpiryPicker
-          value={expiresAt}
-          onChange={setExpiresAt}
-          disabled={isRunning}
-        />
-      </TableCell>
-      <TableCell className="text-right">
-        <PillActions pill={pill} expiresAt={expiresAt} />
-      </TableCell>
-    </TableRow>
+    <>
+      <TableRow>
+        <TableCell>
+          <div className="flex items-start gap-2">
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              className="mt-0.5"
+              aria-expanded={expanded}
+              aria-label="Toggle capsules"
+              onClick={() => setExpanded((value) => !value)}
+            >
+              <ChevronRightIcon
+                className={cn("transition-transform", expanded && "rotate-90")}
+              />
+            </Button>
+            <div className="flex flex-col">
+              <Link
+                to="/pills/$pillId"
+                params={{ pillId: pill.id }}
+                className="font-medium hover:underline"
+              >
+                {pill.name}
+              </Link>
+              <span className="text-xs text-muted-foreground">
+                {pill.repoPath}
+              </span>
+            </div>
+          </div>
+        </TableCell>
+        <TableCell>
+          <StatusBadge status={pill.status} />
+        </TableCell>
+        <TableCell>
+          {pill.hostname ? (
+            <a
+              href={`https://${pill.hostname}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+            >
+              {pill.hostname}
+              <ExternalLinkIcon className="size-3" />
+            </a>
+          ) : (
+            "-"
+          )}
+        </TableCell>
+        <TableCell>
+          <PortSummary appPort={pill.appPort} metricsPort={pill.metricsPort} />
+        </TableCell>
+        <TableCell className="min-w-[15rem]">
+          <ExpiryPicker
+            value={expiresAt}
+            onChange={setExpiresAt}
+            disabled={isRunning}
+          />
+        </TableCell>
+        <TableCell className="text-right">
+          <PillActions pill={pill} expiresAt={expiresAt} />
+        </TableCell>
+      </TableRow>
+      {expanded ? (
+        <TableRow className="bg-muted/30 hover:bg-muted/30">
+          <TableCell colSpan={6} className="p-4">
+            <CapsuleManager
+              pillId={pill.id}
+              commandName={pill.defaultEnv}
+              activeRun={
+                pill.activeRun
+                  ? {
+                      id: pill.activeRun.id,
+                      capsuleId: pill.activeRun.capsuleId,
+                    }
+                  : null
+              }
+              allowBrowse={false}
+              onChanged={() => router.invalidate()}
+            />
+          </TableCell>
+        </TableRow>
+      ) : null}
+    </>
   )
 }
 
