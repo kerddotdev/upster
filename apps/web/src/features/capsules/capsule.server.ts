@@ -21,6 +21,7 @@ import {
   detectPackageManager,
   resolveCapsuleCwd,
 } from "@/features/capsules/detect"
+import { captureGitMetadata } from "@/features/capsules/git.server"
 import { buildInheritedEnv } from "@/features/processes/process-env"
 import {
   assertAllowedCommand,
@@ -195,6 +196,7 @@ export async function buildCapsule(input: BuildCapsuleInput): Promise<Capsule> {
     }
 
     const { sizeBytes, fileCount } = await measureDir(sourceDir)
+    const git = await captureGitMetadata(repoPath)
 
     const capsule = await updateCapsule(capsuleId, {
       status: "ready",
@@ -204,6 +206,10 @@ export async function buildCapsule(input: BuildCapsuleInput): Promise<Capsule> {
       sizeBytes,
       fileCount,
       buildDurationMs: Date.now() - startedAt,
+      gitCommit: git.commit,
+      gitBranch: git.branch,
+      gitMessage: git.message,
+      gitDirty: git.dirty,
     })
 
     await appendEvent({
