@@ -46,6 +46,8 @@ export type CloudflareTunnel = {
 
 export type PillRunSource = "live" | "capsule"
 
+export type PillDeployTarget = "production" | "preview"
+
 export type PillRun = {
   id: string
   pillId: string
@@ -62,6 +64,8 @@ export type PillRun = {
   error: string | null
   source: PillRunSource | null
   capsuleId: string | null
+  deployTarget: PillDeployTarget | null
+  hostname: string | null
 }
 
 export type RunLog = {
@@ -122,4 +126,5 @@ export type StartPillInput = {
   rotatePorts?: boolean
   useCapsule?: boolean
   capsuleId?: string
+  deployTarget?: PillDeployTarget
 }

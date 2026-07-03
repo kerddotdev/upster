@@ -24,6 +24,10 @@ export type Capsule = {
   sizeBytes: number | null
   fileCount: number | null
   buildDurationMs: number | null
+  previewHostname: string | null
+  previewTunnelId: string | null
+  previewTunnelName: string | null
+  previewDnsRecordId: string | null
   buildLog: string | null
   error: string | null
   builtAt: string | null

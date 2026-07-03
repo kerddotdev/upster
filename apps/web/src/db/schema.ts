@@ -103,6 +103,8 @@ export const pillRuns = sqliteTable("pill_runs", {
   error: text("error"),
   source: text("source"),
   capsuleId: text("capsule_id"),
+  deployTarget: text("deploy_target"),
+  hostname: text("hostname"),
 })
 
 export const capsules = sqliteTable("capsules", {
@@ -125,6 +127,10 @@ export const capsules = sqliteTable("capsules", {
   sizeBytes: integer("size_bytes"),
   fileCount: integer("file_count"),
   buildDurationMs: integer("build_duration_ms"),
+  previewHostname: text("preview_hostname"),
+  previewTunnelId: text("preview_tunnel_id"),
+  previewTunnelName: text("preview_tunnel_name"),
+  previewDnsRecordId: text("preview_dns_record_id"),
   buildLog: text("build_log"),
   error: text("error"),
   builtAt: text("built_at"),

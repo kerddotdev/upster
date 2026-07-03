@@ -205,5 +205,13 @@ export async function ensureDatabase() {
   await client.execute(`DROP TABLE IF EXISTS pill_capsules`)
   await recordMigration("0003_capsule_versions")
 
+  await addColumnIfMissing("pill_runs", "deploy_target TEXT")
+  await addColumnIfMissing("pill_runs", "hostname TEXT")
+  await addColumnIfMissing("capsules", "preview_hostname TEXT")
+  await addColumnIfMissing("capsules", "preview_tunnel_id TEXT")
+  await addColumnIfMissing("capsules", "preview_tunnel_name TEXT")
+  await addColumnIfMissing("capsules", "preview_dns_record_id TEXT")
+  await recordMigration("0004_capsule_previews")
+
   initialized = true
 }

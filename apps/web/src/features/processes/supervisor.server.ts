@@ -10,6 +10,7 @@ import {
   getPillCommand,
   getPillDetail,
   getPillPorts,
+  updateCapsule,
   updatePillStatus,
   updateRun,
   upsertPillPorts,
@@ -20,7 +21,6 @@ import { getUpsterConfig } from "@/config/env.server"
 import { createCloudflareClient } from "@/features/cloudflare/client.server"
 import type {
   CloudflareConfig,
-  CloudflareTunnel,
   PillRun,
   RunLog,
   StartPillInput,
@@ -101,58 +101,51 @@ async function preparePorts(pillId: string, rotatePorts: boolean) {
   }
 }
 
-async function prepareCloudflareTunnel(input: {
+async function prepareTunnel(input: {
   runId: string
-  pillId: string
   appPort: number
   config: CloudflareConfig
+  hostname: string
+  tunnelName: string
+  existingTunnelId?: string | null
+  existingDnsRecordId?: string | null
 }) {
-  const pill = await getPillDetail(input.pillId)
   const client = createCloudflareClient(input.config)
-  const hostname = `${pill.slug}.${input.config.rootDomain}`
-  const tunnelName = pill.tunnel?.tunnelName ?? `upster-${pill.slug}`
 
   await logRun(
     input.runId,
     "system",
-    `Preparing Cloudflare tunnel ${hostname}\n`
+    `Preparing Cloudflare tunnel ${input.hostname}\n`
   )
 
-  const tunnel = pill.tunnel?.tunnelId
-    ? { id: pill.tunnel.tunnelId, name: tunnelName }
-    : await client.getOrCreateRemoteTunnel(tunnelName)
+  const tunnel = input.existingTunnelId
+    ? { id: input.existingTunnelId, name: input.tunnelName }
+    : await client.getOrCreateRemoteTunnel(input.tunnelName)
 
   await client.updateTunnelConfig({
     tunnelId: tunnel.id,
-    hostname,
+    hostname: input.hostname,
     appPort: input.appPort,
   })
 
   const dnsRecord = await client.ensureDnsRecord({
-    hostname,
+    hostname: input.hostname,
     tunnelId: tunnel.id,
-    existingRecordId: pill.tunnel?.dnsRecordId,
+    existingRecordId: input.existingDnsRecordId,
   })
   const token = await client.fetchTunnelToken(tunnel.id)
-  const record: CloudflareTunnel = {
-    pillId: input.pillId,
-    tunnelId: tunnel.id,
-    tunnelName: tunnel.name,
-    hostname,
-    dnsRecordId: dnsRecord.id,
-    configStatus: "synced",
-  }
 
-  await upsertTunnel(record)
   await logRun(
     input.runId,
     "system",
-    `Cloudflare tunnel ready for ${hostname}\n`
+    `Cloudflare tunnel ready for ${input.hostname}\n`
   )
 
   return {
     token,
-    tunnel: record,
+    tunnelId: tunnel.id,
+    tunnelName: tunnel.name,
+    dnsRecordId: dnsRecord.id,
   }
 }
 
@@ -273,10 +266,10 @@ export async function startPillRuntime(input: StartPillInput) {
 
   let runCwd = command.cwd
   let runSource: "live" | "capsule" = "live"
-  let runCapsuleId: string | null = null
+  let capsule: Awaited<ReturnType<typeof getCapsuleById>> = null
 
   if (input.useCapsule || input.capsuleId) {
-    const capsule = input.capsuleId
+    capsule = input.capsuleId
       ? await getCapsuleById(input.capsuleId)
       : await getLatestReadyCapsule(input.pillId)
 
@@ -290,10 +283,31 @@ export async function startPillRuntime(input: StartPillInput) {
 
     runCwd = resolveCapsuleCwd(pill.repoPath, command.cwd, capsule.path)
     runSource = "capsule"
-    runCapsuleId = capsule.id
+  }
+
+  const deployTarget = input.deployTarget ?? "production"
+
+  if (deployTarget === "preview" && !capsule) {
+    throw new Error("Preview deploys require a capsule.")
   }
 
   const cloudflareConfig = await requireUnlockedCloudflareConfig()
+
+  const preview = deployTarget === "preview"
+  const shortId = capsule ? capsule.id.slice(0, 8) : ""
+  const servedHostname = preview
+    ? `${pill.slug}-${shortId}.${cloudflareConfig.rootDomain}`
+    : `${pill.slug}.${cloudflareConfig.rootDomain}`
+  const tunnelName = preview
+    ? (capsule?.previewTunnelName ?? `upster-${pill.slug}-${shortId}`)
+    : (pill.tunnel?.tunnelName ?? `upster-${pill.slug}`)
+  const existingTunnelId = preview
+    ? capsule?.previewTunnelId
+    : pill.tunnel?.tunnelId
+  const existingDnsRecordId = preview
+    ? capsule?.previewDnsRecordId
+    : pill.tunnel?.dnsRecordId
+
   const ports = await preparePorts(input.pillId, input.rotatePorts ?? false)
 
   await updatePillStatus(input.pillId, "starting")
@@ -311,7 +325,9 @@ export async function startPillRuntime(input: StartPillInput) {
     exitCode: null,
     error: null,
     source: runSource,
-    capsuleId: runCapsuleId,
+    capsuleId: capsule?.id ?? null,
+    deployTarget,
+    hostname: servedHostname,
   })
 
   const managed: ManagedRun = {
@@ -360,12 +376,35 @@ export async function startPillRuntime(input: StartPillInput) {
       throw new Error(describeAppFailure(earlyExitCode, appDiag))
     }
 
-    const { token } = await prepareCloudflareTunnel({
+    const tunnelResult = await prepareTunnel({
       runId: run.id,
-      pillId: input.pillId,
       appPort: ports.appPort,
       config: cloudflareConfig,
+      hostname: servedHostname,
+      tunnelName,
+      existingTunnelId,
+      existingDnsRecordId,
     })
+
+    if (preview && capsule) {
+      await updateCapsule(capsule.id, {
+        previewHostname: servedHostname,
+        previewTunnelId: tunnelResult.tunnelId,
+        previewTunnelName: tunnelResult.tunnelName,
+        previewDnsRecordId: tunnelResult.dnsRecordId,
+      })
+    } else {
+      await upsertTunnel({
+        pillId: input.pillId,
+        tunnelId: tunnelResult.tunnelId,
+        tunnelName: tunnelResult.tunnelName,
+        hostname: servedHostname,
+        dnsRecordId: tunnelResult.dnsRecordId,
+        configStatus: "synced",
+      })
+    }
+
+    const token = tunnelResult.token
 
     if (appExitCode !== undefined || appProcess.exitCode !== null) {
       throw new Error(

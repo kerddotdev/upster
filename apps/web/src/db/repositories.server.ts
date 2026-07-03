@@ -62,6 +62,8 @@ function parseRun(row: typeof pillRuns.$inferSelect): PillRun {
     status: row.status as PillStatus,
     source: row.source as PillRun["source"],
     capsuleId: row.capsuleId,
+    deployTarget: row.deployTarget as PillRun["deployTarget"],
+    hostname: row.hostname,
   }
 }
 
@@ -86,6 +88,10 @@ function parseCapsule(row: typeof capsules.$inferSelect): Capsule {
     sizeBytes: row.sizeBytes,
     fileCount: row.fileCount,
     buildDurationMs: row.buildDurationMs,
+    previewHostname: row.previewHostname,
+    previewTunnelId: row.previewTunnelId,
+    previewTunnelName: row.previewTunnelName,
+    previewDnsRecordId: row.previewDnsRecordId,
     buildLog: row.buildLog,
     error: row.error,
     builtAt: row.builtAt,
@@ -172,7 +178,7 @@ export async function listPills() {
       ...parsePill(pillRow),
       appPort: ports?.appPort ?? null,
       metricsPort: ports?.metricsPort ?? null,
-      hostname: tunnel?.hostname ?? null,
+      hostname: activeRun?.hostname ?? tunnel?.hostname ?? null,
       activeRun: activeRun ? parseRun(activeRun) : null,
     }
   })
@@ -217,7 +223,7 @@ export async function getPillDetail(pillId: string): Promise<PillDetail> {
     ...parsePill(pillRow),
     appPort: ports?.appPort ?? null,
     metricsPort: ports?.metricsPort ?? null,
-    hostname: tunnel?.hostname ?? null,
+    hostname: activeRun?.hostname ?? tunnel?.hostname ?? null,
     activeRun: activeRun ? parseRun(activeRun) : null,
     commands: commandRows.map(parseCommand),
     tunnel: tunnel ? parseTunnel(tunnel) : null,
@@ -395,6 +401,10 @@ export async function updateCapsule(
     gitDirty?: boolean | null
     label?: string | null
     pinned?: boolean
+    previewHostname?: string | null
+    previewTunnelId?: string | null
+    previewTunnelName?: string | null
+    previewDnsRecordId?: string | null
   }
 ) {
   await ensureDatabase()
@@ -421,6 +431,18 @@ export async function updateCapsule(
         : {}),
       ...(patch.label !== undefined ? { label: patch.label } : {}),
       ...(patch.pinned !== undefined ? { pinned: patch.pinned ? 1 : 0 } : {}),
+      ...(patch.previewHostname !== undefined
+        ? { previewHostname: patch.previewHostname }
+        : {}),
+      ...(patch.previewTunnelId !== undefined
+        ? { previewTunnelId: patch.previewTunnelId }
+        : {}),
+      ...(patch.previewTunnelName !== undefined
+        ? { previewTunnelName: patch.previewTunnelName }
+        : {}),
+      ...(patch.previewDnsRecordId !== undefined
+        ? { previewDnsRecordId: patch.previewDnsRecordId }
+        : {}),
       updatedAt: now(),
     })
     .where(eq(capsules.id, id))
