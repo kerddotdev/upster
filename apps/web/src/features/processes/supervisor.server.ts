@@ -156,7 +156,7 @@ async function prepareCloudflareTunnel(input: {
   }
 }
 
-type ProcessDiagnostics = { spawnError: string | null; stderrTail: string }
+type ProcessDiagnostics = { spawnError: string | null }
 
 function spawnLoggedProcess(input: {
   runId: string
@@ -172,15 +172,13 @@ function spawnLoggedProcess(input: {
     stdio: "pipe",
   })
 
-  const diag: ProcessDiagnostics = { spawnError: null, stderrTail: "" }
+  const diag: ProcessDiagnostics = { spawnError: null }
 
   child.stdout.on("data", (chunk: Buffer) => {
     void logRun(input.runId, "stdout", chunk.toString())
   })
   child.stderr.on("data", (chunk: Buffer) => {
-    const text = chunk.toString()
-    diag.stderrTail = (diag.stderrTail + text).slice(-2000)
-    void logRun(input.runId, "stderr", text)
+    void logRun(input.runId, "stderr", chunk.toString())
   })
   child.on("error", (error) => {
     diag.spawnError = error.message
@@ -236,9 +234,7 @@ function describeAppFailure(code: number | null, diag: ProcessDiagnostics) {
     return `Could not start the app process: ${diag.spawnError}.`
   }
 
-  const base = `App process exited with code ${code ?? "unknown"}`
-  const tail = diag.stderrTail.trim()
-  return tail ? `${base}. Last output:\n${tail.slice(-800)}` : `${base}.`
+  return `App process exited with code ${code ?? "unknown"}. See the diagnostics for the full output.`
 }
 
 function scheduleExpiry(run: PillRun, managed: ManagedRun) {
