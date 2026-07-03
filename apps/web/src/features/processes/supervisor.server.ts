@@ -5,6 +5,8 @@ import {
   appendRunLog,
   createRun,
   getActiveRun,
+  getCapsuleById,
+  getLatestReadyCapsule,
   getPillCommand,
   getPillDetail,
   getPillPorts,
@@ -13,6 +15,7 @@ import {
   upsertPillPorts,
   upsertTunnel,
 } from "@/db/repositories.server"
+import { resolveCapsuleCwd } from "@/features/capsules/detect"
 import { getUpsterConfig } from "@/config/env.server"
 import { createCloudflareClient } from "@/features/cloudflare/client.server"
 import type {
@@ -256,6 +259,28 @@ export async function startPillRuntime(input: StartPillInput) {
 
   assertAllowedCommand(command.argv, getUpsterConfig().allowedCommands)
 
+  let runCwd = command.cwd
+  let runSource: "live" | "capsule" = "live"
+  let runCapsuleId: string | null = null
+
+  if (input.useCapsule || input.capsuleId) {
+    const capsule = input.capsuleId
+      ? await getCapsuleById(input.capsuleId)
+      : await getLatestReadyCapsule(input.pillId)
+
+    if (!capsule || capsule.status !== "ready") {
+      throw new Error("No ready capsule to start. Build a capsule first.")
+    }
+
+    if (capsule.pillId !== input.pillId) {
+      throw new Error("Capsule does not belong to this pill.")
+    }
+
+    runCwd = resolveCapsuleCwd(pill.repoPath, command.cwd, capsule.path)
+    runSource = "capsule"
+    runCapsuleId = capsule.id
+  }
+
   const cloudflareConfig = await requireUnlockedCloudflareConfig()
   const ports = await preparePorts(input.pillId, input.rotatePorts ?? false)
 
@@ -273,6 +298,8 @@ export async function startPillRuntime(input: StartPillInput) {
     stopReason: null,
     exitCode: null,
     error: null,
+    source: runSource,
+    capsuleId: runCapsuleId,
   })
 
   const managed: ManagedRun = {
@@ -289,14 +316,16 @@ export async function startPillRuntime(input: StartPillInput) {
     await logRun(
       run.id,
       "system",
-      `Starting ${pill.name} on ${ports.appPort}\n`
+      `Starting ${pill.name} on ${ports.appPort} from ${
+        runSource === "capsule" ? "capsule" : "live source"
+      }\n`
     )
 
     const appProcess = spawnLoggedProcess({
       runId: run.id,
       command: command.argv[0],
       args: command.argv.slice(1),
-      cwd: command.cwd,
+      cwd: runCwd,
       env: buildProcessEnv(command, ports.appPort),
       streamName: "App process",
     })

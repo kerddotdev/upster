@@ -8,6 +8,7 @@ import {
   accessSessions,
   adminUsers,
   appSettings,
+  capsules,
   cloudflareTunnels,
   events,
   pillCommands,
@@ -31,6 +32,7 @@ import type {
   RunLog,
   UpdatePillInput,
 } from "@/features/pills/types"
+import type { Capsule } from "@/features/capsules/types"
 
 function now() {
   return new Date().toISOString()
@@ -59,6 +61,37 @@ function parseRun(row: typeof pillRuns.$inferSelect): PillRun {
   return {
     ...row,
     status: row.status as PillStatus,
+    source: row.source as PillRun["source"],
+    capsuleId: row.capsuleId,
+  }
+}
+
+function parseCapsule(row: typeof capsules.$inferSelect): Capsule {
+  return {
+    id: row.id,
+    pillId: row.pillId,
+    status: row.status as Capsule["status"],
+    path: row.path,
+    sourcePath: row.sourcePath,
+    includeNodeModules: row.includeNodeModules === 1,
+    installDeps: row.installDeps === 1,
+    packageManager: row.packageManager as Capsule["packageManager"],
+    label: row.label,
+    pinned: row.pinned === 1,
+    git: {
+      commit: row.gitCommit,
+      branch: row.gitBranch,
+      message: row.gitMessage,
+      dirty: row.gitDirty === null ? null : row.gitDirty === 1,
+    },
+    sizeBytes: row.sizeBytes,
+    fileCount: row.fileCount,
+    buildDurationMs: row.buildDurationMs,
+    buildLog: row.buildLog,
+    error: row.error,
+    builtAt: row.builtAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   }
 }
 
@@ -288,6 +321,126 @@ export async function createRun(run: Omit<PillRun, "id" | "startedAt">) {
 export async function updateRun(runId: string, patch: Partial<PillRun>) {
   await ensureDatabase()
   await db.update(pillRuns).set(patch).where(eq(pillRuns.id, runId))
+}
+
+export async function createCapsule(input: {
+  id: string
+  pillId: string
+  status: Capsule["status"]
+  path: string
+  sourcePath: string
+  includeNodeModules: boolean
+  installDeps: boolean
+  packageManager: Capsule["packageManager"]
+  label: string | null
+}) {
+  await ensureDatabase()
+  const ts = now()
+
+  await db.insert(capsules).values({
+    id: input.id,
+    pillId: input.pillId,
+    status: input.status,
+    path: input.path,
+    sourcePath: input.sourcePath,
+    includeNodeModules: input.includeNodeModules ? 1 : 0,
+    installDeps: input.installDeps ? 1 : 0,
+    packageManager: input.packageManager ?? null,
+    label: input.label,
+    pinned: 0,
+    createdAt: ts,
+    updatedAt: ts,
+  })
+
+  return getCapsuleById(input.id)
+}
+
+export async function updateCapsule(
+  id: string,
+  patch: {
+    status?: Capsule["status"]
+    buildLog?: string | null
+    error?: string | null
+    builtAt?: string | null
+    sizeBytes?: number | null
+    fileCount?: number | null
+    buildDurationMs?: number | null
+    gitCommit?: string | null
+    gitBranch?: string | null
+    gitMessage?: string | null
+    gitDirty?: boolean | null
+    label?: string | null
+    pinned?: boolean
+  }
+) {
+  await ensureDatabase()
+
+  await db
+    .update(capsules)
+    .set({
+      ...(patch.status !== undefined ? { status: patch.status } : {}),
+      ...(patch.buildLog !== undefined ? { buildLog: patch.buildLog } : {}),
+      ...(patch.error !== undefined ? { error: patch.error } : {}),
+      ...(patch.builtAt !== undefined ? { builtAt: patch.builtAt } : {}),
+      ...(patch.sizeBytes !== undefined ? { sizeBytes: patch.sizeBytes } : {}),
+      ...(patch.fileCount !== undefined ? { fileCount: patch.fileCount } : {}),
+      ...(patch.buildDurationMs !== undefined
+        ? { buildDurationMs: patch.buildDurationMs }
+        : {}),
+      ...(patch.gitCommit !== undefined ? { gitCommit: patch.gitCommit } : {}),
+      ...(patch.gitBranch !== undefined ? { gitBranch: patch.gitBranch } : {}),
+      ...(patch.gitMessage !== undefined
+        ? { gitMessage: patch.gitMessage }
+        : {}),
+      ...(patch.gitDirty !== undefined
+        ? { gitDirty: patch.gitDirty === null ? null : patch.gitDirty ? 1 : 0 }
+        : {}),
+      ...(patch.label !== undefined ? { label: patch.label } : {}),
+      ...(patch.pinned !== undefined ? { pinned: patch.pinned ? 1 : 0 } : {}),
+      updatedAt: now(),
+    })
+    .where(eq(capsules.id, id))
+
+  return getCapsuleById(id)
+}
+
+export async function getCapsuleById(id: string) {
+  await ensureDatabase()
+  const [row] = await db.select().from(capsules).where(eq(capsules.id, id))
+
+  return row ? parseCapsule(row) : null
+}
+
+export async function listCapsules(pillId: string) {
+  await ensureDatabase()
+  const rows = await db
+    .select()
+    .from(capsules)
+    .where(eq(capsules.pillId, pillId))
+    .orderBy(desc(capsules.createdAt))
+
+  return rows.map(parseCapsule)
+}
+
+export async function getLatestReadyCapsule(pillId: string) {
+  await ensureDatabase()
+  const [row] = await db
+    .select()
+    .from(capsules)
+    .where(and(eq(capsules.pillId, pillId), eq(capsules.status, "ready")))
+    .orderBy(desc(capsules.createdAt))
+
+  return row ? parseCapsule(row) : null
+}
+
+export async function deleteCapsuleById(id: string) {
+  await ensureDatabase()
+  await db.delete(capsules).where(eq(capsules.id, id))
+}
+
+export async function deleteCapsulesByPill(pillId: string) {
+  await ensureDatabase()
+  await db.delete(capsules).where(eq(capsules.pillId, pillId))
 }
 
 export async function getRun(runId: string) {

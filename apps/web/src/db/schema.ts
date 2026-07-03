@@ -101,6 +101,39 @@ export const pillRuns = sqliteTable("pill_runs", {
   stopReason: text("stop_reason"),
   exitCode: integer("exit_code"),
   error: text("error"),
+  source: text("source"),
+  capsuleId: text("capsule_id"),
+})
+
+export const capsules = sqliteTable("capsules", {
+  id: text("id").primaryKey(),
+  pillId: text("pill_id")
+    .notNull()
+    .references(() => pills.id, { onDelete: "cascade" }),
+  status: text("status").notNull(),
+  path: text("path").notNull(),
+  sourcePath: text("source_path").notNull(),
+  includeNodeModules: integer("include_node_modules").notNull(),
+  installDeps: integer("install_deps").notNull(),
+  packageManager: text("package_manager"),
+  label: text("label"),
+  pinned: integer("pinned").notNull().default(0),
+  gitCommit: text("git_commit"),
+  gitBranch: text("git_branch"),
+  gitMessage: text("git_message"),
+  gitDirty: integer("git_dirty"),
+  sizeBytes: integer("size_bytes"),
+  fileCount: integer("file_count"),
+  buildDurationMs: integer("build_duration_ms"),
+  buildLog: text("build_log"),
+  error: text("error"),
+  builtAt: text("built_at"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
 })
 
 export const runLogs = sqliteTable("run_logs", {

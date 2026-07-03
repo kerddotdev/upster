@@ -7,6 +7,7 @@ import {
   listPills,
   updatePillRecord,
 } from "@/db/repositories.server"
+import { removeAllCapsules } from "@/features/capsules/capsule.server"
 import { createCloudflareClient } from "@/features/cloudflare/client.server"
 import type {
   CloudflareConfig,
@@ -75,6 +76,7 @@ export async function deletePill(input: { pillId: string }) {
     ? await cleanupCloudflareResources(input.pillId, cloudflareConfig)
     : "skipped"
 
+  await removeAllCapsules(input.pillId)
   await deletePillRecord(input.pillId)
 
   return { cloudflareCleanup }
