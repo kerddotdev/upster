@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Link, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import {
+  ChevronDownIcon,
   ExternalLinkIcon,
   RotateCwIcon,
   SquareIcon,
@@ -22,8 +23,23 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useCloudflareVault } from "@/features/secrets/cloudflare-vault-provider"
+import {
+  buildCapsuleFn,
+  getCapsuleInfoFn,
+} from "@/features/capsules/capsule.functions"
+import {
+  CapsuleDialog,
+  type CapsuleBuildOptions,
+} from "@/features/capsules/components/capsule-dialog"
 import {
   deletePillFn,
   startPillFn,
@@ -33,6 +49,11 @@ import type { PillListItem } from "@/features/pills/types"
 
 function getErrorMessage(err: unknown, fallback: string) {
   return err instanceof Error ? err.message : fallback
+}
+
+type CapsuleAction = {
+  confirmLabel: string
+  run: (options: CapsuleBuildOptions) => Promise<void>
 }
 
 export function PillActions({
@@ -47,11 +68,23 @@ export function PillActions({
   const startPill = useServerFn(startPillFn)
   const stopPill = useServerFn(stopPillFn)
   const deletePill = useServerFn(deletePillFn)
+  const buildCapsule = useServerFn(buildCapsuleFn)
+  const getCapsuleInfo = useServerFn(getCapsuleInfoFn)
   const [pending, setPending] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [capsuleAction, setCapsuleAction] = useState<CapsuleAction | null>(null)
   const isRunning = Boolean(pill.activeRun)
 
-  async function runStart() {
+  function ensureUnlocked(action: () => void) {
+    if (isUnlocked) {
+      action()
+      return
+    }
+
+    requestUnlock({ onUnlocked: action })
+  }
+
+  async function runStart(useCapsule: boolean) {
     setPending(true)
     try {
       await startPill({
@@ -60,6 +93,7 @@ export function PillActions({
           commandName: pill.defaultEnv,
           expiresAt: expiresAt ?? undefined,
           rotatePorts: false,
+          useCapsule,
         },
       })
       await router.invalidate()
@@ -70,47 +104,168 @@ export function PillActions({
     }
   }
 
-  return (
-    <div className="flex flex-wrap justify-end gap-2">
-      {isRunning ? (
-        <Button
-          variant="destructive"
-          onClick={async () => {
-            setPending(true)
-            try {
-              await stopPill({
-                data: {
-                  pillId: pill.id,
-                  runId: pill.activeRun?.id,
-                },
-              })
-              await router.invalidate()
-            } catch (err) {
-              toast.error(getErrorMessage(err, "Failed to stop pill."))
-            } finally {
-              setPending(false)
-            }
-          }}
-          disabled={pending}
-        >
-          <SquareIcon data-icon="inline-start" />
-          Stop
-        </Button>
-      ) : (
-        <Button
-          onClick={() => {
-            if (isUnlocked) {
-              void runStart()
-              return
-            }
+  async function startCapsule() {
+    setPending(true)
+    try {
+      const info = await getCapsuleInfo({ data: { pillId: pill.id } })
+      const hasReady = info.capsules.some(
+        (capsule) => capsule.status === "ready"
+      )
 
-            requestUnlock({ onUnlocked: () => void runStart() })
-          }}
-          disabled={pending}
-        >
-          <RotateCwIcon data-icon="inline-start" />
-          Start
-        </Button>
+      if (hasReady) {
+        await runStart(true)
+        return
+      }
+
+      setCapsuleAction({
+        confirmLabel: "Build and start",
+        run: async (options) => {
+          await buildCapsule({ data: { pillId: pill.id, ...options } })
+          await startPill({
+            data: {
+              pillId: pill.id,
+              commandName: pill.defaultEnv,
+              expiresAt: expiresAt ?? undefined,
+              rotatePorts: false,
+              useCapsule: true,
+            },
+          })
+          toast.success("Capsule built and started.")
+          await router.invalidate()
+        },
+      })
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to start capsule."))
+    } finally {
+      setPending(false)
+    }
+  }
+
+  function openRefreshDialog() {
+    setCapsuleAction({
+      confirmLabel: "Build capsule",
+      run: async (options) => {
+        await buildCapsule({ data: { pillId: pill.id, ...options } })
+        toast.success("Capsule built.")
+        await router.invalidate()
+      },
+    })
+  }
+
+  function openRefreshAndRestart() {
+    setCapsuleAction({
+      confirmLabel: "Refresh and restart",
+      run: async (options) => {
+        await buildCapsule({ data: { pillId: pill.id, ...options } })
+        await stopPill({
+          data: { pillId: pill.id, runId: pill.activeRun?.id },
+        })
+        await startPill({
+          data: {
+            pillId: pill.id,
+            commandName: pill.defaultEnv,
+            expiresAt: expiresAt ?? undefined,
+            rotatePorts: false,
+            useCapsule: true,
+          },
+        })
+        toast.success("Capsule refreshed and restarted.")
+        await router.invalidate()
+      },
+    })
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {isRunning && pill.activeRun?.source ? (
+        <Badge variant="outline" className="capitalize">
+          {pill.activeRun.source}
+        </Badge>
+      ) : null}
+      {isRunning ? (
+        <div className="inline-flex">
+          <Button
+            variant="destructive"
+            className="rounded-r-none"
+            onClick={async () => {
+              setPending(true)
+              try {
+                await stopPill({
+                  data: {
+                    pillId: pill.id,
+                    runId: pill.activeRun?.id,
+                  },
+                })
+                await router.invalidate()
+              } catch (err) {
+                toast.error(getErrorMessage(err, "Failed to stop pill."))
+              } finally {
+                setPending(false)
+              }
+            }}
+            disabled={pending}
+          >
+            <SquareIcon data-icon="inline-start" />
+            Stop
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="rounded-l-none border-l border-destructive/20"
+                  disabled={pending}
+                  aria-label="More run options"
+                />
+              }
+            >
+              <ChevronDownIcon />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => ensureUnlocked(openRefreshAndRestart)}
+              >
+                Refresh capsule...
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ) : (
+        <div className="inline-flex">
+          <Button
+            className="rounded-r-none"
+            onClick={() => ensureUnlocked(() => void runStart(false))}
+            disabled={pending}
+          >
+            <RotateCwIcon data-icon="inline-start" />
+            Start
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  size="icon"
+                  className="rounded-l-none border-l border-primary-foreground/20"
+                  disabled={pending}
+                  aria-label="More start options"
+                />
+              }
+            >
+              <ChevronDownIcon />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => ensureUnlocked(() => void startCapsule())}
+              >
+                Start capsule
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={openRefreshDialog}>
+                Refresh capsule...
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       )}
       <Button
         variant="outline"
@@ -128,9 +283,10 @@ export function PillActions({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {pill.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the pill, command profile, ports, runs, and local log
-              records. When the Cloudflare vault is unlocked, its tunnel and DNS
-              record are removed too; otherwise they are left in Cloudflare.
+              This removes the pill, command profile, ports, runs, capsule copy,
+              and local log records. When the Cloudflare vault is unlocked, its
+              tunnel and DNS record are removed too; otherwise they are left in
+              Cloudflare.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -167,6 +323,19 @@ export function PillActions({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {capsuleAction ? (
+        <CapsuleDialog
+          pillId={pill.id}
+          open={Boolean(capsuleAction)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setCapsuleAction(null)
+            }
+          }}
+          confirmLabel={capsuleAction.confirmLabel}
+          onConfirm={capsuleAction.run}
+        />
+      ) : null}
     </div>
   )
 }
