@@ -27,6 +27,8 @@ export const Route = createFileRoute("/api/cli/v1/pills/$pillId/start")({
             commandName: data.commandName ?? pill.defaultEnv,
             expiresAt: data.expiresAt,
             rotatePorts: data.rotatePorts,
+            useCapsule: data.useCapsule,
+            capsuleId: data.capsuleId,
           })
         }, id)
       },

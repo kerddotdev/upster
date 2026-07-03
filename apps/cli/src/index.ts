@@ -477,7 +477,40 @@ async function dispatch(command: Array<string>, options: CliOptions, io: Io) {
         commandName: flags.command,
         expiresAt: flags.expiresAt,
         rotatePorts: flags.rotatePorts === "true" ? true : undefined,
+        useCapsule:
+          flags.useCapsule === "true" || flags.capsule ? true : undefined,
+        capsuleId: flags.capsule,
       }
+    )
+  }
+
+  if (root === "capsules" && sub === "list" && third) {
+    return apiRequest(
+      "GET",
+      `/api/cli/v1/pills/${encodeURIComponent(third)}/capsules`,
+      options
+    )
+  }
+
+  if (root === "capsules" && sub === "build" && third) {
+    const flags = parseCommandFlags(command.slice(3))
+    return apiRequest(
+      "POST",
+      `/api/cli/v1/pills/${encodeURIComponent(third)}/capsules`,
+      options,
+      {
+        includeNodeModules: flags.nodeModules === "true",
+        installDeps: flags.install === "true",
+        label: flags.label,
+      }
+    )
+  }
+
+  if (root === "capsules" && sub === "delete" && third) {
+    return apiRequest(
+      "DELETE",
+      `/api/cli/v1/capsules/${encodeURIComponent(third)}`,
+      options
     )
   }
 

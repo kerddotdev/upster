@@ -52,10 +52,23 @@ export const createPillSchema = z.object({
 export const updatePillSchema = z.object({
   name: z.string().min(1),
   defaultEnv: z.string().min(1),
+  commandName: z.string().min(1).optional(),
+  command: z.string().min(1).optional(),
+  cwd: z.string().optional(),
+  env: z.record(z.string(), z.string()).optional(),
+  healthcheckPath: z.string().nullable().optional(),
 })
 
 export const startPillSchema = z.object({
   commandName: z.string().min(1).optional(),
   expiresAt: z.string().optional(),
   rotatePorts: z.boolean().optional(),
+  useCapsule: z.boolean().optional(),
+  capsuleId: z.string().optional(),
+})
+
+export const buildCapsuleSchema = z.object({
+  includeNodeModules: z.boolean(),
+  installDeps: z.boolean(),
+  label: z.string().optional(),
 })

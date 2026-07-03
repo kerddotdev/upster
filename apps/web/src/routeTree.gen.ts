@@ -31,6 +31,7 @@ import { Route as ApiCliV1VaultSaveRouteImport } from './routes/api/cli/v1/vault
 import { Route as ApiCliV1VaultLockRouteImport } from './routes/api/cli/v1/vault/lock'
 import { Route as ApiCliV1RunsRunIdRouteImport } from './routes/api/cli/v1/runs/$runId'
 import { Route as ApiCliV1PillsPillIdRouteImport } from './routes/api/cli/v1/pills/$pillId'
+import { Route as ApiCliV1CapsulesCapsuleIdRouteImport } from './routes/api/cli/v1/capsules/$capsuleId'
 import { Route as ApiCliV1AuthSetupRouteImport } from './routes/api/cli/v1/auth/setup'
 import { Route as ApiCliV1AuthLogoutRouteImport } from './routes/api/cli/v1/auth/logout'
 import { Route as ApiCliV1AuthLoginRouteImport } from './routes/api/cli/v1/auth/login'
@@ -39,6 +40,7 @@ import { Route as ApiCliV1RunsRunIdMetricsRouteImport } from './routes/api/cli/v
 import { Route as ApiCliV1RunsRunIdLogsRouteImport } from './routes/api/cli/v1/runs/$runId/logs'
 import { Route as ApiCliV1PillsPillIdStopRouteImport } from './routes/api/cli/v1/pills/$pillId/stop'
 import { Route as ApiCliV1PillsPillIdStartRouteImport } from './routes/api/cli/v1/pills/$pillId/start'
+import { Route as ApiCliV1PillsPillIdCapsulesRouteImport } from './routes/api/cli/v1/pills/$pillId/capsules'
 import { Route as ApiCliV1RunsRunIdLogsStreamRouteImport } from './routes/api/cli/v1/runs/$runId/logs/stream'
 
 const SetupRoute = SetupRouteImport.update({
@@ -152,6 +154,12 @@ const ApiCliV1PillsPillIdRoute = ApiCliV1PillsPillIdRouteImport.update({
   path: '/$pillId',
   getParentRoute: () => ApiCliV1PillsRoute,
 } as any)
+const ApiCliV1CapsulesCapsuleIdRoute =
+  ApiCliV1CapsulesCapsuleIdRouteImport.update({
+    id: '/api/cli/v1/capsules/$capsuleId',
+    path: '/api/cli/v1/capsules/$capsuleId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiCliV1AuthSetupRoute = ApiCliV1AuthSetupRouteImport.update({
   id: '/api/cli/v1/auth/setup',
   path: '/api/cli/v1/auth/setup',
@@ -195,6 +203,12 @@ const ApiCliV1PillsPillIdStartRoute =
     path: '/start',
     getParentRoute: () => ApiCliV1PillsPillIdRoute,
   } as any)
+const ApiCliV1PillsPillIdCapsulesRoute =
+  ApiCliV1PillsPillIdCapsulesRouteImport.update({
+    id: '/capsules',
+    path: '/capsules',
+    getParentRoute: () => ApiCliV1PillsPillIdRoute,
+  } as any)
 const ApiCliV1RunsRunIdLogsStreamRoute =
   ApiCliV1RunsRunIdLogsStreamRouteImport.update({
     id: '/stream',
@@ -222,12 +236,14 @@ export interface FileRoutesByFullPath {
   '/api/cli/v1/auth/login': typeof ApiCliV1AuthLoginRoute
   '/api/cli/v1/auth/logout': typeof ApiCliV1AuthLogoutRoute
   '/api/cli/v1/auth/setup': typeof ApiCliV1AuthSetupRoute
+  '/api/cli/v1/capsules/$capsuleId': typeof ApiCliV1CapsulesCapsuleIdRoute
   '/api/cli/v1/pills/$pillId': typeof ApiCliV1PillsPillIdRouteWithChildren
   '/api/cli/v1/runs/$runId': typeof ApiCliV1RunsRunIdRouteWithChildren
   '/api/cli/v1/vault/lock': typeof ApiCliV1VaultLockRoute
   '/api/cli/v1/vault/save': typeof ApiCliV1VaultSaveRoute
   '/api/cli/v1/vault/status': typeof ApiCliV1VaultStatusRoute
   '/api/cli/v1/vault/unlock': typeof ApiCliV1VaultUnlockRoute
+  '/api/cli/v1/pills/$pillId/capsules': typeof ApiCliV1PillsPillIdCapsulesRoute
   '/api/cli/v1/pills/$pillId/start': typeof ApiCliV1PillsPillIdStartRoute
   '/api/cli/v1/pills/$pillId/stop': typeof ApiCliV1PillsPillIdStopRoute
   '/api/cli/v1/runs/$runId/logs': typeof ApiCliV1RunsRunIdLogsRouteWithChildren
@@ -255,12 +271,14 @@ export interface FileRoutesByTo {
   '/api/cli/v1/auth/login': typeof ApiCliV1AuthLoginRoute
   '/api/cli/v1/auth/logout': typeof ApiCliV1AuthLogoutRoute
   '/api/cli/v1/auth/setup': typeof ApiCliV1AuthSetupRoute
+  '/api/cli/v1/capsules/$capsuleId': typeof ApiCliV1CapsulesCapsuleIdRoute
   '/api/cli/v1/pills/$pillId': typeof ApiCliV1PillsPillIdRouteWithChildren
   '/api/cli/v1/runs/$runId': typeof ApiCliV1RunsRunIdRouteWithChildren
   '/api/cli/v1/vault/lock': typeof ApiCliV1VaultLockRoute
   '/api/cli/v1/vault/save': typeof ApiCliV1VaultSaveRoute
   '/api/cli/v1/vault/status': typeof ApiCliV1VaultStatusRoute
   '/api/cli/v1/vault/unlock': typeof ApiCliV1VaultUnlockRoute
+  '/api/cli/v1/pills/$pillId/capsules': typeof ApiCliV1PillsPillIdCapsulesRoute
   '/api/cli/v1/pills/$pillId/start': typeof ApiCliV1PillsPillIdStartRoute
   '/api/cli/v1/pills/$pillId/stop': typeof ApiCliV1PillsPillIdStopRoute
   '/api/cli/v1/runs/$runId/logs': typeof ApiCliV1RunsRunIdLogsRouteWithChildren
@@ -289,12 +307,14 @@ export interface FileRoutesById {
   '/api/cli/v1/auth/login': typeof ApiCliV1AuthLoginRoute
   '/api/cli/v1/auth/logout': typeof ApiCliV1AuthLogoutRoute
   '/api/cli/v1/auth/setup': typeof ApiCliV1AuthSetupRoute
+  '/api/cli/v1/capsules/$capsuleId': typeof ApiCliV1CapsulesCapsuleIdRoute
   '/api/cli/v1/pills/$pillId': typeof ApiCliV1PillsPillIdRouteWithChildren
   '/api/cli/v1/runs/$runId': typeof ApiCliV1RunsRunIdRouteWithChildren
   '/api/cli/v1/vault/lock': typeof ApiCliV1VaultLockRoute
   '/api/cli/v1/vault/save': typeof ApiCliV1VaultSaveRoute
   '/api/cli/v1/vault/status': typeof ApiCliV1VaultStatusRoute
   '/api/cli/v1/vault/unlock': typeof ApiCliV1VaultUnlockRoute
+  '/api/cli/v1/pills/$pillId/capsules': typeof ApiCliV1PillsPillIdCapsulesRoute
   '/api/cli/v1/pills/$pillId/start': typeof ApiCliV1PillsPillIdStartRoute
   '/api/cli/v1/pills/$pillId/stop': typeof ApiCliV1PillsPillIdStopRoute
   '/api/cli/v1/runs/$runId/logs': typeof ApiCliV1RunsRunIdLogsRouteWithChildren
@@ -324,12 +344,14 @@ export interface FileRouteTypes {
     | '/api/cli/v1/auth/login'
     | '/api/cli/v1/auth/logout'
     | '/api/cli/v1/auth/setup'
+    | '/api/cli/v1/capsules/$capsuleId'
     | '/api/cli/v1/pills/$pillId'
     | '/api/cli/v1/runs/$runId'
     | '/api/cli/v1/vault/lock'
     | '/api/cli/v1/vault/save'
     | '/api/cli/v1/vault/status'
     | '/api/cli/v1/vault/unlock'
+    | '/api/cli/v1/pills/$pillId/capsules'
     | '/api/cli/v1/pills/$pillId/start'
     | '/api/cli/v1/pills/$pillId/stop'
     | '/api/cli/v1/runs/$runId/logs'
@@ -357,12 +379,14 @@ export interface FileRouteTypes {
     | '/api/cli/v1/auth/login'
     | '/api/cli/v1/auth/logout'
     | '/api/cli/v1/auth/setup'
+    | '/api/cli/v1/capsules/$capsuleId'
     | '/api/cli/v1/pills/$pillId'
     | '/api/cli/v1/runs/$runId'
     | '/api/cli/v1/vault/lock'
     | '/api/cli/v1/vault/save'
     | '/api/cli/v1/vault/status'
     | '/api/cli/v1/vault/unlock'
+    | '/api/cli/v1/pills/$pillId/capsules'
     | '/api/cli/v1/pills/$pillId/start'
     | '/api/cli/v1/pills/$pillId/stop'
     | '/api/cli/v1/runs/$runId/logs'
@@ -390,12 +414,14 @@ export interface FileRouteTypes {
     | '/api/cli/v1/auth/login'
     | '/api/cli/v1/auth/logout'
     | '/api/cli/v1/auth/setup'
+    | '/api/cli/v1/capsules/$capsuleId'
     | '/api/cli/v1/pills/$pillId'
     | '/api/cli/v1/runs/$runId'
     | '/api/cli/v1/vault/lock'
     | '/api/cli/v1/vault/save'
     | '/api/cli/v1/vault/status'
     | '/api/cli/v1/vault/unlock'
+    | '/api/cli/v1/pills/$pillId/capsules'
     | '/api/cli/v1/pills/$pillId/start'
     | '/api/cli/v1/pills/$pillId/stop'
     | '/api/cli/v1/runs/$runId/logs'
@@ -424,6 +450,7 @@ export interface RootRouteChildren {
   ApiCliV1AuthLoginRoute: typeof ApiCliV1AuthLoginRoute
   ApiCliV1AuthLogoutRoute: typeof ApiCliV1AuthLogoutRoute
   ApiCliV1AuthSetupRoute: typeof ApiCliV1AuthSetupRoute
+  ApiCliV1CapsulesCapsuleIdRoute: typeof ApiCliV1CapsulesCapsuleIdRoute
   ApiCliV1RunsRunIdRoute: typeof ApiCliV1RunsRunIdRouteWithChildren
 }
 
@@ -583,6 +610,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCliV1PillsPillIdRouteImport
       parentRoute: typeof ApiCliV1PillsRoute
     }
+    '/api/cli/v1/capsules/$capsuleId': {
+      id: '/api/cli/v1/capsules/$capsuleId'
+      path: '/api/cli/v1/capsules/$capsuleId'
+      fullPath: '/api/cli/v1/capsules/$capsuleId'
+      preLoaderRoute: typeof ApiCliV1CapsulesCapsuleIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cli/v1/auth/setup': {
       id: '/api/cli/v1/auth/setup'
       path: '/api/cli/v1/auth/setup'
@@ -639,6 +673,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCliV1PillsPillIdStartRouteImport
       parentRoute: typeof ApiCliV1PillsPillIdRoute
     }
+    '/api/cli/v1/pills/$pillId/capsules': {
+      id: '/api/cli/v1/pills/$pillId/capsules'
+      path: '/capsules'
+      fullPath: '/api/cli/v1/pills/$pillId/capsules'
+      preLoaderRoute: typeof ApiCliV1PillsPillIdCapsulesRouteImport
+      parentRoute: typeof ApiCliV1PillsPillIdRoute
+    }
     '/api/cli/v1/runs/$runId/logs/stream': {
       id: '/api/cli/v1/runs/$runId/logs/stream'
       path: '/stream'
@@ -650,11 +691,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface ApiCliV1PillsPillIdRouteChildren {
+  ApiCliV1PillsPillIdCapsulesRoute: typeof ApiCliV1PillsPillIdCapsulesRoute
   ApiCliV1PillsPillIdStartRoute: typeof ApiCliV1PillsPillIdStartRoute
   ApiCliV1PillsPillIdStopRoute: typeof ApiCliV1PillsPillIdStopRoute
 }
 
 const ApiCliV1PillsPillIdRouteChildren: ApiCliV1PillsPillIdRouteChildren = {
+  ApiCliV1PillsPillIdCapsulesRoute: ApiCliV1PillsPillIdCapsulesRoute,
   ApiCliV1PillsPillIdStartRoute: ApiCliV1PillsPillIdStartRoute,
   ApiCliV1PillsPillIdStopRoute: ApiCliV1PillsPillIdStopRoute,
 }
@@ -749,6 +792,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCliV1AuthLoginRoute: ApiCliV1AuthLoginRoute,
   ApiCliV1AuthLogoutRoute: ApiCliV1AuthLogoutRoute,
   ApiCliV1AuthSetupRoute: ApiCliV1AuthSetupRoute,
+  ApiCliV1CapsulesCapsuleIdRoute: ApiCliV1CapsulesCapsuleIdRoute,
   ApiCliV1RunsRunIdRoute: ApiCliV1RunsRunIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
