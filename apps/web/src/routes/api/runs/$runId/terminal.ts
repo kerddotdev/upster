@@ -13,7 +13,8 @@ export const Route = createFileRoute("/api/runs/$runId/terminal")({
     handlers: {
       GET: async ({ params, request }) => {
         const session = await verifyRequestSession(
-          request.headers.get("cookie")
+          request.headers.get("cookie"),
+          request.headers.get("host")
         )
         if (!session) {
           return new Response("Unauthorized", { status: 401 })

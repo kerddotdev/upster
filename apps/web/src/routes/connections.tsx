@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import {
@@ -61,7 +61,6 @@ import {
   revokeConnectionFn,
   revokePairingLinkFn,
 } from "@/features/connections/connection.functions"
-import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/connections")({
   loader: loadConnectionsPage,
@@ -82,14 +81,6 @@ type LoaderData = Awaited<ReturnType<typeof loadConnectionsPage>>
 type ConnectionRow = LoaderData["connections"][number]
 type PairingLinkRow = LoaderData["pairingLinks"][number]
 type EndpointRow = LoaderData["endpoints"][number]
-type Reachability = "unknown" | "checking" | "reachable" | "unreachable"
-
-const reachabilityLabels: Record<Reachability, string> = {
-  unknown: "Unknown",
-  checking: "Checking",
-  reachable: "Reachable",
-  unreachable: "Not reached",
-}
 
 function ConnectionsPage() {
   const { connections, pairingLinks, endpoints } = Route.useLoaderData()
@@ -98,7 +89,6 @@ function ConnectionsPage() {
   const renameConnection = useServerFn(renameConnectionFn)
   const revokeConnection = useServerFn(revokeConnectionFn)
   const now = useNow()
-  const reachability = useEndpointReachability(endpoints)
   const [pendingPairingLinkId, setPendingPairingLinkId] = useState<
     string | null
   >(null)
@@ -147,11 +137,9 @@ function ConnectionsPage() {
       <div className="flex flex-col gap-1">
         <h1 className="text-xl font-medium">Connections</h1>
         <p className="text-sm text-muted-foreground">
-          Pair trusted browsers and choose how they reach this Upster instance.
+          Pair trusted browsers and manage their permanent access.
         </p>
       </div>
-
-      <EndpointsCard endpoints={endpoints} reachability={reachability} />
 
       <PairingCard
         endpoints={endpoints}
@@ -168,84 +156,6 @@ function ConnectionsPage() {
         onRevoke={handleRevokeConnection}
       />
     </div>
-  )
-}
-
-function EndpointsCard({
-  endpoints,
-  reachability,
-}: {
-  endpoints: Array<EndpointRow>
-  reachability: Record<string, Reachability>
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Endpoints</CardTitle>
-        <CardDescription>
-          Pairing links can be copied for any reachable origin.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Endpoint</TableHead>
-              <TableHead>Origin</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-20 text-right">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {endpoints.map((endpoint) => {
-              const status = endpoint.origin
-                ? (reachability[endpoint.origin] ?? "unknown")
-                : "unknown"
-
-              return (
-                <TableRow key={endpoint.id}>
-                  <TableCell>
-                    <div className="flex flex-col gap-1">
-                      <div className="font-medium">{endpoint.label}</div>
-                      <EndpointHints endpoint={endpoint} />
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {endpoint.origin ? (
-                      <code className="block max-w-[32rem] truncate rounded bg-muted px-1.5 py-0.5 font-mono text-[0.6875rem]">
-                        {endpoint.origin}
-                      </code>
-                    ) : (
-                      <span className="text-muted-foreground">
-                        Not configured
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <ReachabilityBadge value={status} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      disabled={!endpoint.origin}
-                      onClick={() => {
-                        if (endpoint.origin) {
-                          void copyText(endpoint.origin, "Endpoint copied.")
-                        }
-                      }}
-                    >
-                      <CopyIcon />
-                      <span className="sr-only">Copy endpoint</span>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
   )
 }
 
@@ -270,23 +180,6 @@ function EndpointHints({ endpoint }: { endpoint: EndpointRow }) {
       {hints.map((hint) => (
         <span key={hint}>{hint}</span>
       ))}
-    </div>
-  )
-}
-
-function ReachabilityBadge({ value }: { value: Reachability }) {
-  return (
-    <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-      <span
-        className={cn(
-          "size-2 rounded-full",
-          value === "reachable" && "bg-emerald-500",
-          value === "checking" && "bg-amber-500",
-          value === "unreachable" && "bg-destructive",
-          value === "unknown" && "bg-muted-foreground/40"
-        )}
-      />
-      {reachabilityLabels[value]}
     </div>
   )
 }
@@ -814,68 +707,6 @@ function useNow() {
   }, [])
 
   return now
-}
-
-function useEndpointReachability(endpoints: Array<EndpointRow>) {
-  const [reachability, setReachability] = useState<
-    Record<string, Reachability>
-  >({})
-  const origins = useMemo(
-    () =>
-      endpoints.flatMap((endpoint) =>
-        endpoint.origin ? [endpoint.origin] : []
-      ),
-    [endpoints]
-  )
-
-  useEffect(() => {
-    let cancelled = false
-
-    setReachability((current) => {
-      const next: Record<string, Reachability> = {}
-      for (const origin of origins) {
-        next[origin] = current[origin] ?? "checking"
-      }
-      return next
-    })
-
-    for (const origin of origins) {
-      const signal = timeoutSignal(3000)
-      fetch(`${origin}/login`, { mode: "no-cors", signal })
-        .then(() => {
-          if (!cancelled) {
-            setReachability((current) => ({
-              ...current,
-              [origin]: "reachable",
-            }))
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setReachability((current) => ({
-              ...current,
-              [origin]: "unreachable",
-            }))
-          }
-        })
-    }
-
-    return () => {
-      cancelled = true
-    }
-  }, [origins])
-
-  return reachability
-}
-
-function timeoutSignal(ms: number) {
-  if ("timeout" in AbortSignal) {
-    return AbortSignal.timeout(ms)
-  }
-
-  const controller = new AbortController()
-  window.setTimeout(() => controller.abort(), ms)
-  return controller.signal
 }
 
 function buildPairingUrl(origin: string, token: string) {

@@ -8,7 +8,8 @@ export const Route = createFileRoute("/api/runs/$runId/metrics")({
     handlers: {
       GET: async ({ params, request }) => {
         const session = await verifyRequestSession(
-          request.headers.get("cookie")
+          request.headers.get("cookie"),
+          request.headers.get("host")
         )
         if (!session) {
           return Response.json({ error: "Unauthorized" }, { status: 401 })

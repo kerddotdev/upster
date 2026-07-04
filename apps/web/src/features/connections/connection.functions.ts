@@ -129,7 +129,7 @@ export const listConnectionsFn = createServerFn({ method: "GET" })
     const now = Date.now()
 
     return (await listAccessSessions())
-      .filter((session) => session.kind === "connection")
+      .filter((session) => session.kind === "connection" && !session.revokedAt)
       .map((session) => ({
         id: session.id,
         label: session.label,

@@ -167,7 +167,10 @@ async function authenticateBearerToken(token: string) {
 }
 
 async function authenticateCookie(request: Request) {
-  const payload = await verifyRequestSession(request.headers.get("cookie"))
+  const payload = await verifyRequestSession(
+    request.headers.get("cookie"),
+    request.headers.get("host")
+  )
 
   if (!payload) {
     return null
