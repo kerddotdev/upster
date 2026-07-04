@@ -32,6 +32,13 @@ changes.
 - Agents should receive only scoped capability tokens. Agent tokens can read and
   operate pills only within their scopes, and cannot receive vault write, vault
   unlock, vault delete, or admin-only scopes.
+- Capsule management is gated by dedicated `capsules:read`, `capsules:write`, and
+  `capsules:delete` scopes, separate from the `pills:*` scopes. They are
+  agent-allowed like the pill runtime scopes and are included in the
+  `agent-full-runtime` preset. Capsule operations never expose Cloudflare
+  secrets: a preview deploy manages its tunnel and DNS through the same
+  already-unlocked vault session as a production deploy, so an agent still cannot
+  read the vault or decrypted config.
 - The CLI stores local agent tokens separately from the human CLI credential.
   Non-interactive commands do not automatically use the saved human credential,
   so agent and automation processes must use scoped tokens through `--agent`,

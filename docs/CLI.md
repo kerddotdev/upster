@@ -253,29 +253,34 @@ After revoke, the token fails immediately.
 
 Current scope list:
 
-| Scope             | Agent allowed | Purpose                               |
-| ----------------- | ------------- | ------------------------------------- |
-| `pills:read`      | yes           | List and read pills                   |
-| `pills:write`     | yes           | Add and update pills                  |
-| `pills:delete`    | yes           | Delete pills                          |
-| `runs:start`      | yes           | Start pill runs                       |
-| `runs:stop`       | yes           | Stop pill runs                        |
-| `logs:read`       | yes           | Read and stream run logs              |
-| `metrics:read`    | yes           | Read tunnel metrics                   |
-| `runtime:read`    | yes           | Read runtime and control plane status |
-| `vault:status`    | yes           | Read vault status without secrets     |
-| `sessions:read`   | no            | List sessions as a human admin        |
-| `sessions:revoke` | no            | Revoke sessions as a human admin      |
-| `vault:write`     | no            | Save the vault as a human admin       |
-| `vault:unlock`    | no            | Unlock the vault as a human admin     |
-| `vault:delete`    | no            | Delete the vault as a human admin     |
+| Scope              | Agent allowed | Purpose                               |
+| ------------------ | ------------- | ------------------------------------- |
+| `pills:read`       | yes           | List and read pills                   |
+| `pills:write`      | yes           | Add and update pills                  |
+| `pills:delete`     | yes           | Delete pills, clear diagnostics       |
+| `capsules:read`    | yes           | List capsules and read diagnostics    |
+| `capsules:write`   | yes           | Build, relabel, and pin capsules      |
+| `capsules:delete`  | yes           | Delete and prune capsules             |
+| `runs:start`       | yes           | Start pill runs                       |
+| `runs:stop`        | yes           | Stop pill runs                        |
+| `logs:read`        | yes           | Read and stream run logs              |
+| `metrics:read`     | yes           | Read tunnel metrics                   |
+| `runtime:read`     | yes           | Read runtime and control plane status |
+| `vault:status`     | yes           | Read vault status without secrets     |
+| `sessions:read`    | no            | List sessions as a human admin        |
+| `sessions:revoke`  | no            | Revoke sessions as a human admin      |
+| `vault:write`      | no            | Save the vault as a human admin       |
+| `vault:unlock`     | no            | Unlock the vault as a human admin     |
+| `vault:delete`     | no            | Delete the vault as a human admin     |
 
 There is no `all` scope. This is intentional: `all` would be ambiguous because agents must never receive vault unlock, vault write, vault delete, or session admin scopes.
+
+Capsule scopes are separate from pill scopes. An agent token needs `capsules:read`, `capsules:write`, or `capsules:delete` to use the `capsules` commands, not the matching `pills:*` scope. Agent tokens created before capsule scopes existed do not include them, so recreate the token (for example with `--preset agent-full-runtime`) to gain capsule access.
 
 Full agent runtime scope list:
 
 ```sh
-AGENT_FULL_RUNTIME_SCOPES="pills:read,pills:write,pills:delete,runs:start,runs:stop,logs:read,metrics:read,runtime:read,vault:status"
+AGENT_FULL_RUNTIME_SCOPES="pills:read,pills:write,pills:delete,capsules:read,capsules:write,capsules:delete,runs:start,runs:stop,logs:read,metrics:read,runtime:read,vault:status"
 ```
 
 Create a full runtime agent token:
@@ -287,7 +292,7 @@ upster agents create --label "Codex" --ttl 1d --preset agent-full-runtime --save
 The long form is still supported:
 
 ```sh
-AGENT_FULL_RUNTIME_SCOPES="pills:read,pills:write,pills:delete,runs:start,runs:stop,logs:read,metrics:read,runtime:read,vault:status"
+AGENT_FULL_RUNTIME_SCOPES="pills:read,pills:write,pills:delete,capsules:read,capsules:write,capsules:delete,runs:start,runs:stop,logs:read,metrics:read,runtime:read,vault:status"
 upster agents create --label "Codex" --ttl 1d --scopes "$AGENT_FULL_RUNTIME_SCOPES" --save --default
 ```
 
@@ -454,6 +459,13 @@ Daemon status alias:
 upster daemon status
 ```
 
+Runtime and control plane status (`runtime:read`):
+
+```sh
+upster runtime
+upster runtime --json
+```
+
 Start the daemon:
 
 ```sh
@@ -614,7 +626,28 @@ upster pills delete <pillId>
 upster pills delete <pillId> --json
 ```
 
-There is an API route for pill updates, but the current CLI does not expose a dedicated `pills update` command yet.
+Update a pill from JSON input:
+
+```sh
+upster pills update <pillId> --input pill.json --json
+cat pill.json | upster pills update <pillId> --input - --json
+```
+
+`pills update` reads a JSON body from `--input` because the update payload can
+carry an `env` record. `name` and `defaultEnv` are required; `commandName`,
+`command`, `cwd`, `env`, and `healthcheckPath` are optional and only edit the
+default command when present.
+
+Example update `pill.json`:
+
+```json
+{
+  "name": "My App",
+  "defaultEnv": "dev",
+  "command": "bun run start",
+  "healthcheckPath": "/health"
+}
+```
 
 ## Run Start And Stop
 
@@ -681,13 +714,13 @@ A capsule is a frozen, versioned snapshot of a pill's source. Deploy from one
 with `pills run --use-capsule` (latest ready snapshot) or `--capsule <id>` (a
 specific snapshot for rollback).
 
-List the snapshots and disk usage for a pill (`pills:read`):
+List the snapshots and disk usage for a pill (`capsules:read`):
 
 ```sh
 upster capsules list <pillId> --json
 ```
 
-Build a new snapshot (`pills:write`). `--node-modules` copies node_modules,
+Build a new snapshot (`capsules:write`). `--node-modules` copies node_modules,
 `--install` installs dependencies when the project supports it, `--label` names
 the snapshot:
 
@@ -697,11 +730,50 @@ upster capsules build <pillId> --install --label "demo build"
 upster capsules build <pillId> --node-modules
 ```
 
-Delete a snapshot (`pills:delete`). The currently deployed snapshot cannot be
+Relabel a snapshot (`capsules:write`). Use `--clear` to remove the label:
+
+```sh
+upster capsules relabel <capsuleId> --label "release candidate"
+upster capsules relabel <capsuleId> --clear
+```
+
+Pin or unpin a snapshot (`capsules:write`). Pinned snapshots are protected from
+automatic pruning:
+
+```sh
+upster capsules pin <capsuleId>
+upster capsules unpin <capsuleId>
+```
+
+Prune old snapshots for a pill (`capsules:delete`). `--keep` overrides the
+configured retention count. The active and pinned snapshots are never pruned:
+
+```sh
+upster capsules prune <pillId>
+upster capsules prune <pillId> --keep 5
+```
+
+Delete a snapshot (`capsules:delete`). The currently deployed snapshot cannot be
 deleted while it is running:
 
 ```sh
 upster capsules delete <capsuleId>
+```
+
+## Pill Diagnostics
+
+Read recent runs and errored capsules for a pill (`pills:read`):
+
+```sh
+upster pills diagnostics <pillId>
+upster pills diagnostics <pillId> --json
+```
+
+Clear diagnostics (`pills:delete`). This deletes inactive runs and errored
+capsules for the pill, then returns the refreshed diagnostics:
+
+```sh
+upster pills diagnostics <pillId> --clear
 ```
 
 ## Runs, Logs, And Metrics
@@ -740,7 +812,7 @@ upster runs metrics <runId> --json
 upster runs metrics <runId> --json --output metrics.output
 ```
 
-The metrics endpoint returns the runtime data available through the control plane. The current CLI accepts a `--raw` flag as a parsed command flag, but it does not change output behavior yet.
+The metrics endpoint returns the runtime data available through the control plane.
 
 ## JSON Input From Stdin
 
@@ -958,6 +1030,7 @@ upster agents revoke <sessionId>
 ```txt
 upster --help
 upster status
+upster runtime
 upster daemon status
 upster daemon start
 
@@ -994,9 +1067,23 @@ upster pills list
 upster pills get <pillId>
 upster pills add
 upster pills add --input pill.json --json
+upster pills update <pillId> --input pill.json --json
 upster pills delete <pillId>
 upster pills run <pillId>
+upster pills run <pillId> --use-capsule
+upster pills run <pillId> --capsule <capsuleId> --target preview
 upster pills stop <pillId>
+upster pills diagnostics <pillId>
+upster pills diagnostics <pillId> --clear
+
+upster capsules list <pillId>
+upster capsules build <pillId>
+upster capsules relabel <capsuleId> --label <text>
+upster capsules relabel <capsuleId> --clear
+upster capsules pin <capsuleId>
+upster capsules unpin <capsuleId>
+upster capsules prune <pillId>
+upster capsules delete <capsuleId>
 
 upster runs get <runId>
 upster runs logs <runId>
