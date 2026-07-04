@@ -4,10 +4,15 @@ import {
   getRequestHeader,
   setResponseHeader,
 } from "@tanstack/react-start/server"
+import { adminScopes } from "@upster/core"
 
 import {
+  createAccessSession,
   createAppSettingIfAbsent,
+  getAccessSession,
   getAppSetting,
+  revokeAccessSession,
+  touchAccessSession,
 } from "@/db/repositories.server"
 import {
   SESSION_TTL_SECONDS,
@@ -71,6 +76,24 @@ function readSessionCookie() {
   return null
 }
 
+function readTokenFromCookieHeader(cookieHeader: string | null) {
+  if (!cookieHeader) {
+    return null
+  }
+
+  for (const part of cookieHeader.split(/;\s*/)) {
+    const eq = part.indexOf("=")
+    if (eq === -1) {
+      continue
+    }
+    if (part.slice(0, eq) === COOKIE_NAME) {
+      return part.slice(eq + 1)
+    }
+  }
+
+  return null
+}
+
 function isSecureRequest() {
   if (process.env.UPSTER_SECURE_COOKIES === "true") {
     return true
@@ -81,7 +104,17 @@ function isSecureRequest() {
 
 export async function issueSessionCookie(sub: string) {
   const secret = await getSessionSecret()
-  const token = createSessionToken(sub, secret)
+  const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000)
+  const session = await createAccessSession({
+    kind: "dashboard",
+    subject: sub,
+    label: "Dashboard",
+    scopes: adminScopes,
+    expiresAt: expiresAt.toISOString(),
+    userAgent: getRequestHeader("user-agent"),
+    metadata: {},
+  })
+  const token = createSessionToken(sub, session.id, secret)
   const parts = [
     `${COOKIE_NAME}=${token}`,
     "HttpOnly",
@@ -95,6 +128,7 @@ export async function issueSessionCookie(sub: string) {
   }
 
   setResponseHeader("Set-Cookie", parts.join("; "))
+  return session
 }
 
 export function clearSessionCookie() {
@@ -106,28 +140,44 @@ export function clearSessionCookie() {
 
 export async function readSession(): Promise<SessionPayload | null> {
   const secret = await getSessionSecret()
-  return verifySessionToken(readSessionCookie(), secret)
+  return verifySessionPayload(readSessionCookie(), secret)
 }
 
 export async function verifyRequestSession(
   cookieHeader: string | null
 ): Promise<SessionPayload | null> {
-  if (!cookieHeader) {
+  const secret = await getSessionSecret()
+  return verifySessionPayload(readTokenFromCookieHeader(cookieHeader), secret)
+}
+
+async function verifySessionPayload(
+  token: string | null,
+  secret: string
+): Promise<SessionPayload | null> {
+  const payload = verifySessionToken(token, secret)
+  if (!payload) {
     return null
   }
 
-  let token: string | null = null
-  for (const part of cookieHeader.split(/;\s*/)) {
-    const eq = part.indexOf("=")
-    if (eq === -1) {
-      continue
-    }
-    if (part.slice(0, eq) === COOKIE_NAME) {
-      token = part.slice(eq + 1)
-      break
-    }
+  const session = await getAccessSession(payload.sid)
+  if (
+    !session ||
+    session.revokedAt ||
+    new Date(session.expiresAt).getTime() <= Date.now()
+  ) {
+    return null
   }
 
-  const secret = await getSessionSecret()
-  return verifySessionToken(token, secret)
+  await touchAccessSession(session.id)
+  return payload
+}
+
+export async function endCurrentSession() {
+  const session = await readSession()
+
+  if (session) {
+    await revokeAccessSession(session.sid)
+  }
+
+  clearSessionCookie()
 }

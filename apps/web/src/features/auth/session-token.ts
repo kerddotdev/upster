@@ -4,6 +4,7 @@ export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7
 
 export type SessionPayload = {
   sub: string
+  sid: string
   exp: number
 }
 
@@ -13,11 +14,13 @@ function sign(body: string, secret: string) {
 
 export function createSessionToken(
   sub: string,
+  sid: string,
   secret: string,
   nowMs: number = Date.now()
 ) {
   const payload: SessionPayload = {
     sub,
+    sid,
     exp: Math.floor(nowMs / 1000) + SESSION_TTL_SECONDS,
   }
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url")
@@ -57,7 +60,11 @@ export function verifySessionToken(
       Buffer.from(body, "base64url").toString()
     ) as SessionPayload
 
-    if (typeof payload.exp !== "number" || payload.exp * 1000 < nowMs) {
+    if (
+      typeof payload.exp !== "number" ||
+      payload.exp * 1000 < nowMs ||
+      typeof payload.sid !== "string"
+    ) {
       return null
     }
 

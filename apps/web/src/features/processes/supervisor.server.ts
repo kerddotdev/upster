@@ -5,18 +5,22 @@ import {
   appendRunLog,
   createRun,
   getActiveRun,
+  getCapsuleById,
+  getLatestReadyCapsule,
   getPillCommand,
   getPillDetail,
   getPillPorts,
+  updateCapsule,
   updatePillStatus,
   updateRun,
   upsertPillPorts,
   upsertTunnel,
 } from "@/db/repositories.server"
+import { resolveCapsuleCwd } from "@/features/capsules/detect"
 import { getUpsterConfig } from "@/config/env.server"
 import { createCloudflareClient } from "@/features/cloudflare/client.server"
 import type {
-  CloudflareTunnel,
+  CloudflareConfig,
   PillRun,
   RunLog,
   StartPillInput,
@@ -25,6 +29,11 @@ import { assertAllowedCommand } from "@/features/pills/validation"
 import { findAvailablePort } from "@/features/pills/ports.server"
 import { buildProcessEnv } from "@/features/processes/process-env"
 import { emitRunLog, nextLogSequence } from "@/features/terminal/log-bus.server"
+import {
+  getRuntimeInstanceId,
+  reconcileRuntimeRuns,
+} from "@/features/runtime/instance.server"
+import { requireUnlockedCloudflareConfig } from "@/features/secrets/vault-session.server"
 
 type ManagedRun = {
   runId: string
@@ -45,7 +54,7 @@ async function logRun(runId: string, stream: RunLog["stream"], chunk: string) {
   const log = await appendRunLog({
     runId,
     stream,
-    sequence: nextLogSequence(runId),
+    sequence: await nextLogSequence(runId),
     chunk,
   })
   emitRunLog(log)
@@ -92,60 +101,55 @@ async function preparePorts(pillId: string, rotatePorts: boolean) {
   }
 }
 
-async function prepareCloudflareTunnel(input: {
+async function prepareTunnel(input: {
   runId: string
-  pillId: string
   appPort: number
-  config: StartPillInput["cloudflareConfig"]
+  config: CloudflareConfig
+  hostname: string
+  tunnelName: string
+  existingTunnelId?: string | null
+  existingDnsRecordId?: string | null
 }) {
-  const pill = await getPillDetail(input.pillId)
   const client = createCloudflareClient(input.config)
-  const hostname = `${pill.slug}.${input.config.rootDomain}`
-  const tunnelName = pill.tunnel?.tunnelName ?? `upster-${pill.slug}`
 
   await logRun(
     input.runId,
     "system",
-    `Preparing Cloudflare tunnel ${hostname}\n`
+    `Preparing Cloudflare tunnel ${input.hostname}\n`
   )
 
-  const tunnel = pill.tunnel?.tunnelId
-    ? { id: pill.tunnel.tunnelId, name: tunnelName }
-    : await client.getOrCreateRemoteTunnel(tunnelName)
+  const tunnel = input.existingTunnelId
+    ? { id: input.existingTunnelId, name: input.tunnelName }
+    : await client.getOrCreateRemoteTunnel(input.tunnelName)
 
   await client.updateTunnelConfig({
     tunnelId: tunnel.id,
-    hostname,
+    hostname: input.hostname,
     appPort: input.appPort,
   })
 
   const dnsRecord = await client.ensureDnsRecord({
-    hostname,
+    hostname: input.hostname,
     tunnelId: tunnel.id,
-    existingRecordId: pill.tunnel?.dnsRecordId,
+    existingRecordId: input.existingDnsRecordId,
   })
   const token = await client.fetchTunnelToken(tunnel.id)
-  const record: CloudflareTunnel = {
-    pillId: input.pillId,
-    tunnelId: tunnel.id,
-    tunnelName: tunnel.name,
-    hostname,
-    dnsRecordId: dnsRecord.id,
-    configStatus: "synced",
-  }
 
-  await upsertTunnel(record)
   await logRun(
     input.runId,
     "system",
-    `Cloudflare tunnel ready for ${hostname}\n`
+    `Cloudflare tunnel ready for ${input.hostname}\n`
   )
 
   return {
     token,
-    tunnel: record,
+    tunnelId: tunnel.id,
+    tunnelName: tunnel.name,
+    dnsRecordId: dnsRecord.id,
   }
 }
+
+type ProcessDiagnostics = { spawnError: string | null }
 
 function spawnLoggedProcess(input: {
   runId: string
@@ -161,6 +165,8 @@ function spawnLoggedProcess(input: {
     stdio: "pipe",
   })
 
+  const diag: ProcessDiagnostics = { spawnError: null }
+
   child.stdout.on("data", (chunk: Buffer) => {
     void logRun(input.runId, "stdout", chunk.toString())
   })
@@ -168,6 +174,7 @@ function spawnLoggedProcess(input: {
     void logRun(input.runId, "stderr", chunk.toString())
   })
   child.on("error", (error) => {
+    diag.spawnError = error.message
     void logRun(
       input.runId,
       "system",
@@ -175,7 +182,7 @@ function spawnLoggedProcess(input: {
     )
   })
 
-  return child
+  return { child, diag }
 }
 
 function killProcess(child: ChildProcessWithoutNullStreams | null) {
@@ -212,8 +219,15 @@ function waitForEarlyExit(
   })
 }
 
-function appExitError(code: number | null) {
-  return new Error(`App process exited with code ${code ?? "null"}.`)
+function describeAppFailure(code: number | null, diag: ProcessDiagnostics) {
+  if (diag.spawnError) {
+    if (diag.spawnError.includes("ENOENT")) {
+      return `Could not start the app: the command was not found (${diag.spawnError}). Check the pill command and that its executable is available in the runtime.`
+    }
+    return `Could not start the app process: ${diag.spawnError}.`
+  }
+
+  return `App process exited with code ${code ?? "unknown"}. See the diagnostics for the full output.`
 }
 
 function scheduleExpiry(run: PillRun, managed: ManagedRun) {
@@ -238,6 +252,7 @@ function scheduleExpiry(run: PillRun, managed: ManagedRun) {
 }
 
 export async function startPillRuntime(input: StartPillInput) {
+  await reconcileRuntimeRuns()
   const activeRun = await getActiveRun(input.pillId)
 
   if (activeRun) {
@@ -248,6 +263,50 @@ export async function startPillRuntime(input: StartPillInput) {
   const command = await getPillCommand(input.pillId, input.commandName)
 
   assertAllowedCommand(command.argv, getUpsterConfig().allowedCommands)
+
+  let runCwd = command.cwd
+  let runSource: "live" | "capsule" = "live"
+  let capsule: Awaited<ReturnType<typeof getCapsuleById>> = null
+
+  if (input.useCapsule || input.capsuleId) {
+    capsule = input.capsuleId
+      ? await getCapsuleById(input.capsuleId)
+      : await getLatestReadyCapsule(input.pillId)
+
+    if (!capsule || capsule.status !== "ready") {
+      throw new Error("No ready capsule to start. Build a capsule first.")
+    }
+
+    if (capsule.pillId !== input.pillId) {
+      throw new Error("Capsule does not belong to this pill.")
+    }
+
+    runCwd = resolveCapsuleCwd(pill.repoPath, command.cwd, capsule.path)
+    runSource = "capsule"
+  }
+
+  const deployTarget = input.deployTarget ?? "production"
+
+  if (deployTarget === "preview" && !capsule) {
+    throw new Error("Preview deploys require a capsule.")
+  }
+
+  const cloudflareConfig = await requireUnlockedCloudflareConfig()
+
+  const preview = deployTarget === "preview"
+  const shortId = capsule ? capsule.id.slice(0, 8) : ""
+  const servedHostname = preview
+    ? `${pill.slug}-${shortId}.${cloudflareConfig.rootDomain}`
+    : `${pill.slug}.${cloudflareConfig.rootDomain}`
+  const tunnelName = preview
+    ? (capsule?.previewTunnelName ?? `upster-${pill.slug}-${shortId}`)
+    : (pill.tunnel?.tunnelName ?? `upster-${pill.slug}`)
+  const existingTunnelId = preview
+    ? capsule?.previewTunnelId
+    : pill.tunnel?.tunnelId
+  const existingDnsRecordId = preview
+    ? capsule?.previewDnsRecordId
+    : pill.tunnel?.dnsRecordId
 
   const ports = await preparePorts(input.pillId, input.rotatePorts ?? false)
 
@@ -261,8 +320,14 @@ export async function startPillRuntime(input: StartPillInput) {
     status: "starting",
     stoppedAt: null,
     expiresAt: input.expiresAt ?? null,
+    runtimeInstanceId: getRuntimeInstanceId(),
+    stopReason: null,
     exitCode: null,
     error: null,
+    source: runSource,
+    capsuleId: capsule?.id ?? null,
+    deployTarget,
+    hostname: servedHostname,
   })
 
   const managed: ManagedRun = {
@@ -279,14 +344,16 @@ export async function startPillRuntime(input: StartPillInput) {
     await logRun(
       run.id,
       "system",
-      `Starting ${pill.name} on ${ports.appPort}\n`
+      `Starting ${pill.name} on ${ports.appPort} from ${
+        runSource === "capsule" ? "capsule" : "live source"
+      }\n`
     )
 
-    const appProcess = spawnLoggedProcess({
+    const { child: appProcess, diag: appDiag } = spawnLoggedProcess({
       runId: run.id,
       command: command.argv[0],
       args: command.argv.slice(1),
-      cwd: command.cwd,
+      cwd: runCwd,
       env: buildProcessEnv(command, ports.appPort),
       streamName: "App process",
     })
@@ -306,22 +373,47 @@ export async function startPillRuntime(input: StartPillInput) {
 
     const earlyExitCode = await waitForEarlyExit(appProcess, 1000)
     if (earlyExitCode !== undefined) {
-      throw appExitError(earlyExitCode)
+      throw new Error(describeAppFailure(earlyExitCode, appDiag))
     }
 
-    const { token } = await prepareCloudflareTunnel({
+    const tunnelResult = await prepareTunnel({
       runId: run.id,
-      pillId: input.pillId,
       appPort: ports.appPort,
-      config: input.cloudflareConfig,
+      config: cloudflareConfig,
+      hostname: servedHostname,
+      tunnelName,
+      existingTunnelId,
+      existingDnsRecordId,
     })
 
+    if (preview && capsule) {
+      await updateCapsule(capsule.id, {
+        previewHostname: servedHostname,
+        previewTunnelId: tunnelResult.tunnelId,
+        previewTunnelName: tunnelResult.tunnelName,
+        previewDnsRecordId: tunnelResult.dnsRecordId,
+      })
+    } else {
+      await upsertTunnel({
+        pillId: input.pillId,
+        tunnelId: tunnelResult.tunnelId,
+        tunnelName: tunnelResult.tunnelName,
+        hostname: servedHostname,
+        dnsRecordId: tunnelResult.dnsRecordId,
+        configStatus: "synced",
+      })
+    }
+
+    const token = tunnelResult.token
+
     if (appExitCode !== undefined || appProcess.exitCode !== null) {
-      throw appExitError(appExitCode ?? appProcess.exitCode)
+      throw new Error(
+        describeAppFailure(appExitCode ?? appProcess.exitCode, appDiag)
+      )
     }
 
     const config = getUpsterConfig()
-    const tunnelProcess = spawnLoggedProcess({
+    const { child: tunnelProcess } = spawnLoggedProcess({
       runId: run.id,
       command: config.cloudflaredBin,
       args: [
@@ -330,21 +422,43 @@ export async function startPillRuntime(input: StartPillInput) {
         "--metrics",
         `127.0.0.1:${ports.metricsPort}`,
         "run",
-        "--token",
-        token,
       ],
+      env: {
+        PATH: process.env.PATH,
+        HOME: process.env.HOME,
+        TUNNEL_TOKEN: token,
+      },
       streamName: "cloudflared",
     })
 
     managed.tunnelProcess = tunnelProcess
-    managed.expiryTimer = scheduleExpiry(run, managed)
-    startCompleted = true
+
+    // Re-check for an app exit that landed while cloudflared was spawning.
+    if (appExitCode !== undefined || appProcess.exitCode !== null) {
+      throw new Error(
+        describeAppFailure(appExitCode ?? appProcess.exitCode, appDiag)
+      )
+    }
 
     await updateRun(run.id, {
       tunnelPid: tunnelProcess.pid ?? null,
       status: "running",
     })
     await updatePillStatus(input.pillId, "running")
+
+    // Only delegate exits to handleAppExit once the "running" writes are done,
+    // and re-check first: if the app died during those writes the exit handler
+    // was skipped (startCompleted was still false), so mark it here. There is no
+    // await between this check and startCompleted, so no exit can slip through
+    // and overwrite the terminal state with a stale "running".
+    if (appExitCode !== undefined || appProcess.exitCode !== null) {
+      throw new Error(
+        describeAppFailure(appExitCode ?? appProcess.exitCode, appDiag)
+      )
+    }
+
+    managed.expiryTimer = scheduleExpiry(run, managed)
+    startCompleted = true
 
     tunnelProcess.on("exit", (code) => {
       void handleTunnelExit(run.id, input.pillId, code)
@@ -370,6 +484,9 @@ export async function startPillRuntime(input: StartPillInput) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to start pill."
+    if (managed.expiryTimer) {
+      clearTimeout(managed.expiryTimer)
+    }
     killProcess(managed.appProcess)
     killProcess(managed.tunnelProcess)
     managedRuns.delete(run.id)
@@ -377,6 +494,7 @@ export async function startPillRuntime(input: StartPillInput) {
     await updateRun(run.id, {
       status: "error",
       stoppedAt: now(),
+      stopReason: "error",
       error: message,
     })
     await updatePillStatus(input.pillId, "error")
@@ -414,6 +532,7 @@ export async function stopPillRun(input: {
   await updateRun(runId, {
     status,
     stoppedAt: now(),
+    stopReason: input.reason ?? "manual",
   })
   await updatePillStatus(input.pillId, status)
   await appendEvent({
@@ -448,6 +567,7 @@ async function handleAppExit(
   await updateRun(runId, {
     status: code === 0 ? "idle" : "error",
     stoppedAt: now(),
+    stopReason: "process-exit",
     exitCode: code,
     error: code === 0 ? null : "App process exited unexpectedly.",
   })
@@ -472,6 +592,7 @@ async function handleTunnelExit(
   )
   await updateRun(runId, {
     status: "error",
+    stopReason: "process-exit",
     error: "cloudflared exited unexpectedly.",
   })
   await updatePillStatus(pillId, "error")

@@ -1,5 +1,10 @@
 import { Link, useRouterState } from "@tanstack/react-router"
-import { CloudIcon, FolderKanbanIcon, SettingsIcon } from "lucide-react"
+import {
+  CloudIcon,
+  FolderKanbanIcon,
+  KeyRoundIcon,
+  SettingsIcon,
+} from "lucide-react"
 
 import {
   Sidebar,
@@ -26,6 +31,7 @@ const navItems = [
   { to: "/", label: "Pills", icon: FolderKanbanIcon },
   { to: "/settings/cloudflare", label: "Cloudflare", icon: CloudIcon },
   { to: "/settings/runtime", label: "Runtime", icon: SettingsIcon },
+  { to: "/sessions", label: "Sessions", icon: KeyRoundIcon },
 ] as const
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -85,7 +91,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col items-center gap-1 px-2 py-1 text-center text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="w-fit">
-                Alpha
+                Beta
               </Badge>
               <span>v{__APP_VERSION__}</span>
             </div>

@@ -1,0 +1,123 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.13
+          no-cache: true
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun test
+
+      - name: Resolve version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build CLI binaries
+        working-directory: apps/cli
+        env:
+          UPSTER_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          UPSTER_CLI_TARGET=bun-darwin-arm64 UPSTER_CLI_OUTFILE=dist/upster-darwin-arm64 bun run build.ts
+          UPSTER_CLI_TARGET=bun-darwin-x64 UPSTER_CLI_OUTFILE=dist/upster-darwin-x64 bun run build.ts
+          UPSTER_CLI_TARGET=bun-linux-arm64 UPSTER_CLI_OUTFILE=dist/upster-linux-arm64 bun run build.ts
+          UPSTER_CLI_TARGET=bun-linux-x64 UPSTER_CLI_OUTFILE=dist/upster-linux-x64 bun run build.ts
+
+      - name: Package tarballs and checksums
+        working-directory: apps/cli
+        run: |
+          mkdir -p staging
+          cp dist/upster-darwin-arm64 staging/upster
+          tar -czf dist/upster-macos-arm64.tar.gz -C staging upster
+          cp dist/upster-darwin-x64 staging/upster
+          tar -czf dist/upster-macos-x64.tar.gz -C staging upster
+          cp dist/upster-linux-arm64 staging/upster
+          tar -czf dist/upster-linux-arm64.tar.gz -C staging upster
+          cp dist/upster-linux-x64 staging/upster
+          tar -czf dist/upster-linux-x64.tar.gz -C staging upster
+          cd dist
+          sha256sum \
+            upster-macos-arm64.tar.gz \
+            upster-macos-x64.tar.gz \
+            upster-linux-arm64.tar.gz \
+            upster-linux-x64.tar.gz \
+            > checksums.sha256
+
+      - name: Prepare Docker consumer assets
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p release-assets
+          sed "s|image: ghcr.io/kerdofficial/upster:.*|image: ghcr.io/kerdofficial/upster:$VERSION|" \
+            docker-compose.release.yaml > release-assets/docker-compose.yaml
+          cp .env.example release-assets/.env.example
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push dashboard image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/kerdofficial/upster:${{ steps.version.outputs.version }}
+            ghcr.io/kerdofficial/upster:latest
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            apps/cli/dist/upster-macos-arm64.tar.gz
+            apps/cli/dist/upster-macos-x64.tar.gz
+            apps/cli/dist/upster-linux-arm64.tar.gz
+            apps/cli/dist/upster-linux-x64.tar.gz
+            apps/cli/dist/checksums.sha256
+            release-assets/docker-compose.yaml
+            release-assets/.env.example
+
+      - name: Trigger Homebrew tap update
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          cd apps/cli/dist
+          MACOS_ARM64=$(sha256sum upster-macos-arm64.tar.gz | cut -d' ' -f1)
+          MACOS_X64=$(sha256sum upster-macos-x64.tar.gz | cut -d' ' -f1)
+          LINUX_ARM64=$(sha256sum upster-linux-arm64.tar.gz | cut -d' ' -f1)
+          LINUX_X64=$(sha256sum upster-linux-x64.tar.gz | cut -d' ' -f1)
+          gh workflow run update-upster-formula.yml \
+            --repo kerdofficial/homebrew-tap \
+            -f version="$VERSION" \
+            -f sha256_macos_arm64="$MACOS_ARM64" \
+            -f sha256_macos_x64="$MACOS_X64" \
+            -f sha256_linux_arm64="$LINUX_ARM64" \
+            -f sha256_linux_x64="$LINUX_X64"

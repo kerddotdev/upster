@@ -1,47 +1,50 @@
 import { createServerFn } from "@tanstack/react-start"
-import { z } from "zod"
+import { vaultSaveSchema, vaultUnlockSchema } from "@upster/core"
 
-import {
-  deleteSecretVault,
-  getSecretVault,
-  saveSecretVault,
-} from "@/db/repositories.server"
 import { authMiddleware } from "@/features/auth/auth-middleware"
-import { CloudflareClient } from "@/features/cloudflare/client.server"
 
-const encryptedVaultSchema = z.object({
-  name: z.literal("cloudflare"),
-  ciphertext: z.string().min(1),
-  salt: z.string().min(1),
-  nonce: z.string().min(1),
-  kdf: z.literal("argon2id"),
-  version: z.literal(1),
-})
-
-const cloudflareConfigSchema = z.object({
-  accountId: z.string().min(1),
-  zoneId: z.string().min(1),
-  rootDomain: z.string().min(1),
-  apiToken: z.string().min(1),
-})
-
-export const getCloudflareVaultFn = createServerFn({ method: "GET" })
+export const getCloudflareVaultStatusFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .handler(() => getSecretVault("cloudflare"))
+  .handler(async () => {
+    const { getVaultStatus } =
+      await import("@/features/secrets/vault-session.server")
+
+    return getVaultStatus()
+  })
 
 export const saveCloudflareVaultFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((data: unknown) => encryptedVaultSchema.parse(data))
-  .handler(async ({ data }) => {
-    await saveSecretVault(data)
+  .validator((data: unknown) => vaultSaveSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const { saveCloudflareVaultInteractive } =
+      await import("@/features/secrets/vault-session.server")
+
+    return saveCloudflareVaultInteractive({
+      ...data,
+      actorSessionId: context.session.sid,
+    })
   })
 
-export const validateCloudflareConfigFn = createServerFn({ method: "POST" })
+export const unlockCloudflareVaultFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((data: unknown) => cloudflareConfigSchema.parse(data))
-  .handler(async ({ data }) => {
-    await new CloudflareClient(data).validateToken()
-    return { ok: true }
+  .validator((data: unknown) => vaultUnlockSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const { unlockCloudflareVault } =
+      await import("@/features/secrets/vault-session.server")
+
+    return unlockCloudflareVault({
+      ...data,
+      actorSessionId: context.session.sid,
+    })
+  })
+
+export const lockCloudflareVaultFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async () => {
+    const { lockCloudflareVault } =
+      await import("@/features/secrets/vault-session.server")
+
+    return lockCloudflareVault()
   })
 
 export const deleteCloudflareVaultFn = createServerFn({
@@ -49,5 +52,8 @@ export const deleteCloudflareVaultFn = createServerFn({
 })
   .middleware([authMiddleware])
   .handler(async () => {
-    await deleteSecretVault("cloudflare")
+    const { deleteCloudflareVaultInteractive } =
+      await import("@/features/secrets/vault-session.server")
+
+    return deleteCloudflareVaultInteractive()
   })

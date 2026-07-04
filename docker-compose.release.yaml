@@ -1,0 +1,40 @@
+services:
+  upster:
+    image: ghcr.io/kerdofficial/upster:${UPSTER_VERSION:-latest}
+    environment:
+      UPSTER_PORT: "${UPSTER_PORT:-3377}"
+      UPSTER_DATA_DIR: "${UPSTER_DATA_DIR:-/data}"
+      UPSTER_HOST_WORKSPACE: "${UPSTER_HOST_WORKSPACE:-}"
+      UPSTER_WORKSPACE_ROOTS: "${UPSTER_WORKSPACE_ROOTS:-/workspaces}"
+      UPSTER_ALLOWED_COMMANDS: "${UPSTER_ALLOWED_COMMANDS:-}"
+      UPSTER_APP_PORT_RANGE: "${UPSTER_APP_PORT_RANGE:-41000-49151}"
+      UPSTER_METRICS_PORT_RANGE: "${UPSTER_METRICS_PORT_RANGE:-52000-60999}"
+      UPSTER_PUBLIC_ORIGIN: "${UPSTER_PUBLIC_ORIGIN:-https://localhost:3377}"
+      UPSTER_SESSION_SECRET: "${UPSTER_SESSION_SECRET:-}"
+      UPSTER_SECURE_COOKIES: "${UPSTER_SECURE_COOKIES:-}"
+      DATABASE_URL: "${DATABASE_URL:-http://db:8080}"
+      DATABASE_AUTH_TOKEN: "${DATABASE_AUTH_TOKEN:-}"
+      CLOUDFLARED_BIN: "${CLOUDFLARED_BIN:-cloudflared}"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    ports:
+      - "${UPSTER_BIND_HOST:-127.0.0.1}:${UPSTER_PORT:-3377}:${UPSTER_PORT:-3377}"
+    volumes:
+      - upster_data:/data
+      - ${UPSTER_HOST_WORKSPACE:-./workspaces}:/workspaces:rw
+    depends_on:
+      - db
+
+  db:
+    image: ghcr.io/tursodatabase/libsql-server:latest
+    environment:
+      SQLD_NODE: primary
+      SQLD_AUTH_JWT_KEY: "${SQLD_AUTH_JWT_KEY:-}"
+    volumes:
+      - upster_db:/var/lib/sqld
+
+volumes:
+  upster_data:
+  upster_db:

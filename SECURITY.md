@@ -26,6 +26,23 @@ changes.
 - Access is gated by a signed (HMAC-SHA256), `HttpOnly`, `SameSite=Lax` session
   cookie. `SameSite=Lax` also blocks cross-site POSTs, which protects the
   mutating server functions from CSRF.
+- Dashboard, CLI, and agent access are backed by revocable rows in the
+  `access_sessions` table. CLI and agent sessions use bearer tokens whose
+  plaintext value is shown only when created. Upster stores only a token hash.
+- Agents should receive only scoped capability tokens. Agent tokens can read and
+  operate pills only within their scopes, and cannot receive vault write, vault
+  unlock, vault delete, or admin-only scopes.
+- Capsule management is gated by dedicated `capsules:read`, `capsules:write`, and
+  `capsules:delete` scopes, separate from the `pills:*` scopes. They are
+  agent-allowed like the pill runtime scopes and are included in the
+  `agent-full-runtime` preset. Capsule operations never expose Cloudflare
+  secrets: a preview deploy manages its tunnel and DNS through the same
+  already-unlocked vault session as a production deploy, so an agent still cannot
+  read the vault or decrypted config.
+- The CLI stores local agent tokens separately from the human CLI credential.
+  Non-interactive commands do not automatically use the saved human credential,
+  so agent and automation processes must use scoped tokens through `--agent`,
+  `UPSTER_AGENT`, `--token`, `--token-file`, or `UPSTER_TOKEN`.
 - Every protected TanStack Start server function carries the auth middleware,
   and the streaming and metrics server routes verify the session manually
   because route handlers do not run server-function middleware.
@@ -42,9 +59,15 @@ changes.
 ### Secret handling
 
 - Cloudflare credentials are encrypted in the browser with the vault passphrase
-  (Argon2id key derivation, XChaCha20-Poly1305) and stored only as ciphertext.
-- The plaintext config exists only in memory during an explicit runtime action
-  (validating the token or starting a tunnel) and is never persisted or logged.
+  or CLI with the vault passphrase (Argon2id key derivation,
+  XChaCha20-Poly1305) and stored only as ciphertext.
+- The plaintext config exists only in control plane memory during an explicit
+  vault unlock or runtime action (validating the token or starting a tunnel) and
+  is never persisted or logged.
+- Agents cannot unlock the vault, save the vault, delete the vault, read vault
+  ciphertext, read the vault passphrase, or read decrypted Cloudflare config.
+  They can only read vault status fields such as whether a vault exists, whether
+  it is unlocked, and the root domain.
 
 ### Database isolation
 
@@ -61,6 +84,43 @@ changes.
 - `UPSTER_ALLOWED_COMMANDS` can restrict which executables a pill may run.
 - The dashboard container runs with `cap_drop: ALL` and
   `no-new-privileges:true`, so a pill cannot raise its privileges.
+
+### Capsule isolation
+
+- A capsule is a frozen, versioned snapshot of a pill's source, taken from the
+  workspace-validated `repoPath` into the Upster-managed
+  `<UPSTER_DATA_DIR>/capsules/<pillId>/<capsuleId>` directory. Each build creates
+  a new immutable snapshot; a pill can keep several and deploy or roll back to
+  any of them. Deploying from a capsule keeps the running deployment isolated
+  from live edits on disk; it does not widen the source path boundary, because
+  the source is still resolved and validated against the configured workspace
+  roots before copying.
+- The optional dependency install step during a capsule build runs the detected
+  package manager with the same minimal, explicit environment as a pill process
+  (no dashboard environment, no Cloudflare secret), and its executable is gated
+  by `UPSTER_ALLOWED_COMMANDS` like any other pill command. Because installing
+  dependencies can execute package lifecycle scripts, a capsule is still only as
+  trusted as the repository it was copied from.
+- Snapshot metadata may include git commit, branch, message, and dirty state.
+  These are captured read-only with the `git` binary in the pill's `repoPath`;
+  if the project is not a git repository or `git` is unavailable, the fields are
+  simply left empty and every other capsule capability keeps working.
+- The capsule file browser and file preview server functions resolve requested
+  paths inside the snapshot directory and reject any path that escapes it
+  (`..` or absolute), the same containment check used for workspace paths. File
+  previews are capped in size. The archive download route
+  (`/api/capsules/:id/archive`) verifies the dashboard session manually, like
+  the terminal and metrics routes.
+- Old, unpinned snapshots are pruned automatically per pill
+  (`UPSTER_CAPSULE_RETENTION`); pinned snapshots and the currently deployed
+  snapshot are never pruned or deletable while running.
+- A snapshot can be deployed to the pill's production hostname
+  (`slug.rootDomain`) or to a per-snapshot preview hostname
+  (`slug-<first 8 chars of capsuleId>.rootDomain`) backed by its own Cloudflare tunnel and DNS
+  record, stored on the capsule. Deleting or pruning a snapshot removes its
+  preview tunnel and DNS record when the vault is unlocked, mirroring pill
+  deletion; if the vault is locked the cleanup is skipped and the resources are
+  left in Cloudflare, exactly like pill tunnels.
 
 ### Cloudflare resource ownership
 
@@ -106,6 +166,16 @@ Read `AGENTS.md` first. These rules are mandatory:
 - Prefer argv arrays over shell strings for process execution.
 - Never log secrets, tokens, vault payloads, command env values, or decrypted
   config.
+- CLI API errors must use the agent-friendly error envelope with `reason`,
+  `cause`, `remediation`, and `humanActionRequired`, especially for auth, scope,
+  vault, and runtime failures.
+- A human admin token must not be given to an AI agent. On the same operating
+  system user account there is no perfect cryptographic human-vs-agent boundary,
+  so scoped capability tokens, short TTLs, and revocation are the intended
+  control.
+- Agent workflows must not rely on the saved human CLI credential. Use a saved
+  local agent token or an explicit scoped token, and keep human admin commands in
+  an interactive terminal.
 
 When making security-relevant changes:
 

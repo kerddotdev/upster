@@ -5,6 +5,7 @@ import { TanStackDevtools } from "@tanstack/react-devtools"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { AppShell } from "@/components/app-shell"
+import { ErrorReportProvider } from "@/components/error-report"
 import { CloudflareVaultProvider } from "@/features/secrets/cloudflare-vault-provider"
 import appCss from "../styles.css?url"
 
@@ -58,9 +59,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="dark">
         <TooltipProvider>
-          <CloudflareVaultProvider>
-            <AppShell>{children}</AppShell>
-          </CloudflareVaultProvider>
+          <ErrorReportProvider>
+            <CloudflareVaultProvider>
+              <AppShell>{children}</AppShell>
+            </CloudflareVaultProvider>
+          </ErrorReportProvider>
         </TooltipProvider>
         <Toaster richColors />
         <TanStackDevtools

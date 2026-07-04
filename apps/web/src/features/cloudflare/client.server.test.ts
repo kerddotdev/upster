@@ -240,10 +240,7 @@ describe("CloudflareClient", () => {
   })
 
   it("deletes the dns record and tunnel during cleanup", async () => {
-    const fetcher = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(null))
-      .mockResolvedValueOnce(jsonResponse(null))
+    const fetcher = vi.fn(async () => jsonResponse(null))
 
     const client = new CloudflareClient(config, fetcher)
     await client.deleteDnsRecord("dns-id")
@@ -254,10 +251,58 @@ describe("CloudflareClient", () => {
       "https://api.cloudflare.com/client/v4/zones/zone/dns_records/dns-id",
       expect.objectContaining({ method: "DELETE" })
     )
+    // deleteTunnel clears stale connections first, then deletes the tunnel.
     expect(fetcher).toHaveBeenNthCalledWith(
       2,
+      "https://api.cloudflare.com/client/v4/accounts/account/cfd_tunnel/tunnel-id/connections",
+      expect.objectContaining({ method: "DELETE" })
+    )
+    expect(fetcher).toHaveBeenNthCalledWith(
+      3,
       "https://api.cloudflare.com/client/v4/accounts/account/cfd_tunnel/tunnel-id",
       expect.objectContaining({ method: "DELETE" })
     )
+  })
+
+  it("retries the tunnel delete until active connections drain", async () => {
+    const fetcher = vi
+      .fn()
+      // attempt 1: clear connections, then delete fails with active connections
+      .mockResolvedValueOnce(jsonResponse(null))
+      .mockResolvedValueOnce(
+        errorResponse(
+          "This tunnel must be empty to be deleted, but it still has active connections"
+        )
+      )
+      // attempt 2: clear connections, then delete succeeds
+      .mockResolvedValueOnce(jsonResponse(null))
+      .mockResolvedValueOnce(jsonResponse(null))
+
+    const sleep = vi.fn(async () => undefined)
+    const client = new CloudflareClient(config, fetcher, sleep)
+    await client.deleteTunnel("tunnel-id")
+
+    expect(fetcher).toHaveBeenCalledTimes(4)
+    expect(sleep).toHaveBeenCalledTimes(1)
+    expect(fetcher).toHaveBeenLastCalledWith(
+      "https://api.cloudflare.com/client/v4/accounts/account/cfd_tunnel/tunnel-id",
+      expect.objectContaining({ method: "DELETE" })
+    )
+  })
+
+  it("stops retrying the tunnel delete on a non-connection error", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(null))
+      .mockResolvedValueOnce(errorResponse("Authentication error"))
+
+    const sleep = vi.fn(async () => undefined)
+    const client = new CloudflareClient(config, fetcher, sleep)
+
+    await expect(client.deleteTunnel("tunnel-id")).rejects.toThrow(
+      /Authentication error/
+    )
+    expect(sleep).not.toHaveBeenCalled()
+    expect(fetcher).toHaveBeenCalledTimes(2)
   })
 })

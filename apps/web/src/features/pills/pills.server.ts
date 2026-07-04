@@ -7,12 +7,14 @@ import {
   listPills,
   updatePillRecord,
 } from "@/db/repositories.server"
+import { removeAllCapsules } from "@/features/capsules/capsule.server"
 import { createCloudflareClient } from "@/features/cloudflare/client.server"
 import type {
   CloudflareConfig,
   CreatePillInput,
   UpdatePillInput,
 } from "@/features/pills/types"
+import { getUnlockedCloudflareConfig } from "@/features/secrets/vault-session.server"
 import {
   assertAllowedCommand,
   assertValidHostnameLabel,
@@ -53,29 +55,107 @@ export async function createPill(input: CreatePillInput) {
 }
 
 export async function updatePill(input: UpdatePillInput) {
+  const config = getUpsterConfig()
+  const pill = await getPillDetail(input.pillId)
+  const currentCommand =
+    pill.commands.find((command) => command.name === pill.defaultEnv) ??
+    pill.commands[0]
+
+  const editsCommand =
+    input.command !== undefined ||
+    input.commandName !== undefined ||
+    input.cwd !== undefined ||
+    input.env !== undefined ||
+    input.healthcheckPath !== undefined
+
+  let command:
+    | {
+        commandId: string
+        name: string
+        cwd: string
+        argv: Array<string>
+        env: Record<string, string>
+        healthcheckPath: string | null
+      }
+    | undefined
+
+  if (editsCommand) {
+    if (!currentCommand) {
+      throw new Error("Pill has no command to update.")
+    }
+
+    const argv =
+      input.command !== undefined
+        ? parseCommand(input.command)
+        : currentCommand.argv
+
+    if (input.command !== undefined) {
+      assertAllowedCommand(argv, config.allowedCommands)
+    }
+
+    const cwd =
+      input.cwd !== undefined
+        ? ensureWorkspacePath(
+            input.cwd,
+            config.workspaceRoots,
+            config.hostWorkspaceRoot
+          )
+        : currentCommand.cwd
+
+    const commandName = (input.commandName ?? currentCommand.name).trim()
+
+    if (!commandName) {
+      throw new Error("Command name cannot be empty.")
+    }
+
+    command = {
+      commandId: currentCommand.id,
+      name: commandName,
+      cwd,
+      argv,
+      env: input.env ?? currentCommand.env,
+      healthcheckPath:
+        input.healthcheckPath !== undefined
+          ? input.healthcheckPath
+          : currentCommand.healthcheckPath,
+    }
+  }
+
+  const name = input.name.trim()
+
+  if (!name) {
+    throw new Error("Pill name cannot be empty.")
+  }
+
+  const defaultEnv = (
+    input.defaultEnv?.trim() ||
+    command?.name ||
+    pill.defaultEnv
+  ).trim()
+
   return updatePillRecord({
-    ...input,
-    name: input.name.trim(),
-    defaultEnv: input.defaultEnv.trim(),
+    pillId: input.pillId,
+    name,
+    defaultEnv,
+    command,
   })
 }
 
 type CloudflareCleanup = "ok" | "failed" | "skipped"
 
-export async function deletePill(input: {
-  pillId: string
-  cloudflareConfig?: CloudflareConfig
-}) {
+export async function deletePill(input: { pillId: string }) {
   const activeRun = await getActiveRun(input.pillId)
 
   if (activeRun) {
     throw new Error("Stop the pill before deleting it.")
   }
 
-  const cloudflareCleanup: CloudflareCleanup = input.cloudflareConfig
-    ? await cleanupCloudflareResources(input.pillId, input.cloudflareConfig)
+  const cloudflareConfig = await getUnlockedCloudflareConfig()
+  const cloudflareCleanup: CloudflareCleanup = cloudflareConfig
+    ? await cleanupCloudflareResources(input.pillId, cloudflareConfig)
     : "skipped"
 
+  await removeAllCapsules(input.pillId)
   await deletePillRecord(input.pillId)
 
   return { cloudflareCleanup }
