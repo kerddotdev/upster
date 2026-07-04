@@ -13,26 +13,17 @@ export const redeemPairingTokenFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => redeemPairingTokenSchema.parse(data))
   .handler(async ({ data }): Promise<RedeemPairingTokenResult> => {
     const { getRequest } = await import("@tanstack/react-start/server")
-    const {
-      redeemGlobalRateLimiter,
-      redeemIpRateLimiter,
-    } = await import("@/features/connections/rate-limit.server")
-    const { getClientAddr } = await import(
-      "@/features/connections/remote-addr.server"
-    )
-    const { hashPairingToken } = await import(
-      "@/features/connections/pairing-token.server"
-    )
-    const { parseUserAgent } = await import(
-      "@/features/connections/user-agent"
-    )
-    const {
-      consumePairingLink,
-      setPairingLinkConnectionSessionId,
-    } = await import("@/db/repositories.server")
-    const { issueConnectionCookie } = await import(
-      "@/features/auth/session.server"
-    )
+    const { redeemGlobalRateLimiter, redeemIpRateLimiter } =
+      await import("@/features/connections/rate-limit.server")
+    const { getClientAddr } =
+      await import("@/features/connections/remote-addr.server")
+    const { hashPairingToken } =
+      await import("@/features/connections/pairing-token.server")
+    const { parseUserAgent } = await import("@/features/connections/user-agent")
+    const { consumePairingLink, setPairingLinkConnectionSessionId } =
+      await import("@/db/repositories.server")
+    const { issueConnectionCookie } =
+      await import("@/features/auth/session.server")
 
     const request = getRequest()
     const remoteAddr = getClientAddr(request.headers)

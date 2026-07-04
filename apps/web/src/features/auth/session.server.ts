@@ -232,10 +232,7 @@ async function renewConnectionCookieIfNeeded(
   }
 
   const nowSeconds = Math.floor(Date.now() / 1000)
-  if (
-    verified.payload.exp - nowSeconds >
-    CONNECTION_TOKEN_TTL_SECONDS / 2
-  ) {
+  if (verified.payload.exp - nowSeconds > CONNECTION_TOKEN_TTL_SECONDS / 2) {
     return
   }
 

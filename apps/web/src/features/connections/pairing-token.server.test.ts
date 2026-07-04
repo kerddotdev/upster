@@ -12,15 +12,17 @@ describe("pairing tokens", () => {
     const token = createPairingToken()
 
     expect(token).toHaveLength(PAIRING_TOKEN_LENGTH)
-    expect([...token].every((char) => PAIRING_TOKEN_ALPHABET.includes(char)))
-      .toBe(true)
+    expect(
+      [...token].every((char) => PAIRING_TOKEN_ALPHABET.includes(char))
+    ).toBe(true)
   })
 
   it("does not use visually ambiguous characters", () => {
     const ambiguous = new Set(["0", "1", "I", "O", "l"])
 
-    expect([...PAIRING_TOKEN_ALPHABET].some((char) => ambiguous.has(char)))
-      .toBe(false)
+    expect(
+      [...PAIRING_TOKEN_ALPHABET].some((char) => ambiguous.has(char))
+    ).toBe(false)
     expect(PAIRING_TOKEN_ALPHABET).toHaveLength(32)
   })
 

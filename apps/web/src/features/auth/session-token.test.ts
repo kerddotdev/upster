@@ -41,13 +41,7 @@ describe("session token", () => {
 
   it("supports a custom token ttl", () => {
     const issuedAt = 1_000_000_000_000
-    const token = createSessionToken(
-      "admin",
-      "session-1",
-      secret,
-      issuedAt,
-      60
-    )
+    const token = createSessionToken("admin", "session-1", secret, issuedAt, 60)
 
     expect(verifySessionToken(token, secret, issuedAt + 59_000)).toMatchObject({
       sid: "session-1",

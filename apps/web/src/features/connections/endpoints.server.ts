@@ -84,7 +84,9 @@ export function buildConnectionEndpoints(
     })
   }
 
-  for (const ip of status.tailscaleIps.filter((value) => !value.includes(":"))) {
+  for (const ip of status.tailscaleIps.filter(
+    (value) => !value.includes(":")
+  )) {
     endpoints.push({
       id: `tailscale-ip-${ip}`,
       label: "Tailscale IP",

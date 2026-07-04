@@ -824,7 +824,10 @@ export async function touchAccessSession(id: string) {
 
 export async function updateAccessSessionLabel(id: string, label: string) {
   await ensureDatabase()
-  await db.update(accessSessions).set({ label }).where(eq(accessSessions.id, id))
+  await db
+    .update(accessSessions)
+    .set({ label })
+    .where(eq(accessSessions.id, id))
 }
 
 export type PairingLink = {

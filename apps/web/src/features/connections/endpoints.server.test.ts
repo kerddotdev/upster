@@ -28,8 +28,9 @@ describe("tailscale endpoint discovery", () => {
     try {
       writeFileSync(invalidPath, JSON.stringify({ version: 2 }))
 
-      await expect(readTailscaleStatusFile(join(dir, "missing.json")))
-        .resolves.toBeNull()
+      await expect(
+        readTailscaleStatusFile(join(dir, "missing.json"))
+      ).resolves.toBeNull()
       await expect(readTailscaleStatusFile(invalidPath)).resolves.toBeNull()
     } finally {
       rmSync(dir, { recursive: true, force: true })

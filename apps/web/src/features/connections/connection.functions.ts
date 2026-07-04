@@ -82,14 +82,9 @@ export const createPairingLinkFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((data: unknown) => createPairingLinkSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const {
-      createPairingLink,
-    } = await import("@/db/repositories.server")
-    const {
-      PAIRING_LINK_TTL_SECONDS,
-      createPairingToken,
-      hashPairingToken,
-    } = await import("@/features/connections/pairing-token.server")
+    const { createPairingLink } = await import("@/db/repositories.server")
+    const { PAIRING_LINK_TTL_SECONDS, createPairingToken, hashPairingToken } =
+      await import("@/features/connections/pairing-token.server")
 
     const token = createPairingToken()
     const link = await createPairingLink({
@@ -112,8 +107,7 @@ export const listPairingLinksFn = createServerFn({ method: "GET" })
 
     return (await listPairingLinks())
       .filter(
-        (link) =>
-          !link.consumedAt && !link.revokedAt && link.expiresAt > now
+        (link) => !link.consumedAt && !link.revokedAt && link.expiresAt > now
       )
       .map(serializePairingLink)
   })
@@ -159,10 +153,8 @@ export const renameConnectionFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((data: unknown) => renameConnectionSchema.parse(data))
   .handler(async ({ data }) => {
-    const {
-      getAccessSession,
-      updateAccessSessionLabel,
-    } = await import("@/db/repositories.server")
+    const { getAccessSession, updateAccessSessionLabel } =
+      await import("@/db/repositories.server")
     const session = await getAccessSession(data.sessionId)
 
     if (!session || session.kind !== "connection") {
@@ -177,10 +169,8 @@ export const revokeConnectionFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((data: unknown) => revokeConnectionSchema.parse(data))
   .handler(async ({ data, context }) => {
-    const {
-      getAccessSession,
-      revokeAccessSession,
-    } = await import("@/db/repositories.server")
+    const { getAccessSession, revokeAccessSession } =
+      await import("@/db/repositories.server")
 
     if (data.sessionId === context.session.sid) {
       throw new Error("Use logout instead.")
@@ -222,7 +212,9 @@ function getCurrentOrigin(request: Request, trustProxy: boolean) {
   const forwardedHost = request.headers.get("x-forwarded-host")
   const forwardedProto = request.headers.get("x-forwarded-proto")
   const host = trustProxy ? (forwardedHost ?? url.host) : url.host
-  const proto = trustProxy ? (forwardedProto ?? url.protocol.slice(0, -1)) : url.protocol.slice(0, -1)
+  const proto = trustProxy
+    ? (forwardedProto ?? url.protocol.slice(0, -1))
+    : url.protocol.slice(0, -1)
 
   return host ? `${proto}://${host}` : null
 }

@@ -3,6 +3,7 @@ import {
   CloudIcon,
   FolderKanbanIcon,
   KeyRoundIcon,
+  NetworkIcon,
   SettingsIcon,
 } from "lucide-react"
 
@@ -32,6 +33,7 @@ const navItems = [
   { to: "/settings/cloudflare", label: "Cloudflare", icon: CloudIcon },
   { to: "/settings/runtime", label: "Runtime", icon: SettingsIcon },
   { to: "/sessions", label: "Sessions", icon: KeyRoundIcon },
+  { to: "/connections", label: "Connections", icon: NetworkIcon },
 ] as const
 
 export function AppShell({ children }: { children: React.ReactNode }) {
