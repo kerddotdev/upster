@@ -187,6 +187,10 @@ async function dispatch(command: Array<string>, options: CliOptions, io: Io) {
     return apiRequest("GET", "/api/cli/v1/status", options)
   }
 
+  if (root === "runtime") {
+    return apiRequest("GET", "/api/cli/v1/runtime", options)
+  }
+
   if (root === "daemon" && sub === "status") {
     return apiRequest("GET", "/api/cli/v1/status", options)
   }
@@ -459,6 +463,39 @@ async function dispatch(command: Array<string>, options: CliOptions, io: Io) {
     return apiRequest("POST", "/api/cli/v1/pills", options, body)
   }
 
+  if (root === "pills" && sub === "update" && third) {
+    if (!options.input) {
+      throw new Error(
+        "Usage: upster pills update <pillId> --input <file|->. Provide a JSON body with name, defaultEnv, and optional command, commandName, cwd, env, healthcheckPath."
+      )
+    }
+
+    const body = await readInputJson(options)
+    return apiRequest(
+      "PATCH",
+      `/api/cli/v1/pills/${encodeURIComponent(third)}`,
+      options,
+      body
+    )
+  }
+
+  if (root === "pills" && sub === "diagnostics" && third) {
+    const flags = parseCommandFlags(command.slice(3))
+    if (flags.clear === "true") {
+      return apiRequest(
+        "POST",
+        `/api/cli/v1/pills/${encodeURIComponent(third)}/diagnostics`,
+        options
+      )
+    }
+
+    return apiRequest(
+      "GET",
+      `/api/cli/v1/pills/${encodeURIComponent(third)}/diagnostics`,
+      options
+    )
+  }
+
   if (root === "pills" && sub === "delete" && third) {
     return apiRequest(
       "DELETE",
@@ -476,6 +513,16 @@ async function dispatch(command: Array<string>, options: CliOptions, io: Io) {
       }
       deployTarget = flags.target
     }
+
+    const useCapsule =
+      flags.useCapsule === "true" || Boolean(flags.capsule) ? true : undefined
+
+    if (deployTarget === "preview" && !useCapsule) {
+      throw new Error(
+        "Preview deploys require a capsule. Pass --use-capsule or --capsule <capsuleId>."
+      )
+    }
+
     return apiRequest(
       "POST",
       `/api/cli/v1/pills/${encodeURIComponent(third)}/start`,
@@ -484,8 +531,7 @@ async function dispatch(command: Array<string>, options: CliOptions, io: Io) {
         commandName: flags.command,
         expiresAt: flags.expiresAt,
         rotatePorts: flags.rotatePorts === "true" ? true : undefined,
-        useCapsule:
-          flags.useCapsule === "true" || flags.capsule ? true : undefined,
+        useCapsule,
         capsuleId: flags.capsule,
         deployTarget,
       }
@@ -519,6 +565,55 @@ async function dispatch(command: Array<string>, options: CliOptions, io: Io) {
       "DELETE",
       `/api/cli/v1/capsules/${encodeURIComponent(third)}`,
       options
+    )
+  }
+
+  if (root === "capsules" && sub === "relabel" && third) {
+    const flags = parseCommandFlags(command.slice(3))
+    let label: string | null
+    if (flags.clear === "true") {
+      label = null
+    } else if (flags.label && flags.label !== "true") {
+      label = flags.label
+    } else {
+      throw new Error(
+        "Usage: upster capsules relabel <capsuleId> --label <text> or --clear."
+      )
+    }
+
+    return apiRequest(
+      "POST",
+      `/api/cli/v1/capsules/${encodeURIComponent(third)}/relabel`,
+      options,
+      { label }
+    )
+  }
+
+  if (root === "capsules" && (sub === "pin" || sub === "unpin") && third) {
+    return apiRequest(
+      "POST",
+      `/api/cli/v1/capsules/${encodeURIComponent(third)}/pin`,
+      options,
+      { pinned: sub === "pin" }
+    )
+  }
+
+  if (root === "capsules" && sub === "prune" && third) {
+    const flags = parseCommandFlags(command.slice(3))
+    let keep: number | undefined
+    if (flags.keep !== undefined && flags.keep !== "true") {
+      const parsed = Number(flags.keep)
+      if (!Number.isInteger(parsed) || parsed < 0) {
+        throw new Error("--keep must be a non-negative integer.")
+      }
+      keep = parsed
+    }
+
+    return apiRequest(
+      "POST",
+      `/api/cli/v1/pills/${encodeURIComponent(third)}/capsules/prune`,
+      options,
+      { keep }
     )
   }
 
