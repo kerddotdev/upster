@@ -16,7 +16,22 @@ export async function createCapsuleArchive(capsuleId: string) {
   const versionRoot = dirname(capsule.path)
   const child = spawn("tar", ["-czf", "-", "-C", versionRoot, "source"], {
     env: buildInheritedEnv(),
-    stdio: ["ignore", "pipe", "ignore"],
+    stdio: ["ignore", "pipe", "pipe"],
+  })
+
+  let stderr = ""
+  child.stderr.on("data", (chunk: Buffer) => {
+    stderr = (stderr + chunk.toString()).slice(-2000)
+  })
+  child.on("error", (error) => {
+    child.stdout.destroy(error)
+  })
+  child.on("exit", (code) => {
+    if (code !== 0) {
+      child.stdout.destroy(
+        new Error(`tar failed (exit ${code ?? "unknown"}): ${stderr.trim()}`)
+      )
+    }
   })
 
   return {

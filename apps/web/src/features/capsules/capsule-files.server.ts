@@ -1,4 +1,4 @@
-import { open, readdir, stat } from "node:fs/promises"
+import { open, readdir, realpath, stat } from "node:fs/promises"
 import { isAbsolute, join, relative, resolve } from "node:path"
 
 import { getCapsuleById } from "@/db/repositories.server"
@@ -20,6 +20,19 @@ function safeJoin(root: string, relPath: string) {
   return target
 }
 
+async function safeRealPath(root: string, relPath: string) {
+  const target = safeJoin(root, relPath)
+  const realRoot = await realpath(root)
+  const realTarget = await realpath(target)
+  const distance = relative(realRoot, realTarget)
+
+  if (distance.startsWith("..") || isAbsolute(distance)) {
+    throw new Error("Path escapes the capsule.")
+  }
+
+  return realTarget
+}
+
 async function requireCapsulePath(capsuleId: string) {
   const capsule = await getCapsuleById(capsuleId)
 
@@ -32,7 +45,7 @@ async function requireCapsulePath(capsuleId: string) {
 
 export async function listCapsuleDir(capsuleId: string, relPath = "") {
   const root = await requireCapsulePath(capsuleId)
-  const dir = safeJoin(root, relPath)
+  const dir = await safeRealPath(root, relPath)
   const entries = await readdir(dir, { withFileTypes: true })
   const result: Array<CapsuleTreeEntry> = []
 
@@ -67,7 +80,7 @@ export async function readCapsuleFile(
   relPath: string
 ): Promise<CapsuleFilePreview> {
   const root = await requireCapsulePath(capsuleId)
-  const file = safeJoin(root, relPath)
+  const file = await safeRealPath(root, relPath)
   const info = await stat(file)
 
   if (!info.isFile()) {

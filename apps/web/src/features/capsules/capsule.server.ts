@@ -36,6 +36,7 @@ import type {
 } from "@/features/capsules/types"
 
 const BUILD_LOG_LIMIT = 8000
+const INSTALL_TIMEOUT_MS = 10 * 60 * 1000
 
 function now() {
   return new Date().toISOString()
@@ -117,13 +118,22 @@ function runInstall(argv: Array<string>, cwd: string) {
       output = (output + chunk.toString()).slice(-BUILD_LOG_LIMIT)
     }
 
+    const timer = setTimeout(() => {
+      output = (
+        output + `\nInstall timed out after ${INSTALL_TIMEOUT_MS / 1000}s.\n`
+      ).slice(-BUILD_LOG_LIMIT)
+      child.kill("SIGKILL")
+    }, INSTALL_TIMEOUT_MS)
+
     child.stdout.on("data", append)
     child.stderr.on("data", append)
     child.on("error", (error) => {
+      clearTimeout(timer)
       output = (output + `\n${error.message}\n`).slice(-BUILD_LOG_LIMIT)
       resolvePromise({ code: null, output, spawnError: error.message })
     })
     child.on("exit", (code) => {
+      clearTimeout(timer)
       resolvePromise({ code, output, spawnError: null })
     })
   })
