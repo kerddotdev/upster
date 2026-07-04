@@ -422,9 +422,12 @@ export async function startPillRuntime(input: StartPillInput) {
         "--metrics",
         `127.0.0.1:${ports.metricsPort}`,
         "run",
-        "--token",
-        token,
       ],
+      env: {
+        PATH: process.env.PATH,
+        HOME: process.env.HOME,
+        TUNNEL_TOKEN: token,
+      },
       streamName: "cloudflared",
     })
 
