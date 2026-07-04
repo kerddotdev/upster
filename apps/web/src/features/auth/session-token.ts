@@ -16,12 +16,13 @@ export function createSessionToken(
   sub: string,
   sid: string,
   secret: string,
-  nowMs: number = Date.now()
+  nowMs: number = Date.now(),
+  ttlSeconds = SESSION_TTL_SECONDS
 ) {
   const payload: SessionPayload = {
     sub,
     sid,
-    exp: Math.floor(nowMs / 1000) + SESSION_TTL_SECONDS,
+    exp: Math.floor(nowMs / 1000) + ttlSeconds,
   }
   const body = Buffer.from(JSON.stringify(payload)).toString("base64url")
 

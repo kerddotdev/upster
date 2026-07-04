@@ -39,6 +39,22 @@ describe("session token", () => {
     expect(verifySessionToken(token, secret, wayLater)).toBeNull()
   })
 
+  it("supports a custom token ttl", () => {
+    const issuedAt = 1_000_000_000_000
+    const token = createSessionToken(
+      "admin",
+      "session-1",
+      secret,
+      issuedAt,
+      60
+    )
+
+    expect(verifySessionToken(token, secret, issuedAt + 59_000)).toMatchObject({
+      sid: "session-1",
+    })
+    expect(verifySessionToken(token, secret, issuedAt + 61_000)).toBeNull()
+  })
+
   it("rejects malformed tokens", () => {
     expect(verifySessionToken(null, secret)).toBeNull()
     expect(verifySessionToken("not-a-token", secret)).toBeNull()
