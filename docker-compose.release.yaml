@@ -10,6 +10,10 @@ services:
       UPSTER_APP_PORT_RANGE: "${UPSTER_APP_PORT_RANGE:-41000-49151}"
       UPSTER_METRICS_PORT_RANGE: "${UPSTER_METRICS_PORT_RANGE:-52000-60999}"
       UPSTER_PUBLIC_ORIGIN: "${UPSTER_PUBLIC_ORIGIN:-https://localhost:3377}"
+      UPSTER_ALLOWED_HOSTS: "${UPSTER_ALLOWED_HOSTS:-}"
+      UPSTER_ALLOWED_ORIGINS: "${UPSTER_ALLOWED_ORIGINS:-}"
+      UPSTER_TRUST_PROXY: "${UPSTER_TRUST_PROXY:-}"
+      UPSTER_TAILSCALE_STATUS_FILE: "/tailscale/status.json"
       UPSTER_SESSION_SECRET: "${UPSTER_SESSION_SECRET:-}"
       UPSTER_SECURE_COOKIES: "${UPSTER_SECURE_COOKIES:-}"
       DATABASE_URL: "${DATABASE_URL:-http://db:8080}"
@@ -23,6 +27,7 @@ services:
       - "${UPSTER_BIND_HOST:-127.0.0.1}:${UPSTER_PORT:-3377}:${UPSTER_PORT:-3377}"
     volumes:
       - upster_data:/data
+      - ${UPSTER_TAILSCALE_DIR:-./.tailscale}:/tailscale:ro
       - ${UPSTER_HOST_WORKSPACE:-./workspaces}:/workspaces:rw
     depends_on:
       - db
