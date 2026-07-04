@@ -12,7 +12,7 @@ const client = createClient({
 
 export const db = drizzle(client, { schema })
 
-let initialized = false
+let initialization: Promise<void> | null = null
 
 async function addColumnIfMissing(table: string, definition: string) {
   try {
@@ -34,10 +34,17 @@ async function recordMigration(id: string) {
 }
 
 export async function ensureDatabase() {
-  if (initialized) {
-    return
+  if (!initialization) {
+    initialization = runMigrations().catch((error) => {
+      initialization = null
+      throw error
+    })
   }
 
+  return initialization
+}
+
+async function runMigrations() {
   await client.batch(
     [
       `CREATE TABLE IF NOT EXISTS app_settings (
@@ -212,6 +219,4 @@ export async function ensureDatabase() {
   await addColumnIfMissing("capsules", "preview_tunnel_name TEXT")
   await addColumnIfMissing("capsules", "preview_dns_record_id TEXT")
   await recordMigration("0004_capsule_previews")
-
-  initialized = true
 }

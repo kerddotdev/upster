@@ -62,6 +62,10 @@ export const Route = createFileRoute("/api/cli/v1/runs/$runId/logs/stream")({
 
             const initialLogs = await getRunLogs(params.runId)
 
+            if (closed) {
+              return
+            }
+
             for (const log of initialLogs) {
               enqueue(log)
             }
@@ -70,7 +74,9 @@ export const Route = createFileRoute("/api/cli/v1/runs/$runId/logs/stream")({
               enqueue(log)
             })
 
-            if (request.signal.aborted) {
+            if (closed || request.signal.aborted) {
+              unsubscribe?.()
+              unsubscribe = null
               close()
             }
           },
