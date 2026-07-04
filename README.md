@@ -40,7 +40,7 @@ template, configure `.env`, then start the stack:
 ```bash
 mkdir upster && cd upster
 curl -LO https://github.com/kerdofficial/upster/releases/latest/download/docker-compose.yaml
-curl -Lo .env https://github.com/kerdofficial/upster/releases/latest/download/.env.example
+curl -Lo .env https://github.com/kerdofficial/upster/releases/latest/download/env.example
 # edit .env with your settings, then:
 docker compose up -d
 ```

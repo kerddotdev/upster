@@ -65,7 +65,7 @@ jobs:
           mkdir -p release-assets
           sed "s|image: ghcr.io/kerdofficial/upster:.*|image: ghcr.io/kerdofficial/upster:$VERSION|" \
             docker-compose.release.yaml > release-assets/docker-compose.yaml
-          cp .env.example release-assets/.env.example
+          cp .env.example release-assets/env.example
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -101,7 +101,7 @@ jobs:
             apps/cli/dist/upster-linux-x64.tar.gz
             apps/cli/dist/checksums.sha256
             release-assets/docker-compose.yaml
-            release-assets/.env.example
+            release-assets/env.example
 
       - name: Trigger Homebrew tap update
         if: success()
