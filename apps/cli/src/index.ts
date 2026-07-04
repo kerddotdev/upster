@@ -720,11 +720,12 @@ async function streamLogs(runId: string, options: CliOptions, io: Io) {
 
   if (!response.ok || !response.body) {
     const payload = (await response.json()) as ApiFailure
-    throw payload.error.message
+    throw new Error(payload.error.message)
   }
 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
+  let buffer = ""
 
   while (true) {
     const { value, done } = await reader.read()
@@ -732,14 +733,19 @@ async function streamLogs(runId: string, options: CliOptions, io: Io) {
       break
     }
 
-    const text = decoder.decode(value)
-    for (const line of text.split("\n")) {
-      if (!line.startsWith("data: ")) {
-        continue
+    buffer += decoder.decode(value, { stream: true })
+
+    let newlineIndex = buffer.indexOf("\n")
+    while (newlineIndex !== -1) {
+      const line = buffer.slice(0, newlineIndex)
+      buffer = buffer.slice(newlineIndex + 1)
+
+      if (line.startsWith("data: ")) {
+        const log = JSON.parse(line.slice(6)) as { chunk?: string }
+        io.stdout.write(log.chunk ?? "")
       }
 
-      const log = JSON.parse(line.slice(6)) as { chunk?: string }
-      io.stdout.write(log.chunk ?? "")
+      newlineIndex = buffer.indexOf("\n")
     }
   }
 }
@@ -877,7 +883,7 @@ async function readStdin() {
 }
 
 function assertInteractiveOnly(options: CliOptions, command: string) {
-  if (options.input || options.json) {
+  if (options.input || options.json || !canUseSavedHumanCredential()) {
     throw agentForbiddenError({
       action: `run ${command}`,
       command,
@@ -1211,7 +1217,11 @@ function localFailure(error: unknown, dashboardUrl: string): ApiFailure {
 }
 
 function stripTrailingSlash(value: string) {
-  return value.replace(/\/+$/, "")
+  let end = value.length
+  while (end > 0 && value[end - 1] === "/") {
+    end -= 1
+  }
+  return value.slice(0, end)
 }
 
 function configDir() {
