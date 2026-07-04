@@ -17,6 +17,18 @@ describe("agent guide and errors", () => {
     expect(help).toContain("MISSING_SCOPE")
   })
 
+  it("documents capsule and snapshot deploy commands in CLI help", () => {
+    const help = renderCliHelp()
+
+    expect(help).toContain("upster capsules build")
+    expect(help).toContain("upster capsules pin")
+    expect(help).toContain("upster capsules prune")
+    expect(help).toContain("--use-capsule")
+    expect(help).toContain("--target preview")
+    expect(help).toContain("upster runtime")
+    expect(help).toContain("capsules:write")
+  })
+
   it("returns a JSON agent guide with scopes and errors", () => {
     const guide = getAgentGuide()
 
@@ -26,6 +38,25 @@ describe("agent guide and errors", () => {
     expect(
       guide.commonErrors.some((error) => error.code === "VAULT_LOCKED")
     ).toBe(true)
+  })
+
+  it("advertises capsule commands and scopes in the agent guide", () => {
+    const guide = getAgentGuide()
+
+    expect(guide.scopes.some((entry) => entry.scope === "capsules:write")).toBe(
+      true
+    )
+    expect(
+      guide.agentSafeCommands.some((command) =>
+        command.startsWith("upster capsules build")
+      )
+    ).toBe(true)
+    expect(
+      guide.agentSafeCommands.some((command) =>
+        command.includes("--target preview")
+      )
+    ).toBe(true)
+    expect(guide.presets.agentFullRuntime).toContain("capsules:write")
   })
 
   it("includes detailed permission remediation fields", () => {
