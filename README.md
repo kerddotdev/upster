@@ -11,11 +11,51 @@ development, validation, database tasks, and Docker builds.
 
 ## Status
 
-Upster is in alpha and under active development. Use it at your own risk.
+Upster is in beta and under active development. Use it at your own risk.
 
 The project is intended for local, single-user development workflows. It is not production-ready yet, and some safety hardening is still planned around process isolation and Cloudflare record ownership.
 
 Do not use Upster for untrusted repositories, public multi-user access, or sensitive production workloads until those safety items are completed.
+
+## Install
+
+You do not need the source code to run Upster. Install the CLI with Homebrew and
+run the control plane from the published Docker image.
+
+### CLI (Homebrew)
+
+The `upster` CLI is a client for the local Upster control plane:
+
+```bash
+brew install kerdofficial/tap/upster
+upster --version
+```
+
+### Control plane (Docker)
+
+The dashboard and its libSQL database run as containers. The dashboard image is
+published to `ghcr.io/kerdofficial/upster`. Download the compose file and env
+template, configure `.env`, then start the stack:
+
+```bash
+mkdir upster && cd upster
+curl -LO https://github.com/kerdofficial/upster/releases/latest/download/docker-compose.yaml
+curl -Lo .env https://github.com/kerdofficial/upster/releases/latest/download/.env.example
+# edit .env with your settings, then:
+docker compose up -d
+```
+
+Then complete first-time setup (through the dashboard at `http://127.0.0.1:3377`
+or the CLI):
+
+```bash
+upster auth setup
+upster vault save
+upster vault unlock
+```
+
+Cloudflare credentials are never placed in `.env`; you provide them once through
+`upster vault save`, which stores them as encrypted vault ciphertext.
 
 ## Security
 

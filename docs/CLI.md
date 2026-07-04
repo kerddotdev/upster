@@ -19,6 +19,19 @@ In this document, `upster` means the installed or built CLI. When running from a
 ./apps/cli/dist/upster
 ```
 
+## Install
+
+Install the CLI with Homebrew. No source checkout is required:
+
+```sh
+brew install kerdofficial/tap/upster
+upster --version
+```
+
+The CLI is a client for the Upster control plane, which runs with Docker (the
+dashboard image is published to `ghcr.io/kerdofficial/upster`). See the project
+README for the control plane install and first-time setup.
+
 ## Control Plane Model
 
 The CLI does not own a separate runtime. It is an authenticated client for the local Upster control plane behind the dashboard. The dashboard, CLI, and agents all use the same `/api/cli/v1` API for pills, runs, logs, metrics, vault status, and sessions.
@@ -56,10 +69,15 @@ Or directly:
 bun run --cwd apps/cli build
 ```
 
+The build produces a standalone executable at `apps/cli/dist/upster` that does
+not need the Bun runtime. The version is injected at build time (from the tag in
+release builds, or the root `package.json` version locally).
+
 Run the built CLI:
 
 ```sh
 ./apps/cli/dist/upster --help
+./apps/cli/dist/upster --version
 ```
 
 Run the CLI in development without a build:
@@ -96,6 +114,7 @@ Most commands accept these options:
 --human                   Use the saved human credential, interactive terminal only
 --no-color                Disable terminal color
 --help                    Show help
+--version                 Print the CLI version
 ```
 
 Examples:
@@ -1029,6 +1048,7 @@ upster agents revoke <sessionId>
 
 ```txt
 upster --help
+upster --version
 upster status
 upster runtime
 upster daemon status
