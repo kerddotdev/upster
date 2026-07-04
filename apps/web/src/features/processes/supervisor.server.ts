@@ -432,6 +432,16 @@ export async function startPillRuntime(input: StartPillInput) {
     })
 
     managed.tunnelProcess = tunnelProcess
+
+    // Re-check for an app exit that landed while cloudflared was spawning. There
+    // is no await between here and startCompleted, so the exit handler cannot
+    // run in this gap; catching it here prevents marking a dead app as running.
+    if (appExitCode !== undefined || appProcess.exitCode !== null) {
+      throw new Error(
+        describeAppFailure(appExitCode ?? appProcess.exitCode, appDiag)
+      )
+    }
+
     managed.expiryTimer = scheduleExpiry(run, managed)
     startCompleted = true
 
@@ -465,6 +475,9 @@ export async function startPillRuntime(input: StartPillInput) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to start pill."
+    if (managed.expiryTimer) {
+      clearTimeout(managed.expiryTimer)
+    }
     killProcess(managed.appProcess)
     killProcess(managed.tunnelProcess)
     managedRuns.delete(run.id)
