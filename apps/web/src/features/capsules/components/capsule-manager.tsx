@@ -375,7 +375,9 @@ export function CapsuleManager({
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           variant="destructive"
-                          disabled={isBusy || deployed}
+                          disabled={
+                            isBusy || deployed || capsule.status === "building"
+                          }
                           onClick={() => void removeVersion(capsule)}
                         >
                           <Trash2Icon />

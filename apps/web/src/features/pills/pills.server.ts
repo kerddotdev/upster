@@ -79,7 +79,11 @@ export async function updatePill(input: UpdatePillInput) {
       }
     | undefined
 
-  if (editsCommand && currentCommand) {
+  if (editsCommand) {
+    if (!currentCommand) {
+      throw new Error("Pill has no command to update.")
+    }
+
     const argv =
       input.command !== undefined
         ? parseCommand(input.command)

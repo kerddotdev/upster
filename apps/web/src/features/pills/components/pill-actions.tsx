@@ -170,15 +170,22 @@ export function PillActions({
         await stopPill({
           data: { pillId: pill.id, runId: pill.activeRun?.id },
         })
-        await startPill({
-          data: {
-            pillId: pill.id,
-            commandName: pill.defaultEnv,
-            expiresAt: expiresAt ?? undefined,
-            rotatePorts: false,
-            useCapsule: true,
-          },
-        })
+        try {
+          await startPill({
+            data: {
+              pillId: pill.id,
+              commandName: pill.defaultEnv,
+              expiresAt: expiresAt ?? undefined,
+              rotatePorts: false,
+              useCapsule: true,
+            },
+          })
+        } catch (error) {
+          throw new Error(
+            "Capsule rebuilt and the pill was stopped, but the restart failed. Start it manually.",
+            { cause: error }
+          )
+        }
         toast.success("Capsule refreshed and restarted.")
         await router.invalidate()
       },

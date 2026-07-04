@@ -30,8 +30,21 @@ export async function clearPillDiagnostics(pillId: string) {
   await deleteInactiveRuns(pillId)
 
   const capsules = await listCapsules(pillId)
+  const failures: Array<string> = []
   for (const capsule of capsules.filter((entry) => entry.status === "error")) {
-    await deleteCapsuleVersion(capsule.id).catch(() => undefined)
+    try {
+      await deleteCapsuleVersion(capsule.id)
+    } catch {
+      failures.push(capsule.id)
+    }
+  }
+
+  if (failures.length) {
+    throw new Error(
+      `Failed to remove ${failures.length} errored capsule${
+        failures.length === 1 ? "" : "s"
+      }.`
+    )
   }
 
   return getPillDiagnostics(pillId)
