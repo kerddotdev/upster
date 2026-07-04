@@ -253,22 +253,22 @@ After revoke, the token fails immediately.
 
 Current scope list:
 
-| Scope | Agent allowed | Purpose |
-| --- | --- | --- |
-| `pills:read` | yes | List and read pills |
-| `pills:write` | yes | Add and update pills |
-| `pills:delete` | yes | Delete pills |
-| `runs:start` | yes | Start pill runs |
-| `runs:stop` | yes | Stop pill runs |
-| `logs:read` | yes | Read and stream run logs |
-| `metrics:read` | yes | Read tunnel metrics |
-| `runtime:read` | yes | Read runtime and control plane status |
-| `vault:status` | yes | Read vault status without secrets |
-| `sessions:read` | no | List sessions as a human admin |
-| `sessions:revoke` | no | Revoke sessions as a human admin |
-| `vault:write` | no | Save the vault as a human admin |
-| `vault:unlock` | no | Unlock the vault as a human admin |
-| `vault:delete` | no | Delete the vault as a human admin |
+| Scope             | Agent allowed | Purpose                               |
+| ----------------- | ------------- | ------------------------------------- |
+| `pills:read`      | yes           | List and read pills                   |
+| `pills:write`     | yes           | Add and update pills                  |
+| `pills:delete`    | yes           | Delete pills                          |
+| `runs:start`      | yes           | Start pill runs                       |
+| `runs:stop`       | yes           | Stop pill runs                        |
+| `logs:read`       | yes           | Read and stream run logs              |
+| `metrics:read`    | yes           | Read tunnel metrics                   |
+| `runtime:read`    | yes           | Read runtime and control plane status |
+| `vault:status`    | yes           | Read vault status without secrets     |
+| `sessions:read`   | no            | List sessions as a human admin        |
+| `sessions:revoke` | no            | Revoke sessions as a human admin      |
+| `vault:write`     | no            | Save the vault as a human admin       |
+| `vault:unlock`    | no            | Unlock the vault as a human admin     |
+| `vault:delete`    | no            | Delete the vault as a human admin     |
 
 There is no `all` scope. This is intentional: `all` would be ambiguous because agents must never receive vault unlock, vault write, vault delete, or session admin scopes.
 
@@ -596,16 +596,16 @@ Example `pill.json`:
 
 Fields:
 
-| Field | Required | Meaning |
-| --- | --- | --- |
-| `name` | yes | Human-readable name |
-| `slug` | no | URL and identifier-style slug |
-| `repoPath` | yes | Repository path, must be inside an allowed workspace root |
-| `defaultEnv` | yes | Default command name |
-| `commandName` | yes | Command name to create |
-| `command` | yes | Command to run |
-| `cwd` | no | Working directory |
-| `healthcheckPath` | no | Healthcheck path |
+| Field             | Required | Meaning                                                   |
+| ----------------- | -------- | --------------------------------------------------------- |
+| `name`            | yes      | Human-readable name                                       |
+| `slug`            | no       | URL and identifier-style slug                             |
+| `repoPath`        | yes      | Repository path, must be inside an allowed workspace root |
+| `defaultEnv`      | yes      | Default command name                                      |
+| `commandName`     | yes      | Command name to create                                    |
+| `command`         | yes      | Command to run                                            |
+| `cwd`             | no       | Working directory                                         |
+| `healthcheckPath` | no       | Healthcheck path                                          |
 
 Delete a pill:
 
@@ -651,7 +651,7 @@ upster pills run <pillId> --capsule <capsuleId>
 ```
 
 Choose where a capsule is served with `--target` (defaults to production). Preview
-serves it at a per-snapshot hostname (`slug-<capsuleId>.rootDomain`):
+serves it at a per-snapshot hostname (`slug-<first 8 chars of capsuleId>.rootDomain`):
 
 ```sh
 upster pills run <pillId> --capsule <capsuleId> --target preview
