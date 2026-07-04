@@ -3,7 +3,7 @@
 import { spawnSync } from "node:child_process"
 import { existsSync } from "node:fs"
 import { mkdir, rename, rm, writeFile } from "node:fs/promises"
-import { networkInterfaces } from "node:os"
+import { networkInterfaces, type NetworkInterfaceInfo } from "node:os"
 import { dirname, join, resolve } from "node:path"
 
 const allowedServePorts = new Set([443, 8443, 10000])
@@ -301,23 +301,100 @@ function assertNoServeConflict(
 }
 
 function collectLanIps() {
+  const interfaces = networkInterfaces()
+  const defaultInterface = findDefaultRouteInterface()
+  const primaryIp = defaultInterface
+    ? collectLanIpsFromInterface(interfaces[defaultInterface])
+        .sort(compareIpv4)
+        .at(0)
+    : undefined
+
+  if (primaryIp) {
+    return [primaryIp]
+  }
+
+  for (const [name, addresses] of Object.entries(interfaces)) {
+    if (isVirtualLanInterface(name)) {
+      continue
+    }
+
+    for (const address of addresses ?? []) {
+      if (isUsableLanAddress(address)) {
+        return [address.address]
+      }
+    }
+  }
+
+  return []
+}
+
+function collectLanIpsFromInterface(
+  addresses: Array<NetworkInterfaceInfo> | undefined
+) {
   const ips = new Set<string>()
 
-  for (const addresses of Object.values(networkInterfaces())) {
-    for (const address of addresses ?? []) {
-      if (
-        address.family !== "IPv4" ||
-        address.internal ||
-        isCgnatIpv4(address.address) ||
-        !isPrivateLanIpv4(address.address)
-      ) {
-        continue
-      }
+  for (const address of addresses ?? []) {
+    if (isUsableLanAddress(address)) {
       ips.add(address.address)
     }
   }
 
   return [...ips].sort(compareIpv4)
+}
+
+function isUsableLanAddress(address: NetworkInterfaceInfo) {
+  return (
+    address.family === "IPv4" &&
+    !address.internal &&
+    !isCgnatIpv4(address.address) &&
+    isPrivateLanIpv4(address.address)
+  )
+}
+
+function findDefaultRouteInterface() {
+  const routeOutput = runOptionalCommand("route", ["-n", "get", "default"])
+  const routeMatch = routeOutput.match(/interface:\s*(\S+)/)
+  if (routeMatch?.[1]) {
+    return routeMatch[1]
+  }
+
+  const ipOutput = runOptionalCommand("ip", ["route", "show", "default"])
+  const ipMatch = ipOutput.match(/\bdev\s+(\S+)/)
+  return ipMatch?.[1] ?? null
+}
+
+function runOptionalCommand(command: string, args: Array<string>) {
+  const result = spawnSync(command, args, {
+    encoding: "utf-8",
+    shell: false,
+  })
+
+  if (result.error || result.status !== 0) {
+    return ""
+  }
+
+  return result.stdout ?? ""
+}
+
+function isVirtualLanInterface(name: string) {
+  const lower = name.toLowerCase()
+  return (
+    lower === "lo" ||
+    lower.startsWith("lo") ||
+    lower.startsWith("bridge") ||
+    lower.startsWith("br-") ||
+    lower.startsWith("docker") ||
+    lower.startsWith("veth") ||
+    lower.startsWith("vmnet") ||
+    lower.startsWith("virbr") ||
+    lower.startsWith("utun") ||
+    lower.startsWith("tun") ||
+    lower.startsWith("tap") ||
+    lower.startsWith("wg") ||
+    lower.startsWith("tailscale") ||
+    lower.startsWith("awdl") ||
+    lower.startsWith("llw")
+  )
 }
 
 function isPrivateLanIpv4(ip: string) {
