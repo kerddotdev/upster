@@ -36,7 +36,7 @@ export async function ensureRuntimeInstance() {
   await upsertRuntimeInstance({
     id: runtimeInstanceId,
     pid: process.pid,
-    version: process.env.npm_package_version ?? "0.0.7",
+    version: process.env.npm_package_version ?? "0.1.0",
     status: "running",
   })
 
@@ -81,7 +81,7 @@ export async function getRuntimeControlPlaneStatus() {
     pid: process.pid,
     startedAt,
     heartbeatAt: now(),
-    version: process.env.npm_package_version ?? "0.0.7",
+    version: process.env.npm_package_version ?? "0.1.0",
     status: "running" as const,
     instances: await listRuntimeInstances(),
   }

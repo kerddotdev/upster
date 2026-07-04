@@ -91,7 +91,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col items-center gap-1 px-2 py-1 text-center text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="w-fit">
-                Alpha
+                Beta
               </Badge>
               <span>v{__APP_VERSION__}</span>
             </div>
