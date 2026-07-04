@@ -22,7 +22,7 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
-      - run: bun test
+      - run: bun run test
 
       - name: Resolve version
         id: version
