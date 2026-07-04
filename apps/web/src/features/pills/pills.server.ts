@@ -102,9 +102,15 @@ export async function updatePill(input: UpdatePillInput) {
           )
         : currentCommand.cwd
 
+    const commandName = (input.commandName ?? currentCommand.name).trim()
+
+    if (!commandName) {
+      throw new Error("Command name cannot be empty.")
+    }
+
     command = {
       commandId: currentCommand.id,
-      name: (input.commandName ?? currentCommand.name).trim(),
+      name: commandName,
       cwd,
       argv,
       env: input.env ?? currentCommand.env,
@@ -115,6 +121,12 @@ export async function updatePill(input: UpdatePillInput) {
     }
   }
 
+  const name = input.name.trim()
+
+  if (!name) {
+    throw new Error("Pill name cannot be empty.")
+  }
+
   const defaultEnv = (
     input.defaultEnv?.trim() ||
     command?.name ||
@@ -123,7 +135,7 @@ export async function updatePill(input: UpdatePillInput) {
 
   return updatePillRecord({
     pillId: input.pillId,
-    name: input.name.trim(),
+    name,
     defaultEnv,
     command,
   })

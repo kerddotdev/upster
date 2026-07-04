@@ -75,7 +75,7 @@ function classifyRuntimeCause(message: string) {
     return "The command is not present in the configured UPSTER_ALLOWED_COMMANDS allowlist."
   }
 
-  if (lower.includes("eaddrinuse") || lower.includes("port")) {
+  if (lower.includes("eaddrinuse") || /\bport\b/.test(lower)) {
     return "A required local port is already occupied or unavailable."
   }
 
