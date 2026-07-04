@@ -433,9 +433,24 @@ export async function startPillRuntime(input: StartPillInput) {
 
     managed.tunnelProcess = tunnelProcess
 
-    // Re-check for an app exit that landed while cloudflared was spawning. There
-    // is no await between here and startCompleted, so the exit handler cannot
-    // run in this gap; catching it here prevents marking a dead app as running.
+    // Re-check for an app exit that landed while cloudflared was spawning.
+    if (appExitCode !== undefined || appProcess.exitCode !== null) {
+      throw new Error(
+        describeAppFailure(appExitCode ?? appProcess.exitCode, appDiag)
+      )
+    }
+
+    await updateRun(run.id, {
+      tunnelPid: tunnelProcess.pid ?? null,
+      status: "running",
+    })
+    await updatePillStatus(input.pillId, "running")
+
+    // Only delegate exits to handleAppExit once the "running" writes are done,
+    // and re-check first: if the app died during those writes the exit handler
+    // was skipped (startCompleted was still false), so mark it here. There is no
+    // await between this check and startCompleted, so no exit can slip through
+    // and overwrite the terminal state with a stale "running".
     if (appExitCode !== undefined || appProcess.exitCode !== null) {
       throw new Error(
         describeAppFailure(appExitCode ?? appProcess.exitCode, appDiag)
@@ -444,12 +459,6 @@ export async function startPillRuntime(input: StartPillInput) {
 
     managed.expiryTimer = scheduleExpiry(run, managed)
     startCompleted = true
-
-    await updateRun(run.id, {
-      tunnelPid: tunnelProcess.pid ?? null,
-      status: "running",
-    })
-    await updatePillStatus(input.pillId, "running")
 
     tunnelProcess.on("exit", (code) => {
       void handleTunnelExit(run.id, input.pillId, code)
