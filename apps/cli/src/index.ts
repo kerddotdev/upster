@@ -306,7 +306,7 @@ async function dispatch(command: Array<string>, options: CliOptions, io: Io) {
 
     if (result.ok && flags.save === "true") {
       saveAgentTokenFromCreate(result, {
-        name: flags["save-as"] ?? label,
+        name: flags.saveAs ?? label,
         dashboardUrl: options.dashboardUrl,
         makeDefault: flags.default === "true",
       })
@@ -469,6 +469,13 @@ async function dispatch(command: Array<string>, options: CliOptions, io: Io) {
 
   if (root === "pills" && sub === "run" && third) {
     const flags = parseCommandFlags(command.slice(3))
+    let deployTarget: "preview" | "production" | undefined
+    if (flags.target !== undefined) {
+      if (flags.target !== "preview" && flags.target !== "production") {
+        throw new Error('Invalid --target. Use "preview" or "production".')
+      }
+      deployTarget = flags.target
+    }
     return apiRequest(
       "POST",
       `/api/cli/v1/pills/${encodeURIComponent(third)}/start`,
@@ -480,12 +487,7 @@ async function dispatch(command: Array<string>, options: CliOptions, io: Io) {
         useCapsule:
           flags.useCapsule === "true" || flags.capsule ? true : undefined,
         capsuleId: flags.capsule,
-        deployTarget:
-          flags.target === "preview"
-            ? "preview"
-            : flags.target === "production"
-              ? "production"
-              : undefined,
+        deployTarget,
       }
     )
   }
@@ -810,6 +812,10 @@ async function promptOptional(io: Io, label: string) {
   }
 }
 
+function toCamelCase(key: string) {
+  return key.replace(/-([a-z])/g, (_, char: string) => char.toUpperCase())
+}
+
 function parseCommandFlags(args: Array<string>) {
   const flags: Record<string, string> = {}
 
@@ -819,7 +825,7 @@ function parseCommandFlags(args: Array<string>) {
       continue
     }
 
-    const key = arg.slice(2)
+    const key = toCamelCase(arg.slice(2))
     const next = args[i + 1]
     if (!next || next.startsWith("--")) {
       flags[key] = "true"
