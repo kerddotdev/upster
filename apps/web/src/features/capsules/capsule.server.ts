@@ -274,21 +274,23 @@ export async function buildCapsule(input: BuildCapsuleInput): Promise<Capsule> {
   }
 }
 
-async function cleanupPreviewTunnel(capsule: Capsule) {
+async function cleanupPreviewTunnel(capsule: Capsule): Promise<boolean> {
   if (!capsule.previewTunnelId && !capsule.previewDnsRecordId) {
-    return
+    return true
   }
 
   const config = await getUnlockedCloudflareConfig()
 
   if (!config) {
-    return
+    return false
   }
 
   const client = createCloudflareClient(config)
+  let cleaned = true
 
   if (capsule.previewDnsRecordId) {
     await client.deleteDnsRecord(capsule.previewDnsRecordId).catch((error) => {
+      cleaned = false
       console.warn(
         `Failed to delete preview DNS record for capsule ${capsule.id}: ${describeError(error)}`
       )
@@ -297,11 +299,14 @@ async function cleanupPreviewTunnel(capsule: Capsule) {
 
   if (capsule.previewTunnelId) {
     await client.deleteTunnel(capsule.previewTunnelId).catch((error) => {
+      cleaned = false
       console.warn(
         `Failed to delete preview tunnel for capsule ${capsule.id}: ${describeError(error)}`
       )
     })
   }
+
+  return cleaned
 }
 
 function describeError(error: unknown) {
@@ -323,7 +328,17 @@ export async function deleteCapsuleVersion(capsuleId: string) {
     )
   }
 
-  await cleanupPreviewTunnel(capsule)
+  // Refuse to drop the record while preview Cloudflare resources still exist, so
+  // deleting a snapshot can never orphan a tunnel or leave a dangling DNS record
+  // (a subdomain-takeover risk). The stored preview ids are kept for a retry.
+  const cleaned = await cleanupPreviewTunnel(capsule)
+
+  if (!cleaned) {
+    throw new Error(
+      "This snapshot has a preview tunnel that could not be removed. Unlock the Cloudflare vault, then delete it again so the preview tunnel and DNS record are cleaned up instead of orphaned."
+    )
+  }
+
   await rm(capsuleVersionRoot(capsule.pillId, capsuleId), {
     recursive: true,
     force: true,

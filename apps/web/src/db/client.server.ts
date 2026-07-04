@@ -219,4 +219,12 @@ async function runMigrations() {
   await addColumnIfMissing("capsules", "preview_tunnel_name TEXT")
   await addColumnIfMissing("capsules", "preview_dns_record_id TEXT")
   await recordMigration("0004_capsule_previews")
+
+  await client.execute(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_access_sessions_token_hash ON access_sessions(token_hash) WHERE token_hash IS NOT NULL`
+  )
+  await client.execute(
+    `CREATE INDEX IF NOT EXISTS idx_capsules_pill_id ON capsules(pill_id)`
+  )
+  await recordMigration("0005_auth_capsule_indexes")
 }
