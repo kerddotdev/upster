@@ -57,6 +57,32 @@ upster vault unlock
 Cloudflare credentials are never placed in `.env`; you provide them once through
 `upster vault save`, which stores them as encrypted vault ciphertext.
 
+### Remote Access Over Tailscale
+
+Upster can expose the dashboard to other devices in your private Tailscale
+tailnet without giving the container Tailscale credentials. The native
+Tailscale app runs on the host, and a small setup script writes a non-secret
+status file that Docker mounts read-only.
+
+From a source checkout on the host that runs Docker:
+
+```bash
+bun run tailscale:setup
+docker compose up -d
+```
+
+The script prints the Tailscale HTTPS URL and the matching `.env` values:
+
+```bash
+UPSTER_ALLOWED_HOSTS=<magic-dns-name>
+UPSTER_ALLOWED_ORIGINS=https://<magic-dns-name>:8443
+UPSTER_TRUST_PROXY=true
+UPSTER_TAILSCALE_DIR=./.tailscale
+```
+
+Open the dashboard, go to Connections, create a pairing link, and use the
+Tailscale HTTPS tab or QR code on the device you want to pair.
+
 ## Security
 
 See [SECURITY.md](SECURITY.md) for the full security model, operator caveats, and contributor and AI-agent guidance. Highlights:

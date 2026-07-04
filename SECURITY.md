@@ -10,12 +10,18 @@ changes.
 
 - Upster is intended to run on one developer's machine, reachable only over
   loopback by default.
+- Remote dashboard access over a private Tailscale tailnet is a sanctioned path.
+  Tailnet peers are semi-trusted: Tailscale ACLs are controlled by the operator
+  outside Upster, and a peer that can reach the dashboard can try the public
+  pairing surface.
 - The most sensitive asset is the Cloudflare API token. It can change DNS and
   open tunnels for the configured zone, so it is treated as a high-value secret.
 - Pills (the apps Upster runs) are assumed to be repositories the operator
   trusts. Upster is not a sandbox for untrusted code.
 - The realistic adversary is another host or process on the same machine or
-  local network, not a remote internet attacker.
+  local network, or a tailnet peer that can route to the dashboard. A remote
+  internet attacker remains out of scope unless they can reach Upster through
+  the local network, a tailnet route, or another operator-managed proxy.
 
 ## What is in place
 
@@ -29,6 +35,20 @@ changes.
 - Dashboard, CLI, and agent access are backed by revocable rows in the
   `access_sessions` table. CLI and agent sessions use bearer tokens whose
   plaintext value is shown only when created. Upster stores only a token hash.
+- Paired browser connections are backed by the same `access_sessions` table with
+  `kind = "connection"`. They are permanent until revoked, use a sentinel
+  `expires_at` value, and receive a signed session cookie with a 400 day token
+  expiry that is renewed on dashboard server-function reads after half its life
+  has elapsed.
+- Pairing links are 60-bit, single-use tokens with a 5 minute TTL. The plaintext
+  token is returned only once, travels in the URL fragment, and is never stored
+  by Upster. The database stores only a SHA-256 token hash. Redemption uses one
+  atomic consume operation so invalid, expired, consumed, and revoked links all
+  produce the same failure result.
+- The public pairing redeem function is rate limited in memory with a per-IP
+  bucket and a global bucket. `x-forwarded-for` is trusted only when
+  `UPSTER_TRUST_PROXY=true`; otherwise redeem attempts share the direct bucket
+  and the global limiter remains the backstop.
 - Agents should receive only scoped capability tokens. Agent tokens can read and
   operate pills only within their scopes, and cannot receive vault write, vault
   unlock, vault delete, or admin-only scopes.
@@ -45,16 +65,35 @@ changes.
   `UPSTER_AGENT`, `--token`, `--token-file`, or `UPSTER_TOKEN`.
 - Every protected TanStack Start server function carries the auth middleware,
   and the streaming and metrics server routes verify the session manually
-  because route handlers do not run server-function middleware.
-- TanStack Start's built-in CSRF protection rejects cross-origin calls to
-  server functions.
+  because route handlers do not run server-function middleware. The only public
+  server functions are auth status, login, setup, logout, and
+  `redeemPairingToken`.
+- TanStack Start's CSRF protection rejects cross-origin calls to server
+  functions. `UPSTER_ALLOWED_ORIGINS` can add explicit origins for trusted local
+  proxies such as Tailscale Serve while non-allowlisted cross-origin POSTs remain
+  forbidden.
 
 ### Network exposure
 
 - The container binds the dashboard on `127.0.0.1` by default. Exposing it on
   the local network is an explicit opt-in through `UPSTER_BIND_HOST`.
-- There is no TLS by default; loopback-only operation makes transport sniffing a
-  non-issue for the default setup.
+- The Connections page can advertise four access modes: this machine
+  (`127.0.0.1`), local network IPs, Tailscale IPs, and Tailscale HTTPS. Local
+  network and Tailscale IP origins require `UPSTER_BIND_HOST=0.0.0.0` because
+  they reach the container directly. Tailscale HTTPS is provided by a host-side
+  `tailscale serve` proxy.
+- `UPSTER_ALLOWED_HOSTS` controls which hostnames Vite preview accepts in
+  production, and `UPSTER_ALLOWED_ORIGINS` controls the server-function CSRF
+  Origin fallback allowlist. Both must include any trusted proxy origin that
+  should serve the dashboard.
+- The container never runs the `tailscale` CLI and never holds tailnet
+  credentials. The host setup script is the bridge: it configures Tailscale
+  Serve on the host and writes a non-secret status file containing hostnames,
+  IPs, and ports. Docker mounts that file read-only at `/tailscale/status.json`.
+- There is no TLS by default for direct loopback, LAN IP, or Tailscale IP
+  origins. Tailscale HTTPS terminates TLS in the local Tailscale Serve proxy and
+  forwards `x-forwarded-proto: https`, which makes the dashboard cookie Secure
+  for that origin.
 
 ### Secret handling
 
@@ -142,7 +181,14 @@ changes.
   out of the database.
 - **Use TLS before exposing on a network.** If you set `UPSTER_BIND_HOST` to a
   non-loopback address, put the dashboard behind a TLS-terminating proxy and set
-  `UPSTER_SECURE_COOKIES=true`.
+  `UPSTER_SECURE_COOKIES=true`, or use Tailscale HTTPS through the host setup
+  script.
+- **Revoke lost devices.** Paired browser connections are permanent until
+  revoked. If a device is lost or no longer trusted, revoke its connection on
+  the Connections page. Use logout for the current browser.
+- **Treat pairing links as one-time secrets.** A pairing link is intentionally
+  shown only once and expires after 5 minutes. Create a new link if the old one
+  is lost.
 - **Complete the first-run setup promptly.** Before an admin passphrase exists,
   anyone who can reach the dashboard can claim it. Loopback-only binding limits
   this to the local machine.
@@ -180,9 +226,10 @@ Read `AGENTS.md` first. These rules are mandatory:
 When making security-relevant changes:
 
 - **Default new server functions to authenticated.** Add the auth middleware to
-  every new server function unless it is intentionally public (only the auth
-  status, login, setup, and logout functions are public). New `/api/*` server
-  routes must verify the session manually, the way `terminal` and `metrics` do.
+  every new server function unless it is intentionally public. The current
+  public functions are auth status, login, setup, logout, and
+  `redeemPairingToken`. New `/api/*` server routes must verify the session
+  manually, the way `terminal` and `metrics` do.
 - **Keep server-only code out of the client bundle.** In a client-reachable
   `*.functions.ts` file, server-only imports may be used only inside a
   `.handler()` body (the compiler strips those). Never reference server-only
