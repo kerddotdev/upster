@@ -25,7 +25,7 @@ import { Badge } from "@/components/ui/badge"
 import { LogoutButton } from "@/features/auth/logout-button"
 import { CloudflareLockButton } from "@/features/secrets/cloudflare-lock-button"
 
-const UNAUTHENTICATED_PATHS = ["/login", "/setup"]
+const UNAUTHENTICATED_PATHS = ["/login", "/setup", "/pair"]
 
 const navItems = [
   { to: "/", label: "Pills", icon: FolderKanbanIcon },

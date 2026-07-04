@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SessionsRouteImport } from './routes/sessions'
+import { Route as PairRouteImport } from './routes/pair'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsRuntimeRouteImport } from './routes/settings/runtime'
@@ -55,6 +56,11 @@ const SetupRoute = SetupRouteImport.update({
 const SessionsRoute = SessionsRouteImport.update({
   id: '/sessions',
   path: '/sessions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PairRoute = PairRouteImport.update({
+  id: '/pair',
+  path: '/pair',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -247,6 +253,7 @@ const ApiCliV1PillsPillIdCapsulesPruneRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/pair': typeof PairRoute
   '/sessions': typeof SessionsRoute
   '/setup': typeof SetupRoute
   '/pills/$pillId': typeof PillsPillIdRoute
@@ -286,6 +293,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/pair': typeof PairRoute
   '/sessions': typeof SessionsRoute
   '/setup': typeof SetupRoute
   '/pills/$pillId': typeof PillsPillIdRoute
@@ -326,6 +334,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/pair': typeof PairRoute
   '/sessions': typeof SessionsRoute
   '/setup': typeof SetupRoute
   '/pills/$pillId': typeof PillsPillIdRoute
@@ -367,6 +376,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/pair'
     | '/sessions'
     | '/setup'
     | '/pills/$pillId'
@@ -406,6 +416,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/pair'
     | '/sessions'
     | '/setup'
     | '/pills/$pillId'
@@ -445,6 +456,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/login'
+    | '/pair'
     | '/sessions'
     | '/setup'
     | '/pills/$pillId'
@@ -485,6 +497,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
+  PairRoute: typeof PairRoute
   SessionsRoute: typeof SessionsRoute
   SetupRoute: typeof SetupRoute
   PillsPillIdRoute: typeof PillsPillIdRoute
@@ -520,6 +533,13 @@ declare module '@tanstack/react-router' {
       path: '/sessions'
       fullPath: '/sessions'
       preLoaderRoute: typeof SessionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pair': {
+      id: '/pair'
+      path: '/pair'
+      fullPath: '/pair'
+      preLoaderRoute: typeof PairRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -890,6 +910,7 @@ const ApiCliV1RunsRunIdRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
+  PairRoute: PairRoute,
   SessionsRoute: SessionsRoute,
   SetupRoute: SetupRoute,
   PillsPillIdRoute: PillsPillIdRoute,
