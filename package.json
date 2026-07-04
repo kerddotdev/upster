@@ -18,7 +18,8 @@
     "validate": "bun run format && bun run lint && bun run typecheck && bun run test",
     "db:generate": "bun run --cwd apps/web db:generate",
     "db:migrate": "DATABASE_URL=${DATABASE_URL:-file:$PWD/.upster/upster.db} bun run --cwd apps/web db:migrate",
-    "db:credentials": "bun run scripts/generate-db-credentials.ts"
+    "db:credentials": "bun run scripts/generate-db-credentials.ts",
+    "tailscale:setup": "bun run scripts/tailscale-setup.ts"
   },
   "devDependencies": {
     "@types/node": "^22",
