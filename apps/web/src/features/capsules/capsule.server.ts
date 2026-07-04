@@ -288,14 +288,24 @@ async function cleanupPreviewTunnel(capsule: Capsule) {
   const client = createCloudflareClient(config)
 
   if (capsule.previewDnsRecordId) {
-    await client
-      .deleteDnsRecord(capsule.previewDnsRecordId)
-      .catch(() => undefined)
+    await client.deleteDnsRecord(capsule.previewDnsRecordId).catch((error) => {
+      console.warn(
+        `Failed to delete preview DNS record for capsule ${capsule.id}: ${describeError(error)}`
+      )
+    })
   }
 
   if (capsule.previewTunnelId) {
-    await client.deleteTunnel(capsule.previewTunnelId).catch(() => undefined)
+    await client.deleteTunnel(capsule.previewTunnelId).catch((error) => {
+      console.warn(
+        `Failed to delete preview tunnel for capsule ${capsule.id}: ${describeError(error)}`
+      )
+    })
   }
+}
+
+function describeError(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
 }
 
 export async function deleteCapsuleVersion(capsuleId: string) {

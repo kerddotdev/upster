@@ -20,7 +20,23 @@ type DnsRecordResult = {
 
 type FetchLike = typeof fetch
 
+type SleepLike = (ms: number) => Promise<void>
+
 export const UPSTER_DNS_COMMENT = "managed-by-upster"
+
+const TUNNEL_DELETE_MAX_ATTEMPTS = 5
+const TUNNEL_DELETE_RETRY_DELAY_MS = 2000
+
+function defaultSleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms))
+}
+
+function isActiveConnectionsError(error: unknown) {
+  return (
+    error instanceof CloudflareRequestError &&
+    /active connection|must be empty|has connections/i.test(error.message)
+  )
+}
 
 export class CloudflareRequestError extends Error {
   constructor(
@@ -41,7 +57,8 @@ export class CloudflareClient {
 
   constructor(
     private readonly config: CloudflareConfig,
-    private readonly fetcher: FetchLike = fetch
+    private readonly fetcher: FetchLike = fetch,
+    private readonly sleep: SleepLike = defaultSleep
   ) {}
 
   async validateToken() {
@@ -217,13 +234,41 @@ export class CloudflareClient {
     )
   }
 
-  async deleteTunnel(tunnelId: string) {
+  async deleteTunnelConnections(tunnelId: string) {
     await this.request<unknown>(
-      `/accounts/${this.config.accountId}/cfd_tunnel/${tunnelId}`,
+      `/accounts/${this.config.accountId}/cfd_tunnel/${tunnelId}/connections`,
       {
         method: "DELETE",
       }
     )
+  }
+
+  async deleteTunnel(tunnelId: string) {
+    for (let attempt = 1; attempt <= TUNNEL_DELETE_MAX_ATTEMPTS; attempt += 1) {
+      // A stopped connector can leave connections registered for a few seconds.
+      // Clear them first so Cloudflare allows the tunnel delete instead of
+      // orphaning the tunnel.
+      await this.deleteTunnelConnections(tunnelId).catch(() => undefined)
+
+      try {
+        await this.request<unknown>(
+          `/accounts/${this.config.accountId}/cfd_tunnel/${tunnelId}`,
+          {
+            method: "DELETE",
+          }
+        )
+        return
+      } catch (error) {
+        if (
+          !isActiveConnectionsError(error) ||
+          attempt === TUNNEL_DELETE_MAX_ATTEMPTS
+        ) {
+          throw error
+        }
+
+        await this.sleep(TUNNEL_DELETE_RETRY_DELAY_MS)
+      }
+    }
   }
 
   private async getDnsRecordById(id: string) {
