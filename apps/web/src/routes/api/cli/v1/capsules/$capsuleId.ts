@@ -13,7 +13,7 @@ export const Route = createFileRoute("/api/cli/v1/capsules/$capsuleId")({
         return handleCliRoute(async () => {
           await authenticateCliRequest(
             request,
-            ["pills:delete"],
+            ["capsules:delete"],
             "delete capsules"
           )
           await deleteCapsuleVersion(params.capsuleId)
