@@ -208,6 +208,7 @@ export function renderCliHelp() {
     "  --human                   Use the saved human credential, interactive terminal only",
     "  --no-color                Disable terminal color",
     "  --help                    Show this help",
+    "  --version                 Print the CLI version",
     "",
     "Auth model:",
     "  The CLI talks to the local Upster control plane, not directly to the runtime.",

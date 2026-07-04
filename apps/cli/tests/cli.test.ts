@@ -542,4 +542,13 @@ describe("upster cli", () => {
     expect(code).toBe(0)
     expect(calls[0].url).toBe(`${base}/runtime`)
   })
+
+  it("prints the CLI version without calling the control plane", async () => {
+    const { fetchMock } = stubJsonFetch()
+    const { code, stdout } = await run(["--version"])
+
+    expect(code).toBe(0)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(stdout.output.trim()).toMatch(/^\d+\.\d+\.\d+(-[\w.]+)?$/)
+  })
 })

@@ -2,12 +2,12 @@
   "name": "@upster/cli",
   "private": true,
   "type": "module",
-  "version": "0.0.7",
+  "version": "0.1.0",
   "bin": {
     "upster": "./dist/upster"
   },
   "scripts": {
-    "build": "bun build src/index.ts --target bun --outfile dist/upster",
+    "build": "bun run build.ts",
     "upster": "bun src/index.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"

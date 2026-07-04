@@ -40,6 +40,7 @@ type CliOptions = {
   human: boolean
   noColor: boolean
   help: boolean
+  version: boolean
 }
 
 type CliConfig = {
@@ -76,9 +77,15 @@ type Io = {
 
 const DEFAULT_DASHBOARD_URL = "http://127.0.0.1:3377"
 const LOCAL_REQUEST_ID = "cli"
+const CLI_VERSION = process.env.UPSTER_CLI_VERSION ?? "0.0.0-dev"
 
 export async function runCli(argv: Array<string>, io: Io = defaultIo()) {
   const parsed = parseArgv(argv)
+
+  if (parsed.options.version) {
+    io.stdout.write(`${CLI_VERSION}\n`)
+    return 0
+  }
 
   if (parsed.options.help || parsed.command.length === 0) {
     io.stdout.write(renderCliHelp())
@@ -129,6 +136,7 @@ function parseArgv(argv: Array<string>) {
     human: false,
     noColor: false,
     help: false,
+    version: false,
   }
   const command: Array<string> = []
 
@@ -157,6 +165,8 @@ function parseArgv(argv: Array<string>) {
       options.noColor = true
     } else if (arg === "--help" || arg === "-h") {
       options.help = true
+    } else if (arg === "--version" || arg === "-v") {
+      options.version = true
     } else {
       command.push(arg)
     }
@@ -972,6 +982,12 @@ function startDaemon(options: CliOptions) {
     throw controlPlaneUnavailableError({ dashboardUrl: options.dashboardUrl })
   }
 
+  if (!existsSync(join(process.cwd(), "apps", "web", "package.json"))) {
+    throw new Error(
+      "The Upster control plane runs with Docker, not from the CLI. Start it with `docker compose up -d` in a directory that has the Upster docker-compose.yaml. See https://github.com/kerdofficial/upster."
+    )
+  }
+
   const logFile = join(configDir(), "daemon.log")
   mkdirSync(configDir(), { recursive: true, mode: 0o700 })
 
@@ -1214,7 +1230,7 @@ function agentTokenStoreFile() {
   return join(configDir(), "agent-tokens.json")
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.main) {
   const exitCode = await runCli(process.argv.slice(2))
   process.exit(exitCode)
 }
