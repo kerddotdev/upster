@@ -189,6 +189,18 @@ export const accessSessions = sqliteTable("access_sessions", {
   metadataJson: text("metadata_json").notNull(),
 })
 
+export const pairingLinks = sqliteTable("pairing_links", {
+  id: text("id").primaryKey(),
+  tokenHash: text("token_hash").notNull().unique(),
+  label: text("label").notNull(),
+  createdBy: text("created_by").notNull(),
+  createdAt: text("created_at").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  consumedAt: text("consumed_at"),
+  connectionSessionId: text("connection_session_id"),
+  revokedAt: text("revoked_at"),
+})
+
 export const runtimeInstances = sqliteTable("runtime_instances", {
   id: text("id").primaryKey(),
   pid: integer("pid").notNull(),

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 
-import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm"
+import { and, desc, eq, gt, isNotNull, isNull, sql } from "drizzle-orm"
 import type { AccessScope } from "@upster/core"
 
 import { db, ensureDatabase } from "@/db/client.server"
@@ -11,6 +11,7 @@ import {
   capsules,
   cloudflareTunnels,
   events,
+  pairingLinks,
   pillCommands,
   pillPorts,
   pillRuns,
@@ -704,7 +705,7 @@ export async function appendEvent(input: {
   })
 }
 
-export type AccessSessionKind = "dashboard" | "cli" | "agent"
+export type AccessSessionKind = "dashboard" | "cli" | "agent" | "connection"
 
 export type AccessSession = {
   id: string
@@ -819,6 +820,101 @@ export async function touchAccessSession(id: string) {
     .update(accessSessions)
     .set({ lastSeenAt: now() })
     .where(eq(accessSessions.id, id))
+}
+
+export async function updateAccessSessionLabel(id: string, label: string) {
+  await ensureDatabase()
+  await db.update(accessSessions).set({ label }).where(eq(accessSessions.id, id))
+}
+
+export type PairingLink = {
+  id: string
+  tokenHash: string
+  label: string
+  createdBy: string
+  createdAt: string
+  expiresAt: string
+  consumedAt: string | null
+  connectionSessionId: string | null
+  revokedAt: string | null
+}
+
+function parsePairingLink(row: typeof pairingLinks.$inferSelect): PairingLink {
+  return row
+}
+
+export async function createPairingLink(input: {
+  tokenHash: string
+  label: string
+  createdBy: string
+  expiresAt: string
+}) {
+  await ensureDatabase()
+  const record = {
+    id: randomUUID(),
+    tokenHash: input.tokenHash,
+    label: input.label,
+    createdBy: input.createdBy,
+    createdAt: now(),
+    expiresAt: input.expiresAt,
+    consumedAt: null,
+    connectionSessionId: null,
+    revokedAt: null,
+  }
+
+  await db.insert(pairingLinks).values(record)
+  return parsePairingLink(record)
+}
+
+export async function listPairingLinks() {
+  await ensureDatabase()
+  const rows = await db
+    .select()
+    .from(pairingLinks)
+    .orderBy(desc(pairingLinks.createdAt))
+
+  return rows.map(parsePairingLink)
+}
+
+export async function revokePairingLink(id: string) {
+  await ensureDatabase()
+  await db
+    .update(pairingLinks)
+    .set({ revokedAt: now() })
+    .where(eq(pairingLinks.id, id))
+}
+
+export async function consumePairingLink(
+  tokenHash: string,
+  connectionSessionId: string | null = null
+): Promise<PairingLink | null> {
+  await ensureDatabase()
+  const ts = now()
+  const [row] = await db
+    .update(pairingLinks)
+    .set({ consumedAt: ts, connectionSessionId })
+    .where(
+      and(
+        eq(pairingLinks.tokenHash, tokenHash),
+        isNull(pairingLinks.consumedAt),
+        isNull(pairingLinks.revokedAt),
+        gt(pairingLinks.expiresAt, ts)
+      )
+    )
+    .returning()
+
+  return row ? parsePairingLink(row) : null
+}
+
+export async function setPairingLinkConnectionSessionId(
+  id: string,
+  connectionSessionId: string
+) {
+  await ensureDatabase()
+  await db
+    .update(pairingLinks)
+    .set({ connectionSessionId })
+    .where(eq(pairingLinks.id, id))
 }
 
 export async function upsertRuntimeInstance(input: {

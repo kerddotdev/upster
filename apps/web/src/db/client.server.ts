@@ -158,6 +158,17 @@ async function runMigrations() {
         remote_addr TEXT,
         metadata_json TEXT NOT NULL
       )`,
+      `CREATE TABLE IF NOT EXISTS pairing_links (
+        id TEXT PRIMARY KEY,
+        token_hash TEXT NOT NULL UNIQUE,
+        label TEXT NOT NULL,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        consumed_at TEXT,
+        connection_session_id TEXT,
+        revoked_at TEXT
+      )`,
       `CREATE TABLE IF NOT EXISTS runtime_instances (
         id TEXT PRIMARY KEY,
         pid INTEGER NOT NULL,
@@ -227,4 +238,19 @@ async function runMigrations() {
     `CREATE INDEX IF NOT EXISTS idx_capsules_pill_id ON capsules(pill_id)`
   )
   await recordMigration("0005_auth_capsule_indexes")
+
+  await client.execute(
+    `CREATE TABLE IF NOT EXISTS pairing_links (
+      id TEXT PRIMARY KEY,
+      token_hash TEXT NOT NULL UNIQUE,
+      label TEXT NOT NULL,
+      created_by TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      consumed_at TEXT,
+      connection_session_id TEXT,
+      revoked_at TEXT
+    )`
+  )
+  await recordMigration("0006_connections_pairing_links")
 }
