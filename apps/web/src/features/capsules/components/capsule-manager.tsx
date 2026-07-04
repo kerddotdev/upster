@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, type ReactNode } from "react"
 import { useServerFn } from "@tanstack/react-start"
 import {
   CheckIcon,
@@ -75,6 +75,7 @@ export function CapsuleManager({
   activeRun,
   expiresAt,
   allowBrowse = true,
+  headerActions,
   onChanged,
 }: {
   pillId: string
@@ -83,6 +84,7 @@ export function CapsuleManager({
   activeRun: { id: string; capsuleId: string | null } | null
   expiresAt?: string | null
   allowBrowse?: boolean
+  headerActions?: ReactNode
   onChanged?: () => Promise<void> | void
 }) {
   const { isUnlocked, requestUnlock } = useCloudflareVault()
@@ -181,11 +183,15 @@ export function CapsuleManager({
 
   return (
     <div className="flex flex-col gap-3">
-      <span className="text-xs text-muted-foreground">
-        {info.capsules.length} snapshot
-        {info.capsules.length === 1 ? "" : "s"} - {formatBytes(info.diskBytes)}
-        {" on disk"}
-      </span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground">
+          {info.capsules.length} snapshot
+          {info.capsules.length === 1 ? "" : "s"} -{" "}
+          {formatBytes(info.diskBytes)}
+          {" on disk"}
+        </span>
+        {headerActions}
+      </div>
 
       {info.capsules.length === 0 ? (
         <p className="text-xs text-muted-foreground">

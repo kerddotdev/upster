@@ -185,8 +185,22 @@ function PillTableRow({ pill }: { pill: PillListItem }) {
       {expanded ? (
         <TableRow className="bg-muted/30 hover:bg-muted/30">
           <TableCell colSpan={6} className="p-4">
-            <div className="flex flex-col gap-3">
-              <div className="flex justify-end">
+            <CapsuleManager
+              key={capsuleKey}
+              pillId={pill.id}
+              commandName={pill.defaultEnv}
+              slug={pill.slug}
+              expiresAt={expiresAt}
+              activeRun={
+                pill.activeRun
+                  ? {
+                      id: pill.activeRun.id,
+                      capsuleId: pill.activeRun.capsuleId,
+                    }
+                  : null
+              }
+              allowBrowse={false}
+              headerActions={
                 <CapsuleActions
                   pillId={pill.id}
                   onChanged={() => {
@@ -194,25 +208,9 @@ function PillTableRow({ pill }: { pill: PillListItem }) {
                     void router.invalidate()
                   }}
                 />
-              </div>
-              <CapsuleManager
-                key={capsuleKey}
-                pillId={pill.id}
-                commandName={pill.defaultEnv}
-                slug={pill.slug}
-                expiresAt={expiresAt}
-                activeRun={
-                  pill.activeRun
-                    ? {
-                        id: pill.activeRun.id,
-                        capsuleId: pill.activeRun.capsuleId,
-                      }
-                    : null
-                }
-                allowBrowse={false}
-                onChanged={() => router.invalidate()}
-              />
-            </div>
+              }
+              onChanged={() => router.invalidate()}
+            />
           </TableCell>
         </TableRow>
       ) : null}
