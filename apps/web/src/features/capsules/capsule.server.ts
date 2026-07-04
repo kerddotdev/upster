@@ -183,6 +183,7 @@ export async function buildCapsule(input: BuildCapsuleInput): Promise<Capsule> {
 
     await cp(repoPath, sourceDir, {
       recursive: true,
+      verbatimSymlinks: true,
       filter: (source) => {
         const name = basename(source)
 

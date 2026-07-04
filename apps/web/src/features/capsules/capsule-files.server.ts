@@ -1,4 +1,4 @@
-import { readFile, readdir, stat } from "node:fs/promises"
+import { open, readdir, stat } from "node:fs/promises"
 import { isAbsolute, join, relative, resolve } from "node:path"
 
 import { getCapsuleById } from "@/db/repositories.server"
@@ -74,15 +74,21 @@ export async function readCapsuleFile(
     throw new Error("Not a file.")
   }
 
-  const buffer = await readFile(file)
-  const slice = buffer.subarray(0, MAX_PREVIEW_BYTES)
-  const binary = slice.includes(0)
+  const handle = await open(file, "r")
+  try {
+    const buffer = Buffer.alloc(Math.min(info.size, MAX_PREVIEW_BYTES))
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0)
+    const slice = buffer.subarray(0, bytesRead)
+    const binary = slice.includes(0)
 
-  return {
-    path: relPath,
-    size: info.size,
-    truncated: buffer.length > MAX_PREVIEW_BYTES,
-    binary,
-    content: binary ? null : slice.toString("utf-8"),
+    return {
+      path: relPath,
+      size: info.size,
+      truncated: info.size > MAX_PREVIEW_BYTES,
+      binary,
+      content: binary ? null : slice.toString("utf-8"),
+    }
+  } finally {
+    await handle.close()
   }
 }
