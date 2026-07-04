@@ -194,3 +194,35 @@ export const revokeConnectionFn = createServerFn({ method: "POST" })
     await revokeAccessSession(session.id)
     return { ok: true }
   })
+
+export const getConnectionEndpointsFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async () => {
+    const { getRequest } = await import("@tanstack/react-start/server")
+    const { getUpsterConfig } = await import("@/config/env.server")
+    const {
+      addCurrentRequestEndpoint,
+      buildConnectionEndpoints,
+      readTailscaleStatusFile,
+    } = await import("@/features/connections/endpoints.server")
+
+    const request = getRequest()
+    const config = getUpsterConfig()
+    const status = await readTailscaleStatusFile(config.tailscaleStatusFile)
+    const endpoints = buildConnectionEndpoints(status, config.port)
+
+    return addCurrentRequestEndpoint(
+      endpoints,
+      getCurrentOrigin(request, config.trustProxy)
+    )
+  })
+
+function getCurrentOrigin(request: Request, trustProxy: boolean) {
+  const url = new URL(request.url)
+  const forwardedHost = request.headers.get("x-forwarded-host")
+  const forwardedProto = request.headers.get("x-forwarded-proto")
+  const host = trustProxy ? (forwardedHost ?? url.host) : url.host
+  const proto = trustProxy ? (forwardedProto ?? url.protocol.slice(0, -1)) : url.protocol.slice(0, -1)
+
+  return host ? `${proto}://${host}` : null
+}

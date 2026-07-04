@@ -1,5 +1,5 @@
 import { mkdirSync } from "node:fs"
-import { resolve } from "node:path"
+import { join, resolve } from "node:path"
 
 export type PortRange = {
   min: number
@@ -8,6 +8,7 @@ export type PortRange = {
 
 export type UpsterConfig = {
   dataDir: string
+  port: number
   databaseUrl: string
   databaseAuthToken: string | null
   hostWorkspaceRoot: string | null
@@ -18,6 +19,8 @@ export type UpsterConfig = {
   publicOrigin: string
   cloudflaredBin: string
   capsuleRetention: number
+  tailscaleStatusFile: string
+  trustProxy: boolean
 }
 
 function parseRetention(value: string | undefined) {
@@ -27,6 +30,11 @@ function parseRetention(value: string | undefined) {
 
   const parsed = Number(value)
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : 10
+}
+
+function parsePort(value: string | undefined, fallback: number) {
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
 }
 
 function parseAllowedCommands(value: string | undefined) {
@@ -70,10 +78,14 @@ function parseWorkspaceRoots(value: string | undefined) {
 export function getUpsterConfig(): UpsterConfig {
   const dataDir = resolve(process.env.UPSTER_DATA_DIR ?? ".upster")
   const hostWorkspaceRoot = process.env.UPSTER_HOST_WORKSPACE?.trim()
+  const tailscaleStatusFile =
+    process.env.UPSTER_TAILSCALE_STATUS_FILE?.trim() ||
+    join(dataDir, "tailscale", "status.json")
   mkdirSync(dataDir, { recursive: true })
 
   return {
     dataDir,
+    port: parsePort(process.env.UPSTER_PORT, 3377),
     databaseUrl:
       process.env.DATABASE_URL ?? `file:${resolve(dataDir, "upster.db")}`,
     databaseAuthToken: process.env.DATABASE_AUTH_TOKEN?.trim() || null,
@@ -91,5 +103,7 @@ export function getUpsterConfig(): UpsterConfig {
     publicOrigin: process.env.UPSTER_PUBLIC_ORIGIN ?? "https://localhost:3377",
     cloudflaredBin: process.env.CLOUDFLARED_BIN ?? "cloudflared",
     capsuleRetention: parseRetention(process.env.UPSTER_CAPSULE_RETENTION),
+    tailscaleStatusFile,
+    trustProxy: process.env.UPSTER_TRUST_PROXY === "true",
   }
 }
