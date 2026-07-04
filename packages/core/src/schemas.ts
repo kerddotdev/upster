@@ -73,3 +73,15 @@ export const buildCapsuleSchema = z.object({
   installDeps: z.boolean(),
   label: z.string().optional(),
 })
+
+export const relabelCapsuleSchema = z.object({
+  label: z.string().max(120).nullable(),
+})
+
+export const pinCapsuleSchema = z.object({
+  pinned: z.boolean(),
+})
+
+export const pruneCapsulesSchema = z.object({
+  keep: z.number().int().min(0).optional(),
+})
