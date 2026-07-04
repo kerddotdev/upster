@@ -1,10 +1,12 @@
-import { createFileRoute, Link } from "@tanstack/react-router"
+import { useState } from "react"
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router"
 import { ArrowLeftIcon, ExternalLinkIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -17,18 +19,29 @@ import {
   MetricsSummary,
   useTunnelMetrics,
 } from "@/features/metrics/metrics-panel"
+import { CapsuleActions } from "@/features/capsules/components/capsule-actions"
+import { CapsuleManager } from "@/features/capsules/components/capsule-manager"
+import { ClearDiagnosticsButton } from "@/features/pills/components/clear-diagnostics-button"
 import { PillActions } from "@/features/pills/components/pill-actions"
+import { PillDiagnostics } from "@/features/pills/components/pill-diagnostics"
 import { StatusBadge } from "@/features/pills/components/status-badge"
 import { getPillStatusFn } from "@/features/pills/pill.functions"
 import { TerminalOutput } from "@/features/terminal/terminal-output"
 
 export const Route = createFileRoute("/pills/$pillId")({
+  validateSearch: (search: Record<string, unknown>): { tab?: string } =>
+    typeof search.tab === "string" ? { tab: search.tab } : {},
   loader: ({ params }) => getPillStatusFn({ data: { pillId: params.pillId } }),
   component: PillDetailPage,
 })
 
 function PillDetailPage() {
+  const router = useRouter()
+  const navigate = Route.useNavigate()
+  const { tab } = Route.useSearch()
   const pill = Route.useLoaderData()
+  const [capsuleKey, setCapsuleKey] = useState(0)
+  const [diagnosticsKey, setDiagnosticsKey] = useState(0)
   const runId = pill.activeRun?.id ?? null
   const expiresAt = pill.activeRun?.expiresAt ?? null
   const metrics = useTunnelMetrics(runId)
@@ -50,7 +63,13 @@ function PillDetailPage() {
             </p>
           </div>
         </div>
-        <PillActions pill={pill} expiresAt={expiresAt} />
+        <PillActions
+          pill={pill}
+          expiresAt={expiresAt}
+          showEdit
+          editPill={pill}
+          showDetails={false}
+        />
       </header>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -73,9 +92,14 @@ function PillDetailPage() {
 
       <MetricsSummary metrics={metrics} />
 
-      <Tabs defaultValue="overview">
+      <Tabs
+        value={tab ?? "overview"}
+        onValueChange={(value) => void navigate({ search: { tab: value } })}
+      >
         <TabsList variant="line">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="capsules">Capsules</TabsTrigger>
+          <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>
           <TabsTrigger value="terminal">Terminal</TabsTrigger>
           <TabsTrigger value="metrics">Metrics</TabsTrigger>
         </TabsList>
@@ -139,6 +163,66 @@ function PillDetailPage() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="capsules" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Capsules</CardTitle>
+              <CardDescription>
+                Frozen, isolated snapshots of the source. Deploy, browse, or
+                roll back to any version.
+              </CardDescription>
+              <CardAction>
+                <CapsuleActions
+                  pillId={pill.id}
+                  onChanged={() => {
+                    setCapsuleKey((value) => value + 1)
+                    void router.invalidate()
+                  }}
+                />
+              </CardAction>
+            </CardHeader>
+            <CardContent>
+              <CapsuleManager
+                key={capsuleKey}
+                pillId={pill.id}
+                commandName={pill.defaultEnv}
+                slug={pill.slug}
+                expiresAt={expiresAt}
+                activeRun={
+                  pill.activeRun
+                    ? {
+                        id: pill.activeRun.id,
+                        capsuleId: pill.activeRun.capsuleId,
+                      }
+                    : null
+                }
+                onChanged={() => router.invalidate()}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="diagnostics" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Diagnostics</CardTitle>
+              <CardDescription>
+                Recent runs, exit codes, error output, and capsule build
+                failures for this pill.
+              </CardDescription>
+              <CardAction>
+                <ClearDiagnosticsButton
+                  pillId={pill.id}
+                  onCleared={() => setDiagnosticsKey((value) => value + 1)}
+                />
+              </CardAction>
+            </CardHeader>
+            <CardContent>
+              <PillDiagnostics key={diagnosticsKey} pillId={pill.id} />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="terminal" className="mt-4">

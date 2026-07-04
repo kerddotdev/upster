@@ -44,6 +44,10 @@ export type CloudflareTunnel = {
   configStatus: "pending" | "synced" | "error"
 }
 
+export type PillRunSource = "live" | "capsule"
+
+export type PillDeployTarget = "production" | "preview"
+
 export type PillRun = {
   id: string
   pillId: string
@@ -58,6 +62,10 @@ export type PillRun = {
   stopReason: string | null
   exitCode: number | null
   error: string | null
+  source: PillRunSource | null
+  capsuleId: string | null
+  deployTarget: PillDeployTarget | null
+  hostname: string | null
 }
 
 export type RunLog = {
@@ -104,6 +112,11 @@ export type UpdatePillInput = {
   pillId: string
   name: string
   defaultEnv: string
+  commandName?: string
+  command?: string
+  cwd?: string
+  env?: Record<string, string>
+  healthcheckPath?: string | null
 }
 
 export type StartPillInput = {
@@ -111,4 +124,7 @@ export type StartPillInput = {
   commandName: string
   expiresAt?: string
   rotatePorts?: boolean
+  useCapsule?: boolean
+  capsuleId?: string
+  deployTarget?: PillDeployTarget
 }

@@ -78,6 +78,43 @@ changes.
 - The dashboard container runs with `cap_drop: ALL` and
   `no-new-privileges:true`, so a pill cannot raise its privileges.
 
+### Capsule isolation
+
+- A capsule is a frozen, versioned snapshot of a pill's source, taken from the
+  workspace-validated `repoPath` into the Upster-managed
+  `<UPSTER_DATA_DIR>/capsules/<pillId>/<capsuleId>` directory. Each build creates
+  a new immutable snapshot; a pill can keep several and deploy or roll back to
+  any of them. Deploying from a capsule keeps the running deployment isolated
+  from live edits on disk; it does not widen the source path boundary, because
+  the source is still resolved and validated against the configured workspace
+  roots before copying.
+- The optional dependency install step during a capsule build runs the detected
+  package manager with the same minimal, explicit environment as a pill process
+  (no dashboard environment, no Cloudflare secret), and its executable is gated
+  by `UPSTER_ALLOWED_COMMANDS` like any other pill command. Because installing
+  dependencies can execute package lifecycle scripts, a capsule is still only as
+  trusted as the repository it was copied from.
+- Snapshot metadata may include git commit, branch, message, and dirty state.
+  These are captured read-only with the `git` binary in the pill's `repoPath`;
+  if the project is not a git repository or `git` is unavailable, the fields are
+  simply left empty and every other capsule capability keeps working.
+- The capsule file browser and file preview server functions resolve requested
+  paths inside the snapshot directory and reject any path that escapes it
+  (`..` or absolute), the same containment check used for workspace paths. File
+  previews are capped in size. The archive download route
+  (`/api/capsules/:id/archive`) verifies the dashboard session manually, like
+  the terminal and metrics routes.
+- Old, unpinned snapshots are pruned automatically per pill
+  (`UPSTER_CAPSULE_RETENTION`); pinned snapshots and the currently deployed
+  snapshot are never pruned or deletable while running.
+- A snapshot can be deployed to the pill's production hostname
+  (`slug.rootDomain`) or to a per-snapshot preview hostname
+  (`slug-<first 8 chars of capsuleId>.rootDomain`) backed by its own Cloudflare tunnel and DNS
+  record, stored on the capsule. Deleting or pruning a snapshot removes its
+  preview tunnel and DNS record when the vault is unlocked, mirroring pill
+  deletion; if the vault is locked the cleanup is skipped and the resources are
+  left in Cloudflare, exactly like pill tunnels.
+
 ### Cloudflare resource ownership
 
 - DNS records created by Upster are tagged with a `managed-by-upster` comment.

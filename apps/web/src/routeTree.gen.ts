@@ -8,387 +8,426 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as SetupRouteImport } from './routes/setup'
-import { Route as SessionsRouteImport } from './routes/sessions'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as SettingsRuntimeRouteImport } from './routes/settings/runtime'
-import { Route as SettingsCloudflareRouteImport } from './routes/settings/cloudflare'
-import { Route as PillsPillIdRouteImport } from './routes/pills/$pillId'
-import { Route as ApiRunsRunIdTerminalRouteImport } from './routes/api/runs/$runId/terminal'
-import { Route as ApiRunsRunIdMetricsRouteImport } from './routes/api/runs/$runId/metrics'
-import { Route as ApiCliV1VaultRouteImport } from './routes/api/cli/v1/vault'
-import { Route as ApiCliV1StatusRouteImport } from './routes/api/cli/v1/status'
-import { Route as ApiCliV1SessionsRouteImport } from './routes/api/cli/v1/sessions'
-import { Route as ApiCliV1RuntimeRouteImport } from './routes/api/cli/v1/runtime'
-import { Route as ApiCliV1PillsRouteImport } from './routes/api/cli/v1/pills'
-import { Route as ApiCliV1AgentSessionsRouteImport } from './routes/api/cli/v1/agent-sessions'
-import { Route as ApiCliV1VaultUnlockRouteImport } from './routes/api/cli/v1/vault/unlock'
-import { Route as ApiCliV1VaultStatusRouteImport } from './routes/api/cli/v1/vault/status'
-import { Route as ApiCliV1VaultSaveRouteImport } from './routes/api/cli/v1/vault/save'
-import { Route as ApiCliV1VaultLockRouteImport } from './routes/api/cli/v1/vault/lock'
-import { Route as ApiCliV1RunsRunIdRouteImport } from './routes/api/cli/v1/runs/$runId'
-import { Route as ApiCliV1PillsPillIdRouteImport } from './routes/api/cli/v1/pills/$pillId'
-import { Route as ApiCliV1AuthSetupRouteImport } from './routes/api/cli/v1/auth/setup'
-import { Route as ApiCliV1AuthLogoutRouteImport } from './routes/api/cli/v1/auth/logout'
-import { Route as ApiCliV1AuthLoginRouteImport } from './routes/api/cli/v1/auth/login'
-import { Route as ApiCliV1SessionsSessionIdRevokeRouteImport } from './routes/api/cli/v1/sessions/$sessionId/revoke'
-import { Route as ApiCliV1RunsRunIdMetricsRouteImport } from './routes/api/cli/v1/runs/$runId/metrics'
-import { Route as ApiCliV1RunsRunIdLogsRouteImport } from './routes/api/cli/v1/runs/$runId/logs'
-import { Route as ApiCliV1PillsPillIdStopRouteImport } from './routes/api/cli/v1/pills/$pillId/stop'
-import { Route as ApiCliV1PillsPillIdStartRouteImport } from './routes/api/cli/v1/pills/$pillId/start'
-import { Route as ApiCliV1RunsRunIdLogsStreamRouteImport } from './routes/api/cli/v1/runs/$runId/logs/stream'
+import { Route as rootRouteImport } from "./routes/__root"
+import { Route as SetupRouteImport } from "./routes/setup"
+import { Route as SessionsRouteImport } from "./routes/sessions"
+import { Route as LoginRouteImport } from "./routes/login"
+import { Route as IndexRouteImport } from "./routes/index"
+import { Route as SettingsRuntimeRouteImport } from "./routes/settings/runtime"
+import { Route as SettingsCloudflareRouteImport } from "./routes/settings/cloudflare"
+import { Route as PillsPillIdRouteImport } from "./routes/pills/$pillId"
+import { Route as ApiRunsRunIdTerminalRouteImport } from "./routes/api/runs/$runId/terminal"
+import { Route as ApiRunsRunIdMetricsRouteImport } from "./routes/api/runs/$runId/metrics"
+import { Route as ApiCliV1VaultRouteImport } from "./routes/api/cli/v1/vault"
+import { Route as ApiCliV1StatusRouteImport } from "./routes/api/cli/v1/status"
+import { Route as ApiCliV1SessionsRouteImport } from "./routes/api/cli/v1/sessions"
+import { Route as ApiCliV1RuntimeRouteImport } from "./routes/api/cli/v1/runtime"
+import { Route as ApiCliV1PillsRouteImport } from "./routes/api/cli/v1/pills"
+import { Route as ApiCliV1AgentSessionsRouteImport } from "./routes/api/cli/v1/agent-sessions"
+import { Route as ApiCapsulesCapsuleIdArchiveRouteImport } from "./routes/api/capsules/$capsuleId/archive"
+import { Route as ApiCliV1VaultUnlockRouteImport } from "./routes/api/cli/v1/vault/unlock"
+import { Route as ApiCliV1VaultStatusRouteImport } from "./routes/api/cli/v1/vault/status"
+import { Route as ApiCliV1VaultSaveRouteImport } from "./routes/api/cli/v1/vault/save"
+import { Route as ApiCliV1VaultLockRouteImport } from "./routes/api/cli/v1/vault/lock"
+import { Route as ApiCliV1RunsRunIdRouteImport } from "./routes/api/cli/v1/runs/$runId"
+import { Route as ApiCliV1PillsPillIdRouteImport } from "./routes/api/cli/v1/pills/$pillId"
+import { Route as ApiCliV1CapsulesCapsuleIdRouteImport } from "./routes/api/cli/v1/capsules/$capsuleId"
+import { Route as ApiCliV1AuthSetupRouteImport } from "./routes/api/cli/v1/auth/setup"
+import { Route as ApiCliV1AuthLogoutRouteImport } from "./routes/api/cli/v1/auth/logout"
+import { Route as ApiCliV1AuthLoginRouteImport } from "./routes/api/cli/v1/auth/login"
+import { Route as ApiCliV1SessionsSessionIdRevokeRouteImport } from "./routes/api/cli/v1/sessions/$sessionId/revoke"
+import { Route as ApiCliV1RunsRunIdMetricsRouteImport } from "./routes/api/cli/v1/runs/$runId/metrics"
+import { Route as ApiCliV1RunsRunIdLogsRouteImport } from "./routes/api/cli/v1/runs/$runId/logs"
+import { Route as ApiCliV1PillsPillIdStopRouteImport } from "./routes/api/cli/v1/pills/$pillId/stop"
+import { Route as ApiCliV1PillsPillIdStartRouteImport } from "./routes/api/cli/v1/pills/$pillId/start"
+import { Route as ApiCliV1PillsPillIdCapsulesRouteImport } from "./routes/api/cli/v1/pills/$pillId/capsules"
+import { Route as ApiCliV1RunsRunIdLogsStreamRouteImport } from "./routes/api/cli/v1/runs/$runId/logs/stream"
 
 const SetupRoute = SetupRouteImport.update({
-  id: '/setup',
-  path: '/setup',
+  id: "/setup",
+  path: "/setup",
   getParentRoute: () => rootRouteImport,
 } as any)
 const SessionsRoute = SessionsRouteImport.update({
-  id: '/sessions',
-  path: '/sessions',
+  id: "/sessions",
+  path: "/sessions",
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+  id: "/login",
+  path: "/login",
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRuntimeRoute = SettingsRuntimeRouteImport.update({
-  id: '/settings/runtime',
-  path: '/settings/runtime',
+  id: "/settings/runtime",
+  path: "/settings/runtime",
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsCloudflareRoute = SettingsCloudflareRouteImport.update({
-  id: '/settings/cloudflare',
-  path: '/settings/cloudflare',
+  id: "/settings/cloudflare",
+  path: "/settings/cloudflare",
   getParentRoute: () => rootRouteImport,
 } as any)
 const PillsPillIdRoute = PillsPillIdRouteImport.update({
-  id: '/pills/$pillId',
-  path: '/pills/$pillId',
+  id: "/pills/$pillId",
+  path: "/pills/$pillId",
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiRunsRunIdTerminalRoute = ApiRunsRunIdTerminalRouteImport.update({
-  id: '/api/runs/$runId/terminal',
-  path: '/api/runs/$runId/terminal',
+  id: "/api/runs/$runId/terminal",
+  path: "/api/runs/$runId/terminal",
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiRunsRunIdMetricsRoute = ApiRunsRunIdMetricsRouteImport.update({
-  id: '/api/runs/$runId/metrics',
-  path: '/api/runs/$runId/metrics',
+  id: "/api/runs/$runId/metrics",
+  path: "/api/runs/$runId/metrics",
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCliV1VaultRoute = ApiCliV1VaultRouteImport.update({
-  id: '/api/cli/v1/vault',
-  path: '/api/cli/v1/vault',
+  id: "/api/cli/v1/vault",
+  path: "/api/cli/v1/vault",
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCliV1StatusRoute = ApiCliV1StatusRouteImport.update({
-  id: '/api/cli/v1/status',
-  path: '/api/cli/v1/status',
+  id: "/api/cli/v1/status",
+  path: "/api/cli/v1/status",
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCliV1SessionsRoute = ApiCliV1SessionsRouteImport.update({
-  id: '/api/cli/v1/sessions',
-  path: '/api/cli/v1/sessions',
+  id: "/api/cli/v1/sessions",
+  path: "/api/cli/v1/sessions",
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCliV1RuntimeRoute = ApiCliV1RuntimeRouteImport.update({
-  id: '/api/cli/v1/runtime',
-  path: '/api/cli/v1/runtime',
+  id: "/api/cli/v1/runtime",
+  path: "/api/cli/v1/runtime",
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCliV1PillsRoute = ApiCliV1PillsRouteImport.update({
-  id: '/api/cli/v1/pills',
-  path: '/api/cli/v1/pills',
+  id: "/api/cli/v1/pills",
+  path: "/api/cli/v1/pills",
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCliV1AgentSessionsRoute = ApiCliV1AgentSessionsRouteImport.update({
-  id: '/api/cli/v1/agent-sessions',
-  path: '/api/cli/v1/agent-sessions',
+  id: "/api/cli/v1/agent-sessions",
+  path: "/api/cli/v1/agent-sessions",
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCapsulesCapsuleIdArchiveRoute =
+  ApiCapsulesCapsuleIdArchiveRouteImport.update({
+    id: "/api/capsules/$capsuleId/archive",
+    path: "/api/capsules/$capsuleId/archive",
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiCliV1VaultUnlockRoute = ApiCliV1VaultUnlockRouteImport.update({
-  id: '/unlock',
-  path: '/unlock',
+  id: "/unlock",
+  path: "/unlock",
   getParentRoute: () => ApiCliV1VaultRoute,
 } as any)
 const ApiCliV1VaultStatusRoute = ApiCliV1VaultStatusRouteImport.update({
-  id: '/status',
-  path: '/status',
+  id: "/status",
+  path: "/status",
   getParentRoute: () => ApiCliV1VaultRoute,
 } as any)
 const ApiCliV1VaultSaveRoute = ApiCliV1VaultSaveRouteImport.update({
-  id: '/save',
-  path: '/save',
+  id: "/save",
+  path: "/save",
   getParentRoute: () => ApiCliV1VaultRoute,
 } as any)
 const ApiCliV1VaultLockRoute = ApiCliV1VaultLockRouteImport.update({
-  id: '/lock',
-  path: '/lock',
+  id: "/lock",
+  path: "/lock",
   getParentRoute: () => ApiCliV1VaultRoute,
 } as any)
 const ApiCliV1RunsRunIdRoute = ApiCliV1RunsRunIdRouteImport.update({
-  id: '/api/cli/v1/runs/$runId',
-  path: '/api/cli/v1/runs/$runId',
+  id: "/api/cli/v1/runs/$runId",
+  path: "/api/cli/v1/runs/$runId",
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCliV1PillsPillIdRoute = ApiCliV1PillsPillIdRouteImport.update({
-  id: '/$pillId',
-  path: '/$pillId',
+  id: "/$pillId",
+  path: "/$pillId",
   getParentRoute: () => ApiCliV1PillsRoute,
 } as any)
+const ApiCliV1CapsulesCapsuleIdRoute =
+  ApiCliV1CapsulesCapsuleIdRouteImport.update({
+    id: "/api/cli/v1/capsules/$capsuleId",
+    path: "/api/cli/v1/capsules/$capsuleId",
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiCliV1AuthSetupRoute = ApiCliV1AuthSetupRouteImport.update({
-  id: '/api/cli/v1/auth/setup',
-  path: '/api/cli/v1/auth/setup',
+  id: "/api/cli/v1/auth/setup",
+  path: "/api/cli/v1/auth/setup",
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCliV1AuthLogoutRoute = ApiCliV1AuthLogoutRouteImport.update({
-  id: '/api/cli/v1/auth/logout',
-  path: '/api/cli/v1/auth/logout',
+  id: "/api/cli/v1/auth/logout",
+  path: "/api/cli/v1/auth/logout",
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCliV1AuthLoginRoute = ApiCliV1AuthLoginRouteImport.update({
-  id: '/api/cli/v1/auth/login',
-  path: '/api/cli/v1/auth/login',
+  id: "/api/cli/v1/auth/login",
+  path: "/api/cli/v1/auth/login",
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCliV1SessionsSessionIdRevokeRoute =
   ApiCliV1SessionsSessionIdRevokeRouteImport.update({
-    id: '/$sessionId/revoke',
-    path: '/$sessionId/revoke',
+    id: "/$sessionId/revoke",
+    path: "/$sessionId/revoke",
     getParentRoute: () => ApiCliV1SessionsRoute,
   } as any)
 const ApiCliV1RunsRunIdMetricsRoute =
   ApiCliV1RunsRunIdMetricsRouteImport.update({
-    id: '/metrics',
-    path: '/metrics',
+    id: "/metrics",
+    path: "/metrics",
     getParentRoute: () => ApiCliV1RunsRunIdRoute,
   } as any)
 const ApiCliV1RunsRunIdLogsRoute = ApiCliV1RunsRunIdLogsRouteImport.update({
-  id: '/logs',
-  path: '/logs',
+  id: "/logs",
+  path: "/logs",
   getParentRoute: () => ApiCliV1RunsRunIdRoute,
 } as any)
 const ApiCliV1PillsPillIdStopRoute = ApiCliV1PillsPillIdStopRouteImport.update({
-  id: '/stop',
-  path: '/stop',
+  id: "/stop",
+  path: "/stop",
   getParentRoute: () => ApiCliV1PillsPillIdRoute,
 } as any)
 const ApiCliV1PillsPillIdStartRoute =
   ApiCliV1PillsPillIdStartRouteImport.update({
-    id: '/start',
-    path: '/start',
+    id: "/start",
+    path: "/start",
+    getParentRoute: () => ApiCliV1PillsPillIdRoute,
+  } as any)
+const ApiCliV1PillsPillIdCapsulesRoute =
+  ApiCliV1PillsPillIdCapsulesRouteImport.update({
+    id: "/capsules",
+    path: "/capsules",
     getParentRoute: () => ApiCliV1PillsPillIdRoute,
   } as any)
 const ApiCliV1RunsRunIdLogsStreamRoute =
   ApiCliV1RunsRunIdLogsStreamRouteImport.update({
-    id: '/stream',
-    path: '/stream',
+    id: "/stream",
+    path: "/stream",
     getParentRoute: () => ApiCliV1RunsRunIdLogsRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/login': typeof LoginRoute
-  '/sessions': typeof SessionsRoute
-  '/setup': typeof SetupRoute
-  '/pills/$pillId': typeof PillsPillIdRoute
-  '/settings/cloudflare': typeof SettingsCloudflareRoute
-  '/settings/runtime': typeof SettingsRuntimeRoute
-  '/api/cli/v1/agent-sessions': typeof ApiCliV1AgentSessionsRoute
-  '/api/cli/v1/pills': typeof ApiCliV1PillsRouteWithChildren
-  '/api/cli/v1/runtime': typeof ApiCliV1RuntimeRoute
-  '/api/cli/v1/sessions': typeof ApiCliV1SessionsRouteWithChildren
-  '/api/cli/v1/status': typeof ApiCliV1StatusRoute
-  '/api/cli/v1/vault': typeof ApiCliV1VaultRouteWithChildren
-  '/api/runs/$runId/metrics': typeof ApiRunsRunIdMetricsRoute
-  '/api/runs/$runId/terminal': typeof ApiRunsRunIdTerminalRoute
-  '/api/cli/v1/auth/login': typeof ApiCliV1AuthLoginRoute
-  '/api/cli/v1/auth/logout': typeof ApiCliV1AuthLogoutRoute
-  '/api/cli/v1/auth/setup': typeof ApiCliV1AuthSetupRoute
-  '/api/cli/v1/pills/$pillId': typeof ApiCliV1PillsPillIdRouteWithChildren
-  '/api/cli/v1/runs/$runId': typeof ApiCliV1RunsRunIdRouteWithChildren
-  '/api/cli/v1/vault/lock': typeof ApiCliV1VaultLockRoute
-  '/api/cli/v1/vault/save': typeof ApiCliV1VaultSaveRoute
-  '/api/cli/v1/vault/status': typeof ApiCliV1VaultStatusRoute
-  '/api/cli/v1/vault/unlock': typeof ApiCliV1VaultUnlockRoute
-  '/api/cli/v1/pills/$pillId/start': typeof ApiCliV1PillsPillIdStartRoute
-  '/api/cli/v1/pills/$pillId/stop': typeof ApiCliV1PillsPillIdStopRoute
-  '/api/cli/v1/runs/$runId/logs': typeof ApiCliV1RunsRunIdLogsRouteWithChildren
-  '/api/cli/v1/runs/$runId/metrics': typeof ApiCliV1RunsRunIdMetricsRoute
-  '/api/cli/v1/sessions/$sessionId/revoke': typeof ApiCliV1SessionsSessionIdRevokeRoute
-  '/api/cli/v1/runs/$runId/logs/stream': typeof ApiCliV1RunsRunIdLogsStreamRoute
+  "/": typeof IndexRoute
+  "/login": typeof LoginRoute
+  "/sessions": typeof SessionsRoute
+  "/setup": typeof SetupRoute
+  "/pills/$pillId": typeof PillsPillIdRoute
+  "/settings/cloudflare": typeof SettingsCloudflareRoute
+  "/settings/runtime": typeof SettingsRuntimeRoute
+  "/api/capsules/$capsuleId/archive": typeof ApiCapsulesCapsuleIdArchiveRoute
+  "/api/cli/v1/agent-sessions": typeof ApiCliV1AgentSessionsRoute
+  "/api/cli/v1/pills": typeof ApiCliV1PillsRouteWithChildren
+  "/api/cli/v1/runtime": typeof ApiCliV1RuntimeRoute
+  "/api/cli/v1/sessions": typeof ApiCliV1SessionsRouteWithChildren
+  "/api/cli/v1/status": typeof ApiCliV1StatusRoute
+  "/api/cli/v1/vault": typeof ApiCliV1VaultRouteWithChildren
+  "/api/runs/$runId/metrics": typeof ApiRunsRunIdMetricsRoute
+  "/api/runs/$runId/terminal": typeof ApiRunsRunIdTerminalRoute
+  "/api/cli/v1/auth/login": typeof ApiCliV1AuthLoginRoute
+  "/api/cli/v1/auth/logout": typeof ApiCliV1AuthLogoutRoute
+  "/api/cli/v1/auth/setup": typeof ApiCliV1AuthSetupRoute
+  "/api/cli/v1/capsules/$capsuleId": typeof ApiCliV1CapsulesCapsuleIdRoute
+  "/api/cli/v1/pills/$pillId": typeof ApiCliV1PillsPillIdRouteWithChildren
+  "/api/cli/v1/runs/$runId": typeof ApiCliV1RunsRunIdRouteWithChildren
+  "/api/cli/v1/vault/lock": typeof ApiCliV1VaultLockRoute
+  "/api/cli/v1/vault/save": typeof ApiCliV1VaultSaveRoute
+  "/api/cli/v1/vault/status": typeof ApiCliV1VaultStatusRoute
+  "/api/cli/v1/vault/unlock": typeof ApiCliV1VaultUnlockRoute
+  "/api/cli/v1/pills/$pillId/capsules": typeof ApiCliV1PillsPillIdCapsulesRoute
+  "/api/cli/v1/pills/$pillId/start": typeof ApiCliV1PillsPillIdStartRoute
+  "/api/cli/v1/pills/$pillId/stop": typeof ApiCliV1PillsPillIdStopRoute
+  "/api/cli/v1/runs/$runId/logs": typeof ApiCliV1RunsRunIdLogsRouteWithChildren
+  "/api/cli/v1/runs/$runId/metrics": typeof ApiCliV1RunsRunIdMetricsRoute
+  "/api/cli/v1/sessions/$sessionId/revoke": typeof ApiCliV1SessionsSessionIdRevokeRoute
+  "/api/cli/v1/runs/$runId/logs/stream": typeof ApiCliV1RunsRunIdLogsStreamRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/login': typeof LoginRoute
-  '/sessions': typeof SessionsRoute
-  '/setup': typeof SetupRoute
-  '/pills/$pillId': typeof PillsPillIdRoute
-  '/settings/cloudflare': typeof SettingsCloudflareRoute
-  '/settings/runtime': typeof SettingsRuntimeRoute
-  '/api/cli/v1/agent-sessions': typeof ApiCliV1AgentSessionsRoute
-  '/api/cli/v1/pills': typeof ApiCliV1PillsRouteWithChildren
-  '/api/cli/v1/runtime': typeof ApiCliV1RuntimeRoute
-  '/api/cli/v1/sessions': typeof ApiCliV1SessionsRouteWithChildren
-  '/api/cli/v1/status': typeof ApiCliV1StatusRoute
-  '/api/cli/v1/vault': typeof ApiCliV1VaultRouteWithChildren
-  '/api/runs/$runId/metrics': typeof ApiRunsRunIdMetricsRoute
-  '/api/runs/$runId/terminal': typeof ApiRunsRunIdTerminalRoute
-  '/api/cli/v1/auth/login': typeof ApiCliV1AuthLoginRoute
-  '/api/cli/v1/auth/logout': typeof ApiCliV1AuthLogoutRoute
-  '/api/cli/v1/auth/setup': typeof ApiCliV1AuthSetupRoute
-  '/api/cli/v1/pills/$pillId': typeof ApiCliV1PillsPillIdRouteWithChildren
-  '/api/cli/v1/runs/$runId': typeof ApiCliV1RunsRunIdRouteWithChildren
-  '/api/cli/v1/vault/lock': typeof ApiCliV1VaultLockRoute
-  '/api/cli/v1/vault/save': typeof ApiCliV1VaultSaveRoute
-  '/api/cli/v1/vault/status': typeof ApiCliV1VaultStatusRoute
-  '/api/cli/v1/vault/unlock': typeof ApiCliV1VaultUnlockRoute
-  '/api/cli/v1/pills/$pillId/start': typeof ApiCliV1PillsPillIdStartRoute
-  '/api/cli/v1/pills/$pillId/stop': typeof ApiCliV1PillsPillIdStopRoute
-  '/api/cli/v1/runs/$runId/logs': typeof ApiCliV1RunsRunIdLogsRouteWithChildren
-  '/api/cli/v1/runs/$runId/metrics': typeof ApiCliV1RunsRunIdMetricsRoute
-  '/api/cli/v1/sessions/$sessionId/revoke': typeof ApiCliV1SessionsSessionIdRevokeRoute
-  '/api/cli/v1/runs/$runId/logs/stream': typeof ApiCliV1RunsRunIdLogsStreamRoute
+  "/": typeof IndexRoute
+  "/login": typeof LoginRoute
+  "/sessions": typeof SessionsRoute
+  "/setup": typeof SetupRoute
+  "/pills/$pillId": typeof PillsPillIdRoute
+  "/settings/cloudflare": typeof SettingsCloudflareRoute
+  "/settings/runtime": typeof SettingsRuntimeRoute
+  "/api/capsules/$capsuleId/archive": typeof ApiCapsulesCapsuleIdArchiveRoute
+  "/api/cli/v1/agent-sessions": typeof ApiCliV1AgentSessionsRoute
+  "/api/cli/v1/pills": typeof ApiCliV1PillsRouteWithChildren
+  "/api/cli/v1/runtime": typeof ApiCliV1RuntimeRoute
+  "/api/cli/v1/sessions": typeof ApiCliV1SessionsRouteWithChildren
+  "/api/cli/v1/status": typeof ApiCliV1StatusRoute
+  "/api/cli/v1/vault": typeof ApiCliV1VaultRouteWithChildren
+  "/api/runs/$runId/metrics": typeof ApiRunsRunIdMetricsRoute
+  "/api/runs/$runId/terminal": typeof ApiRunsRunIdTerminalRoute
+  "/api/cli/v1/auth/login": typeof ApiCliV1AuthLoginRoute
+  "/api/cli/v1/auth/logout": typeof ApiCliV1AuthLogoutRoute
+  "/api/cli/v1/auth/setup": typeof ApiCliV1AuthSetupRoute
+  "/api/cli/v1/capsules/$capsuleId": typeof ApiCliV1CapsulesCapsuleIdRoute
+  "/api/cli/v1/pills/$pillId": typeof ApiCliV1PillsPillIdRouteWithChildren
+  "/api/cli/v1/runs/$runId": typeof ApiCliV1RunsRunIdRouteWithChildren
+  "/api/cli/v1/vault/lock": typeof ApiCliV1VaultLockRoute
+  "/api/cli/v1/vault/save": typeof ApiCliV1VaultSaveRoute
+  "/api/cli/v1/vault/status": typeof ApiCliV1VaultStatusRoute
+  "/api/cli/v1/vault/unlock": typeof ApiCliV1VaultUnlockRoute
+  "/api/cli/v1/pills/$pillId/capsules": typeof ApiCliV1PillsPillIdCapsulesRoute
+  "/api/cli/v1/pills/$pillId/start": typeof ApiCliV1PillsPillIdStartRoute
+  "/api/cli/v1/pills/$pillId/stop": typeof ApiCliV1PillsPillIdStopRoute
+  "/api/cli/v1/runs/$runId/logs": typeof ApiCliV1RunsRunIdLogsRouteWithChildren
+  "/api/cli/v1/runs/$runId/metrics": typeof ApiCliV1RunsRunIdMetricsRoute
+  "/api/cli/v1/sessions/$sessionId/revoke": typeof ApiCliV1SessionsSessionIdRevokeRoute
+  "/api/cli/v1/runs/$runId/logs/stream": typeof ApiCliV1RunsRunIdLogsStreamRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/login': typeof LoginRoute
-  '/sessions': typeof SessionsRoute
-  '/setup': typeof SetupRoute
-  '/pills/$pillId': typeof PillsPillIdRoute
-  '/settings/cloudflare': typeof SettingsCloudflareRoute
-  '/settings/runtime': typeof SettingsRuntimeRoute
-  '/api/cli/v1/agent-sessions': typeof ApiCliV1AgentSessionsRoute
-  '/api/cli/v1/pills': typeof ApiCliV1PillsRouteWithChildren
-  '/api/cli/v1/runtime': typeof ApiCliV1RuntimeRoute
-  '/api/cli/v1/sessions': typeof ApiCliV1SessionsRouteWithChildren
-  '/api/cli/v1/status': typeof ApiCliV1StatusRoute
-  '/api/cli/v1/vault': typeof ApiCliV1VaultRouteWithChildren
-  '/api/runs/$runId/metrics': typeof ApiRunsRunIdMetricsRoute
-  '/api/runs/$runId/terminal': typeof ApiRunsRunIdTerminalRoute
-  '/api/cli/v1/auth/login': typeof ApiCliV1AuthLoginRoute
-  '/api/cli/v1/auth/logout': typeof ApiCliV1AuthLogoutRoute
-  '/api/cli/v1/auth/setup': typeof ApiCliV1AuthSetupRoute
-  '/api/cli/v1/pills/$pillId': typeof ApiCliV1PillsPillIdRouteWithChildren
-  '/api/cli/v1/runs/$runId': typeof ApiCliV1RunsRunIdRouteWithChildren
-  '/api/cli/v1/vault/lock': typeof ApiCliV1VaultLockRoute
-  '/api/cli/v1/vault/save': typeof ApiCliV1VaultSaveRoute
-  '/api/cli/v1/vault/status': typeof ApiCliV1VaultStatusRoute
-  '/api/cli/v1/vault/unlock': typeof ApiCliV1VaultUnlockRoute
-  '/api/cli/v1/pills/$pillId/start': typeof ApiCliV1PillsPillIdStartRoute
-  '/api/cli/v1/pills/$pillId/stop': typeof ApiCliV1PillsPillIdStopRoute
-  '/api/cli/v1/runs/$runId/logs': typeof ApiCliV1RunsRunIdLogsRouteWithChildren
-  '/api/cli/v1/runs/$runId/metrics': typeof ApiCliV1RunsRunIdMetricsRoute
-  '/api/cli/v1/sessions/$sessionId/revoke': typeof ApiCliV1SessionsSessionIdRevokeRoute
-  '/api/cli/v1/runs/$runId/logs/stream': typeof ApiCliV1RunsRunIdLogsStreamRoute
+  "/": typeof IndexRoute
+  "/login": typeof LoginRoute
+  "/sessions": typeof SessionsRoute
+  "/setup": typeof SetupRoute
+  "/pills/$pillId": typeof PillsPillIdRoute
+  "/settings/cloudflare": typeof SettingsCloudflareRoute
+  "/settings/runtime": typeof SettingsRuntimeRoute
+  "/api/capsules/$capsuleId/archive": typeof ApiCapsulesCapsuleIdArchiveRoute
+  "/api/cli/v1/agent-sessions": typeof ApiCliV1AgentSessionsRoute
+  "/api/cli/v1/pills": typeof ApiCliV1PillsRouteWithChildren
+  "/api/cli/v1/runtime": typeof ApiCliV1RuntimeRoute
+  "/api/cli/v1/sessions": typeof ApiCliV1SessionsRouteWithChildren
+  "/api/cli/v1/status": typeof ApiCliV1StatusRoute
+  "/api/cli/v1/vault": typeof ApiCliV1VaultRouteWithChildren
+  "/api/runs/$runId/metrics": typeof ApiRunsRunIdMetricsRoute
+  "/api/runs/$runId/terminal": typeof ApiRunsRunIdTerminalRoute
+  "/api/cli/v1/auth/login": typeof ApiCliV1AuthLoginRoute
+  "/api/cli/v1/auth/logout": typeof ApiCliV1AuthLogoutRoute
+  "/api/cli/v1/auth/setup": typeof ApiCliV1AuthSetupRoute
+  "/api/cli/v1/capsules/$capsuleId": typeof ApiCliV1CapsulesCapsuleIdRoute
+  "/api/cli/v1/pills/$pillId": typeof ApiCliV1PillsPillIdRouteWithChildren
+  "/api/cli/v1/runs/$runId": typeof ApiCliV1RunsRunIdRouteWithChildren
+  "/api/cli/v1/vault/lock": typeof ApiCliV1VaultLockRoute
+  "/api/cli/v1/vault/save": typeof ApiCliV1VaultSaveRoute
+  "/api/cli/v1/vault/status": typeof ApiCliV1VaultStatusRoute
+  "/api/cli/v1/vault/unlock": typeof ApiCliV1VaultUnlockRoute
+  "/api/cli/v1/pills/$pillId/capsules": typeof ApiCliV1PillsPillIdCapsulesRoute
+  "/api/cli/v1/pills/$pillId/start": typeof ApiCliV1PillsPillIdStartRoute
+  "/api/cli/v1/pills/$pillId/stop": typeof ApiCliV1PillsPillIdStopRoute
+  "/api/cli/v1/runs/$runId/logs": typeof ApiCliV1RunsRunIdLogsRouteWithChildren
+  "/api/cli/v1/runs/$runId/metrics": typeof ApiCliV1RunsRunIdMetricsRoute
+  "/api/cli/v1/sessions/$sessionId/revoke": typeof ApiCliV1SessionsSessionIdRevokeRoute
+  "/api/cli/v1/runs/$runId/logs/stream": typeof ApiCliV1RunsRunIdLogsStreamRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
-    | '/login'
-    | '/sessions'
-    | '/setup'
-    | '/pills/$pillId'
-    | '/settings/cloudflare'
-    | '/settings/runtime'
-    | '/api/cli/v1/agent-sessions'
-    | '/api/cli/v1/pills'
-    | '/api/cli/v1/runtime'
-    | '/api/cli/v1/sessions'
-    | '/api/cli/v1/status'
-    | '/api/cli/v1/vault'
-    | '/api/runs/$runId/metrics'
-    | '/api/runs/$runId/terminal'
-    | '/api/cli/v1/auth/login'
-    | '/api/cli/v1/auth/logout'
-    | '/api/cli/v1/auth/setup'
-    | '/api/cli/v1/pills/$pillId'
-    | '/api/cli/v1/runs/$runId'
-    | '/api/cli/v1/vault/lock'
-    | '/api/cli/v1/vault/save'
-    | '/api/cli/v1/vault/status'
-    | '/api/cli/v1/vault/unlock'
-    | '/api/cli/v1/pills/$pillId/start'
-    | '/api/cli/v1/pills/$pillId/stop'
-    | '/api/cli/v1/runs/$runId/logs'
-    | '/api/cli/v1/runs/$runId/metrics'
-    | '/api/cli/v1/sessions/$sessionId/revoke'
-    | '/api/cli/v1/runs/$runId/logs/stream'
+    | "/"
+    | "/login"
+    | "/sessions"
+    | "/setup"
+    | "/pills/$pillId"
+    | "/settings/cloudflare"
+    | "/settings/runtime"
+    | "/api/capsules/$capsuleId/archive"
+    | "/api/cli/v1/agent-sessions"
+    | "/api/cli/v1/pills"
+    | "/api/cli/v1/runtime"
+    | "/api/cli/v1/sessions"
+    | "/api/cli/v1/status"
+    | "/api/cli/v1/vault"
+    | "/api/runs/$runId/metrics"
+    | "/api/runs/$runId/terminal"
+    | "/api/cli/v1/auth/login"
+    | "/api/cli/v1/auth/logout"
+    | "/api/cli/v1/auth/setup"
+    | "/api/cli/v1/capsules/$capsuleId"
+    | "/api/cli/v1/pills/$pillId"
+    | "/api/cli/v1/runs/$runId"
+    | "/api/cli/v1/vault/lock"
+    | "/api/cli/v1/vault/save"
+    | "/api/cli/v1/vault/status"
+    | "/api/cli/v1/vault/unlock"
+    | "/api/cli/v1/pills/$pillId/capsules"
+    | "/api/cli/v1/pills/$pillId/start"
+    | "/api/cli/v1/pills/$pillId/stop"
+    | "/api/cli/v1/runs/$runId/logs"
+    | "/api/cli/v1/runs/$runId/metrics"
+    | "/api/cli/v1/sessions/$sessionId/revoke"
+    | "/api/cli/v1/runs/$runId/logs/stream"
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
-    | '/login'
-    | '/sessions'
-    | '/setup'
-    | '/pills/$pillId'
-    | '/settings/cloudflare'
-    | '/settings/runtime'
-    | '/api/cli/v1/agent-sessions'
-    | '/api/cli/v1/pills'
-    | '/api/cli/v1/runtime'
-    | '/api/cli/v1/sessions'
-    | '/api/cli/v1/status'
-    | '/api/cli/v1/vault'
-    | '/api/runs/$runId/metrics'
-    | '/api/runs/$runId/terminal'
-    | '/api/cli/v1/auth/login'
-    | '/api/cli/v1/auth/logout'
-    | '/api/cli/v1/auth/setup'
-    | '/api/cli/v1/pills/$pillId'
-    | '/api/cli/v1/runs/$runId'
-    | '/api/cli/v1/vault/lock'
-    | '/api/cli/v1/vault/save'
-    | '/api/cli/v1/vault/status'
-    | '/api/cli/v1/vault/unlock'
-    | '/api/cli/v1/pills/$pillId/start'
-    | '/api/cli/v1/pills/$pillId/stop'
-    | '/api/cli/v1/runs/$runId/logs'
-    | '/api/cli/v1/runs/$runId/metrics'
-    | '/api/cli/v1/sessions/$sessionId/revoke'
-    | '/api/cli/v1/runs/$runId/logs/stream'
+    | "/"
+    | "/login"
+    | "/sessions"
+    | "/setup"
+    | "/pills/$pillId"
+    | "/settings/cloudflare"
+    | "/settings/runtime"
+    | "/api/capsules/$capsuleId/archive"
+    | "/api/cli/v1/agent-sessions"
+    | "/api/cli/v1/pills"
+    | "/api/cli/v1/runtime"
+    | "/api/cli/v1/sessions"
+    | "/api/cli/v1/status"
+    | "/api/cli/v1/vault"
+    | "/api/runs/$runId/metrics"
+    | "/api/runs/$runId/terminal"
+    | "/api/cli/v1/auth/login"
+    | "/api/cli/v1/auth/logout"
+    | "/api/cli/v1/auth/setup"
+    | "/api/cli/v1/capsules/$capsuleId"
+    | "/api/cli/v1/pills/$pillId"
+    | "/api/cli/v1/runs/$runId"
+    | "/api/cli/v1/vault/lock"
+    | "/api/cli/v1/vault/save"
+    | "/api/cli/v1/vault/status"
+    | "/api/cli/v1/vault/unlock"
+    | "/api/cli/v1/pills/$pillId/capsules"
+    | "/api/cli/v1/pills/$pillId/start"
+    | "/api/cli/v1/pills/$pillId/stop"
+    | "/api/cli/v1/runs/$runId/logs"
+    | "/api/cli/v1/runs/$runId/metrics"
+    | "/api/cli/v1/sessions/$sessionId/revoke"
+    | "/api/cli/v1/runs/$runId/logs/stream"
   id:
-    | '__root__'
-    | '/'
-    | '/login'
-    | '/sessions'
-    | '/setup'
-    | '/pills/$pillId'
-    | '/settings/cloudflare'
-    | '/settings/runtime'
-    | '/api/cli/v1/agent-sessions'
-    | '/api/cli/v1/pills'
-    | '/api/cli/v1/runtime'
-    | '/api/cli/v1/sessions'
-    | '/api/cli/v1/status'
-    | '/api/cli/v1/vault'
-    | '/api/runs/$runId/metrics'
-    | '/api/runs/$runId/terminal'
-    | '/api/cli/v1/auth/login'
-    | '/api/cli/v1/auth/logout'
-    | '/api/cli/v1/auth/setup'
-    | '/api/cli/v1/pills/$pillId'
-    | '/api/cli/v1/runs/$runId'
-    | '/api/cli/v1/vault/lock'
-    | '/api/cli/v1/vault/save'
-    | '/api/cli/v1/vault/status'
-    | '/api/cli/v1/vault/unlock'
-    | '/api/cli/v1/pills/$pillId/start'
-    | '/api/cli/v1/pills/$pillId/stop'
-    | '/api/cli/v1/runs/$runId/logs'
-    | '/api/cli/v1/runs/$runId/metrics'
-    | '/api/cli/v1/sessions/$sessionId/revoke'
-    | '/api/cli/v1/runs/$runId/logs/stream'
+    | "__root__"
+    | "/"
+    | "/login"
+    | "/sessions"
+    | "/setup"
+    | "/pills/$pillId"
+    | "/settings/cloudflare"
+    | "/settings/runtime"
+    | "/api/capsules/$capsuleId/archive"
+    | "/api/cli/v1/agent-sessions"
+    | "/api/cli/v1/pills"
+    | "/api/cli/v1/runtime"
+    | "/api/cli/v1/sessions"
+    | "/api/cli/v1/status"
+    | "/api/cli/v1/vault"
+    | "/api/runs/$runId/metrics"
+    | "/api/runs/$runId/terminal"
+    | "/api/cli/v1/auth/login"
+    | "/api/cli/v1/auth/logout"
+    | "/api/cli/v1/auth/setup"
+    | "/api/cli/v1/capsules/$capsuleId"
+    | "/api/cli/v1/pills/$pillId"
+    | "/api/cli/v1/runs/$runId"
+    | "/api/cli/v1/vault/lock"
+    | "/api/cli/v1/vault/save"
+    | "/api/cli/v1/vault/status"
+    | "/api/cli/v1/vault/unlock"
+    | "/api/cli/v1/pills/$pillId/capsules"
+    | "/api/cli/v1/pills/$pillId/start"
+    | "/api/cli/v1/pills/$pillId/stop"
+    | "/api/cli/v1/runs/$runId/logs"
+    | "/api/cli/v1/runs/$runId/metrics"
+    | "/api/cli/v1/sessions/$sessionId/revoke"
+    | "/api/cli/v1/runs/$runId/logs/stream"
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -399,6 +438,7 @@ export interface RootRouteChildren {
   PillsPillIdRoute: typeof PillsPillIdRoute
   SettingsCloudflareRoute: typeof SettingsCloudflareRoute
   SettingsRuntimeRoute: typeof SettingsRuntimeRoute
+  ApiCapsulesCapsuleIdArchiveRoute: typeof ApiCapsulesCapsuleIdArchiveRoute
   ApiCliV1AgentSessionsRoute: typeof ApiCliV1AgentSessionsRoute
   ApiCliV1PillsRoute: typeof ApiCliV1PillsRouteWithChildren
   ApiCliV1RuntimeRoute: typeof ApiCliV1RuntimeRoute
@@ -410,218 +450,240 @@ export interface RootRouteChildren {
   ApiCliV1AuthLoginRoute: typeof ApiCliV1AuthLoginRoute
   ApiCliV1AuthLogoutRoute: typeof ApiCliV1AuthLogoutRoute
   ApiCliV1AuthSetupRoute: typeof ApiCliV1AuthSetupRoute
+  ApiCliV1CapsulesCapsuleIdRoute: typeof ApiCliV1CapsulesCapsuleIdRoute
   ApiCliV1RunsRunIdRoute: typeof ApiCliV1RunsRunIdRouteWithChildren
 }
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    '/setup': {
-      id: '/setup'
-      path: '/setup'
-      fullPath: '/setup'
+    "/setup": {
+      id: "/setup"
+      path: "/setup"
+      fullPath: "/setup"
       preLoaderRoute: typeof SetupRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sessions': {
-      id: '/sessions'
-      path: '/sessions'
-      fullPath: '/sessions'
+    "/sessions": {
+      id: "/sessions"
+      path: "/sessions"
+      fullPath: "/sessions"
       preLoaderRoute: typeof SessionsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
+    "/login": {
+      id: "/login"
+      path: "/login"
+      fullPath: "/login"
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
+    "/": {
+      id: "/"
+      path: "/"
+      fullPath: "/"
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/settings/runtime': {
-      id: '/settings/runtime'
-      path: '/settings/runtime'
-      fullPath: '/settings/runtime'
+    "/settings/runtime": {
+      id: "/settings/runtime"
+      path: "/settings/runtime"
+      fullPath: "/settings/runtime"
       preLoaderRoute: typeof SettingsRuntimeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/settings/cloudflare': {
-      id: '/settings/cloudflare'
-      path: '/settings/cloudflare'
-      fullPath: '/settings/cloudflare'
+    "/settings/cloudflare": {
+      id: "/settings/cloudflare"
+      path: "/settings/cloudflare"
+      fullPath: "/settings/cloudflare"
       preLoaderRoute: typeof SettingsCloudflareRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/pills/$pillId': {
-      id: '/pills/$pillId'
-      path: '/pills/$pillId'
-      fullPath: '/pills/$pillId'
+    "/pills/$pillId": {
+      id: "/pills/$pillId"
+      path: "/pills/$pillId"
+      fullPath: "/pills/$pillId"
       preLoaderRoute: typeof PillsPillIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/runs/$runId/terminal': {
-      id: '/api/runs/$runId/terminal'
-      path: '/api/runs/$runId/terminal'
-      fullPath: '/api/runs/$runId/terminal'
+    "/api/runs/$runId/terminal": {
+      id: "/api/runs/$runId/terminal"
+      path: "/api/runs/$runId/terminal"
+      fullPath: "/api/runs/$runId/terminal"
       preLoaderRoute: typeof ApiRunsRunIdTerminalRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/runs/$runId/metrics': {
-      id: '/api/runs/$runId/metrics'
-      path: '/api/runs/$runId/metrics'
-      fullPath: '/api/runs/$runId/metrics'
+    "/api/runs/$runId/metrics": {
+      id: "/api/runs/$runId/metrics"
+      path: "/api/runs/$runId/metrics"
+      fullPath: "/api/runs/$runId/metrics"
       preLoaderRoute: typeof ApiRunsRunIdMetricsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/cli/v1/vault': {
-      id: '/api/cli/v1/vault'
-      path: '/api/cli/v1/vault'
-      fullPath: '/api/cli/v1/vault'
+    "/api/cli/v1/vault": {
+      id: "/api/cli/v1/vault"
+      path: "/api/cli/v1/vault"
+      fullPath: "/api/cli/v1/vault"
       preLoaderRoute: typeof ApiCliV1VaultRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/cli/v1/status': {
-      id: '/api/cli/v1/status'
-      path: '/api/cli/v1/status'
-      fullPath: '/api/cli/v1/status'
+    "/api/cli/v1/status": {
+      id: "/api/cli/v1/status"
+      path: "/api/cli/v1/status"
+      fullPath: "/api/cli/v1/status"
       preLoaderRoute: typeof ApiCliV1StatusRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/cli/v1/sessions': {
-      id: '/api/cli/v1/sessions'
-      path: '/api/cli/v1/sessions'
-      fullPath: '/api/cli/v1/sessions'
+    "/api/cli/v1/sessions": {
+      id: "/api/cli/v1/sessions"
+      path: "/api/cli/v1/sessions"
+      fullPath: "/api/cli/v1/sessions"
       preLoaderRoute: typeof ApiCliV1SessionsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/cli/v1/runtime': {
-      id: '/api/cli/v1/runtime'
-      path: '/api/cli/v1/runtime'
-      fullPath: '/api/cli/v1/runtime'
+    "/api/cli/v1/runtime": {
+      id: "/api/cli/v1/runtime"
+      path: "/api/cli/v1/runtime"
+      fullPath: "/api/cli/v1/runtime"
       preLoaderRoute: typeof ApiCliV1RuntimeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/cli/v1/pills': {
-      id: '/api/cli/v1/pills'
-      path: '/api/cli/v1/pills'
-      fullPath: '/api/cli/v1/pills'
+    "/api/cli/v1/pills": {
+      id: "/api/cli/v1/pills"
+      path: "/api/cli/v1/pills"
+      fullPath: "/api/cli/v1/pills"
       preLoaderRoute: typeof ApiCliV1PillsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/cli/v1/agent-sessions': {
-      id: '/api/cli/v1/agent-sessions'
-      path: '/api/cli/v1/agent-sessions'
-      fullPath: '/api/cli/v1/agent-sessions'
+    "/api/cli/v1/agent-sessions": {
+      id: "/api/cli/v1/agent-sessions"
+      path: "/api/cli/v1/agent-sessions"
+      fullPath: "/api/cli/v1/agent-sessions"
       preLoaderRoute: typeof ApiCliV1AgentSessionsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/cli/v1/vault/unlock': {
-      id: '/api/cli/v1/vault/unlock'
-      path: '/unlock'
-      fullPath: '/api/cli/v1/vault/unlock'
+    "/api/capsules/$capsuleId/archive": {
+      id: "/api/capsules/$capsuleId/archive"
+      path: "/api/capsules/$capsuleId/archive"
+      fullPath: "/api/capsules/$capsuleId/archive"
+      preLoaderRoute: typeof ApiCapsulesCapsuleIdArchiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    "/api/cli/v1/vault/unlock": {
+      id: "/api/cli/v1/vault/unlock"
+      path: "/unlock"
+      fullPath: "/api/cli/v1/vault/unlock"
       preLoaderRoute: typeof ApiCliV1VaultUnlockRouteImport
       parentRoute: typeof ApiCliV1VaultRoute
     }
-    '/api/cli/v1/vault/status': {
-      id: '/api/cli/v1/vault/status'
-      path: '/status'
-      fullPath: '/api/cli/v1/vault/status'
+    "/api/cli/v1/vault/status": {
+      id: "/api/cli/v1/vault/status"
+      path: "/status"
+      fullPath: "/api/cli/v1/vault/status"
       preLoaderRoute: typeof ApiCliV1VaultStatusRouteImport
       parentRoute: typeof ApiCliV1VaultRoute
     }
-    '/api/cli/v1/vault/save': {
-      id: '/api/cli/v1/vault/save'
-      path: '/save'
-      fullPath: '/api/cli/v1/vault/save'
+    "/api/cli/v1/vault/save": {
+      id: "/api/cli/v1/vault/save"
+      path: "/save"
+      fullPath: "/api/cli/v1/vault/save"
       preLoaderRoute: typeof ApiCliV1VaultSaveRouteImport
       parentRoute: typeof ApiCliV1VaultRoute
     }
-    '/api/cli/v1/vault/lock': {
-      id: '/api/cli/v1/vault/lock'
-      path: '/lock'
-      fullPath: '/api/cli/v1/vault/lock'
+    "/api/cli/v1/vault/lock": {
+      id: "/api/cli/v1/vault/lock"
+      path: "/lock"
+      fullPath: "/api/cli/v1/vault/lock"
       preLoaderRoute: typeof ApiCliV1VaultLockRouteImport
       parentRoute: typeof ApiCliV1VaultRoute
     }
-    '/api/cli/v1/runs/$runId': {
-      id: '/api/cli/v1/runs/$runId'
-      path: '/api/cli/v1/runs/$runId'
-      fullPath: '/api/cli/v1/runs/$runId'
+    "/api/cli/v1/runs/$runId": {
+      id: "/api/cli/v1/runs/$runId"
+      path: "/api/cli/v1/runs/$runId"
+      fullPath: "/api/cli/v1/runs/$runId"
       preLoaderRoute: typeof ApiCliV1RunsRunIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/cli/v1/pills/$pillId': {
-      id: '/api/cli/v1/pills/$pillId'
-      path: '/$pillId'
-      fullPath: '/api/cli/v1/pills/$pillId'
+    "/api/cli/v1/pills/$pillId": {
+      id: "/api/cli/v1/pills/$pillId"
+      path: "/$pillId"
+      fullPath: "/api/cli/v1/pills/$pillId"
       preLoaderRoute: typeof ApiCliV1PillsPillIdRouteImport
       parentRoute: typeof ApiCliV1PillsRoute
     }
-    '/api/cli/v1/auth/setup': {
-      id: '/api/cli/v1/auth/setup'
-      path: '/api/cli/v1/auth/setup'
-      fullPath: '/api/cli/v1/auth/setup'
+    "/api/cli/v1/capsules/$capsuleId": {
+      id: "/api/cli/v1/capsules/$capsuleId"
+      path: "/api/cli/v1/capsules/$capsuleId"
+      fullPath: "/api/cli/v1/capsules/$capsuleId"
+      preLoaderRoute: typeof ApiCliV1CapsulesCapsuleIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    "/api/cli/v1/auth/setup": {
+      id: "/api/cli/v1/auth/setup"
+      path: "/api/cli/v1/auth/setup"
+      fullPath: "/api/cli/v1/auth/setup"
       preLoaderRoute: typeof ApiCliV1AuthSetupRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/cli/v1/auth/logout': {
-      id: '/api/cli/v1/auth/logout'
-      path: '/api/cli/v1/auth/logout'
-      fullPath: '/api/cli/v1/auth/logout'
+    "/api/cli/v1/auth/logout": {
+      id: "/api/cli/v1/auth/logout"
+      path: "/api/cli/v1/auth/logout"
+      fullPath: "/api/cli/v1/auth/logout"
       preLoaderRoute: typeof ApiCliV1AuthLogoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/cli/v1/auth/login': {
-      id: '/api/cli/v1/auth/login'
-      path: '/api/cli/v1/auth/login'
-      fullPath: '/api/cli/v1/auth/login'
+    "/api/cli/v1/auth/login": {
+      id: "/api/cli/v1/auth/login"
+      path: "/api/cli/v1/auth/login"
+      fullPath: "/api/cli/v1/auth/login"
       preLoaderRoute: typeof ApiCliV1AuthLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/cli/v1/sessions/$sessionId/revoke': {
-      id: '/api/cli/v1/sessions/$sessionId/revoke'
-      path: '/$sessionId/revoke'
-      fullPath: '/api/cli/v1/sessions/$sessionId/revoke'
+    "/api/cli/v1/sessions/$sessionId/revoke": {
+      id: "/api/cli/v1/sessions/$sessionId/revoke"
+      path: "/$sessionId/revoke"
+      fullPath: "/api/cli/v1/sessions/$sessionId/revoke"
       preLoaderRoute: typeof ApiCliV1SessionsSessionIdRevokeRouteImport
       parentRoute: typeof ApiCliV1SessionsRoute
     }
-    '/api/cli/v1/runs/$runId/metrics': {
-      id: '/api/cli/v1/runs/$runId/metrics'
-      path: '/metrics'
-      fullPath: '/api/cli/v1/runs/$runId/metrics'
+    "/api/cli/v1/runs/$runId/metrics": {
+      id: "/api/cli/v1/runs/$runId/metrics"
+      path: "/metrics"
+      fullPath: "/api/cli/v1/runs/$runId/metrics"
       preLoaderRoute: typeof ApiCliV1RunsRunIdMetricsRouteImport
       parentRoute: typeof ApiCliV1RunsRunIdRoute
     }
-    '/api/cli/v1/runs/$runId/logs': {
-      id: '/api/cli/v1/runs/$runId/logs'
-      path: '/logs'
-      fullPath: '/api/cli/v1/runs/$runId/logs'
+    "/api/cli/v1/runs/$runId/logs": {
+      id: "/api/cli/v1/runs/$runId/logs"
+      path: "/logs"
+      fullPath: "/api/cli/v1/runs/$runId/logs"
       preLoaderRoute: typeof ApiCliV1RunsRunIdLogsRouteImport
       parentRoute: typeof ApiCliV1RunsRunIdRoute
     }
-    '/api/cli/v1/pills/$pillId/stop': {
-      id: '/api/cli/v1/pills/$pillId/stop'
-      path: '/stop'
-      fullPath: '/api/cli/v1/pills/$pillId/stop'
+    "/api/cli/v1/pills/$pillId/stop": {
+      id: "/api/cli/v1/pills/$pillId/stop"
+      path: "/stop"
+      fullPath: "/api/cli/v1/pills/$pillId/stop"
       preLoaderRoute: typeof ApiCliV1PillsPillIdStopRouteImport
       parentRoute: typeof ApiCliV1PillsPillIdRoute
     }
-    '/api/cli/v1/pills/$pillId/start': {
-      id: '/api/cli/v1/pills/$pillId/start'
-      path: '/start'
-      fullPath: '/api/cli/v1/pills/$pillId/start'
+    "/api/cli/v1/pills/$pillId/start": {
+      id: "/api/cli/v1/pills/$pillId/start"
+      path: "/start"
+      fullPath: "/api/cli/v1/pills/$pillId/start"
       preLoaderRoute: typeof ApiCliV1PillsPillIdStartRouteImport
       parentRoute: typeof ApiCliV1PillsPillIdRoute
     }
-    '/api/cli/v1/runs/$runId/logs/stream': {
-      id: '/api/cli/v1/runs/$runId/logs/stream'
-      path: '/stream'
-      fullPath: '/api/cli/v1/runs/$runId/logs/stream'
+    "/api/cli/v1/pills/$pillId/capsules": {
+      id: "/api/cli/v1/pills/$pillId/capsules"
+      path: "/capsules"
+      fullPath: "/api/cli/v1/pills/$pillId/capsules"
+      preLoaderRoute: typeof ApiCliV1PillsPillIdCapsulesRouteImport
+      parentRoute: typeof ApiCliV1PillsPillIdRoute
+    }
+    "/api/cli/v1/runs/$runId/logs/stream": {
+      id: "/api/cli/v1/runs/$runId/logs/stream"
+      path: "/stream"
+      fullPath: "/api/cli/v1/runs/$runId/logs/stream"
       preLoaderRoute: typeof ApiCliV1RunsRunIdLogsStreamRouteImport
       parentRoute: typeof ApiCliV1RunsRunIdLogsRoute
     }
@@ -629,11 +691,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface ApiCliV1PillsPillIdRouteChildren {
+  ApiCliV1PillsPillIdCapsulesRoute: typeof ApiCliV1PillsPillIdCapsulesRoute
   ApiCliV1PillsPillIdStartRoute: typeof ApiCliV1PillsPillIdStartRoute
   ApiCliV1PillsPillIdStopRoute: typeof ApiCliV1PillsPillIdStopRoute
 }
 
 const ApiCliV1PillsPillIdRouteChildren: ApiCliV1PillsPillIdRouteChildren = {
+  ApiCliV1PillsPillIdCapsulesRoute: ApiCliV1PillsPillIdCapsulesRoute,
   ApiCliV1PillsPillIdStartRoute: ApiCliV1PillsPillIdStartRoute,
   ApiCliV1PillsPillIdStopRoute: ApiCliV1PillsPillIdStopRoute,
 }
@@ -650,7 +714,7 @@ const ApiCliV1PillsRouteChildren: ApiCliV1PillsRouteChildren = {
 }
 
 const ApiCliV1PillsRouteWithChildren = ApiCliV1PillsRoute._addFileChildren(
-  ApiCliV1PillsRouteChildren,
+  ApiCliV1PillsRouteChildren
 )
 
 interface ApiCliV1SessionsRouteChildren {
@@ -679,7 +743,7 @@ const ApiCliV1VaultRouteChildren: ApiCliV1VaultRouteChildren = {
 }
 
 const ApiCliV1VaultRouteWithChildren = ApiCliV1VaultRoute._addFileChildren(
-  ApiCliV1VaultRouteChildren,
+  ApiCliV1VaultRouteChildren
 )
 
 interface ApiCliV1RunsRunIdLogsRouteChildren {
@@ -692,7 +756,7 @@ const ApiCliV1RunsRunIdLogsRouteChildren: ApiCliV1RunsRunIdLogsRouteChildren = {
 
 const ApiCliV1RunsRunIdLogsRouteWithChildren =
   ApiCliV1RunsRunIdLogsRoute._addFileChildren(
-    ApiCliV1RunsRunIdLogsRouteChildren,
+    ApiCliV1RunsRunIdLogsRouteChildren
   )
 
 interface ApiCliV1RunsRunIdRouteChildren {
@@ -716,6 +780,7 @@ const rootRouteChildren: RootRouteChildren = {
   PillsPillIdRoute: PillsPillIdRoute,
   SettingsCloudflareRoute: SettingsCloudflareRoute,
   SettingsRuntimeRoute: SettingsRuntimeRoute,
+  ApiCapsulesCapsuleIdArchiveRoute: ApiCapsulesCapsuleIdArchiveRoute,
   ApiCliV1AgentSessionsRoute: ApiCliV1AgentSessionsRoute,
   ApiCliV1PillsRoute: ApiCliV1PillsRouteWithChildren,
   ApiCliV1RuntimeRoute: ApiCliV1RuntimeRoute,
@@ -727,15 +792,16 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCliV1AuthLoginRoute: ApiCliV1AuthLoginRoute,
   ApiCliV1AuthLogoutRoute: ApiCliV1AuthLogoutRoute,
   ApiCliV1AuthSetupRoute: ApiCliV1AuthSetupRoute,
+  ApiCliV1CapsulesCapsuleIdRoute: ApiCliV1CapsulesCapsuleIdRoute,
   ApiCliV1RunsRunIdRoute: ApiCliV1RunsRunIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
+import type { getRouter } from "./router.tsx"
+import type { createStart } from "@tanstack/react-start"
+declare module "@tanstack/react-start" {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>

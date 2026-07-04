@@ -1,6 +1,6 @@
 # Upster
 
-Upster is a local Dockerized admin dashboard for publishing short-lived mini apps through Cloudflare Tunnel. It manages mounted repositories as Upster pills, assigns local ports, starts app commands, configures per-pill Cloudflare tunnels, streams logs, and shows tunnel metrics.
+Upster is a local Dockerized admin dashboard for publishing short-lived mini apps through Cloudflare Tunnel. It manages mounted repositories as Upster pills, assigns local ports, starts app commands, configures per-pill Cloudflare tunnels, streams logs, and shows tunnel metrics. A pill can run from its live source or from a capsule, a frozen copy of the source kept under the Upster data directory so live edits on disk do not affect the running deployment.
 
 ## Tech Stack
 

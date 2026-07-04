@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 
-import { and, desc, eq, isNull, sql } from "drizzle-orm"
+import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm"
 import type { AccessScope } from "@upster/core"
 
 import { db, ensureDatabase } from "@/db/client.server"
@@ -8,6 +8,7 @@ import {
   accessSessions,
   adminUsers,
   appSettings,
+  capsules,
   cloudflareTunnels,
   events,
   pillCommands,
@@ -29,8 +30,8 @@ import type {
   PillRun,
   PillStatus,
   RunLog,
-  UpdatePillInput,
 } from "@/features/pills/types"
+import type { Capsule } from "@/features/capsules/types"
 
 function now() {
   return new Date().toISOString()
@@ -59,6 +60,43 @@ function parseRun(row: typeof pillRuns.$inferSelect): PillRun {
   return {
     ...row,
     status: row.status as PillStatus,
+    source: row.source as PillRun["source"],
+    capsuleId: row.capsuleId,
+    deployTarget: row.deployTarget as PillRun["deployTarget"],
+    hostname: row.hostname,
+  }
+}
+
+function parseCapsule(row: typeof capsules.$inferSelect): Capsule {
+  return {
+    id: row.id,
+    pillId: row.pillId,
+    status: row.status as Capsule["status"],
+    path: row.path,
+    sourcePath: row.sourcePath,
+    includeNodeModules: row.includeNodeModules === 1,
+    installDeps: row.installDeps === 1,
+    packageManager: row.packageManager as Capsule["packageManager"],
+    label: row.label,
+    pinned: row.pinned === 1,
+    git: {
+      commit: row.gitCommit,
+      branch: row.gitBranch,
+      message: row.gitMessage,
+      dirty: row.gitDirty === null ? null : row.gitDirty === 1,
+    },
+    sizeBytes: row.sizeBytes,
+    fileCount: row.fileCount,
+    buildDurationMs: row.buildDurationMs,
+    previewHostname: row.previewHostname,
+    previewTunnelId: row.previewTunnelId,
+    previewTunnelName: row.previewTunnelName,
+    previewDnsRecordId: row.previewDnsRecordId,
+    buildLog: row.buildLog,
+    error: row.error,
+    builtAt: row.builtAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   }
 }
 
@@ -140,7 +178,7 @@ export async function listPills() {
       ...parsePill(pillRow),
       appPort: ports?.appPort ?? null,
       metricsPort: ports?.metricsPort ?? null,
-      hostname: tunnel?.hostname ?? null,
+      hostname: activeRun?.hostname ?? tunnel?.hostname ?? null,
       activeRun: activeRun ? parseRun(activeRun) : null,
     }
   })
@@ -185,7 +223,7 @@ export async function getPillDetail(pillId: string): Promise<PillDetail> {
     ...parsePill(pillRow),
     appPort: ports?.appPort ?? null,
     metricsPort: ports?.metricsPort ?? null,
-    hostname: tunnel?.hostname ?? null,
+    hostname: activeRun?.hostname ?? tunnel?.hostname ?? null,
     activeRun: activeRun ? parseRun(activeRun) : null,
     commands: commandRows.map(parseCommand),
     tunnel: tunnel ? parseTunnel(tunnel) : null,
@@ -193,7 +231,19 @@ export async function getPillDetail(pillId: string): Promise<PillDetail> {
   }
 }
 
-export async function updatePillRecord(input: UpdatePillInput) {
+export async function updatePillRecord(input: {
+  pillId: string
+  name: string
+  defaultEnv: string
+  command?: {
+    commandId: string
+    name: string
+    cwd: string
+    argv: Array<string>
+    env: Record<string, string>
+    healthcheckPath: string | null
+  }
+}) {
   await ensureDatabase()
 
   await db
@@ -204,6 +254,19 @@ export async function updatePillRecord(input: UpdatePillInput) {
       updatedAt: now(),
     })
     .where(eq(pills.id, input.pillId))
+
+  if (input.command) {
+    await db
+      .update(pillCommands)
+      .set({
+        name: input.command.name,
+        cwd: input.command.cwd,
+        argvJson: JSON.stringify(input.command.argv),
+        envJson: JSON.stringify(input.command.env),
+        healthcheckPath: input.command.healthcheckPath,
+      })
+      .where(eq(pillCommands.id, input.command.commandId))
+  }
 
   return getPillDetail(input.pillId)
 }
@@ -290,6 +353,142 @@ export async function updateRun(runId: string, patch: Partial<PillRun>) {
   await db.update(pillRuns).set(patch).where(eq(pillRuns.id, runId))
 }
 
+export async function createCapsule(input: {
+  id: string
+  pillId: string
+  status: Capsule["status"]
+  path: string
+  sourcePath: string
+  includeNodeModules: boolean
+  installDeps: boolean
+  packageManager: Capsule["packageManager"]
+  label: string | null
+}) {
+  await ensureDatabase()
+  const ts = now()
+
+  await db.insert(capsules).values({
+    id: input.id,
+    pillId: input.pillId,
+    status: input.status,
+    path: input.path,
+    sourcePath: input.sourcePath,
+    includeNodeModules: input.includeNodeModules ? 1 : 0,
+    installDeps: input.installDeps ? 1 : 0,
+    packageManager: input.packageManager ?? null,
+    label: input.label,
+    pinned: 0,
+    createdAt: ts,
+    updatedAt: ts,
+  })
+
+  return getCapsuleById(input.id)
+}
+
+export async function updateCapsule(
+  id: string,
+  patch: {
+    status?: Capsule["status"]
+    buildLog?: string | null
+    error?: string | null
+    builtAt?: string | null
+    sizeBytes?: number | null
+    fileCount?: number | null
+    buildDurationMs?: number | null
+    gitCommit?: string | null
+    gitBranch?: string | null
+    gitMessage?: string | null
+    gitDirty?: boolean | null
+    label?: string | null
+    pinned?: boolean
+    previewHostname?: string | null
+    previewTunnelId?: string | null
+    previewTunnelName?: string | null
+    previewDnsRecordId?: string | null
+  }
+) {
+  await ensureDatabase()
+
+  await db
+    .update(capsules)
+    .set({
+      ...(patch.status !== undefined ? { status: patch.status } : {}),
+      ...(patch.buildLog !== undefined ? { buildLog: patch.buildLog } : {}),
+      ...(patch.error !== undefined ? { error: patch.error } : {}),
+      ...(patch.builtAt !== undefined ? { builtAt: patch.builtAt } : {}),
+      ...(patch.sizeBytes !== undefined ? { sizeBytes: patch.sizeBytes } : {}),
+      ...(patch.fileCount !== undefined ? { fileCount: patch.fileCount } : {}),
+      ...(patch.buildDurationMs !== undefined
+        ? { buildDurationMs: patch.buildDurationMs }
+        : {}),
+      ...(patch.gitCommit !== undefined ? { gitCommit: patch.gitCommit } : {}),
+      ...(patch.gitBranch !== undefined ? { gitBranch: patch.gitBranch } : {}),
+      ...(patch.gitMessage !== undefined
+        ? { gitMessage: patch.gitMessage }
+        : {}),
+      ...(patch.gitDirty !== undefined
+        ? { gitDirty: patch.gitDirty === null ? null : patch.gitDirty ? 1 : 0 }
+        : {}),
+      ...(patch.label !== undefined ? { label: patch.label } : {}),
+      ...(patch.pinned !== undefined ? { pinned: patch.pinned ? 1 : 0 } : {}),
+      ...(patch.previewHostname !== undefined
+        ? { previewHostname: patch.previewHostname }
+        : {}),
+      ...(patch.previewTunnelId !== undefined
+        ? { previewTunnelId: patch.previewTunnelId }
+        : {}),
+      ...(patch.previewTunnelName !== undefined
+        ? { previewTunnelName: patch.previewTunnelName }
+        : {}),
+      ...(patch.previewDnsRecordId !== undefined
+        ? { previewDnsRecordId: patch.previewDnsRecordId }
+        : {}),
+      updatedAt: now(),
+    })
+    .where(eq(capsules.id, id))
+
+  return getCapsuleById(id)
+}
+
+export async function getCapsuleById(id: string) {
+  await ensureDatabase()
+  const [row] = await db.select().from(capsules).where(eq(capsules.id, id))
+
+  return row ? parseCapsule(row) : null
+}
+
+export async function listCapsules(pillId: string) {
+  await ensureDatabase()
+  const rows = await db
+    .select()
+    .from(capsules)
+    .where(eq(capsules.pillId, pillId))
+    .orderBy(desc(capsules.createdAt))
+
+  return rows.map(parseCapsule)
+}
+
+export async function getLatestReadyCapsule(pillId: string) {
+  await ensureDatabase()
+  const [row] = await db
+    .select()
+    .from(capsules)
+    .where(and(eq(capsules.pillId, pillId), eq(capsules.status, "ready")))
+    .orderBy(desc(capsules.createdAt))
+
+  return row ? parseCapsule(row) : null
+}
+
+export async function deleteCapsuleById(id: string) {
+  await ensureDatabase()
+  await db.delete(capsules).where(eq(capsules.id, id))
+}
+
+export async function deleteCapsulesByPill(pillId: string) {
+  await ensureDatabase()
+  await db.delete(capsules).where(eq(capsules.pillId, pillId))
+}
+
 export async function getRun(runId: string) {
   await ensureDatabase()
   const [row] = await db.select().from(pillRuns).where(eq(pillRuns.id, runId))
@@ -317,6 +516,25 @@ export async function listActiveRuns() {
     .orderBy(desc(pillRuns.startedAt))
 
   return rows.map(parseRun)
+}
+
+export async function listRuns(pillId: string, limit = 20) {
+  await ensureDatabase()
+  const rows = await db
+    .select()
+    .from(pillRuns)
+    .where(eq(pillRuns.pillId, pillId))
+    .orderBy(desc(pillRuns.startedAt))
+    .limit(limit)
+
+  return rows.map(parseRun)
+}
+
+export async function deleteInactiveRuns(pillId: string) {
+  await ensureDatabase()
+  await db
+    .delete(pillRuns)
+    .where(and(eq(pillRuns.pillId, pillId), isNotNull(pillRuns.stoppedAt)))
 }
 
 export async function appendRunLog(log: Omit<RunLog, "id" | "createdAt">) {
