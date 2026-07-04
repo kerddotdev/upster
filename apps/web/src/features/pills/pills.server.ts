@@ -89,7 +89,9 @@ export async function updatePill(input: UpdatePillInput) {
         ? parseCommand(input.command)
         : currentCommand.argv
 
-    assertAllowedCommand(argv, config.allowedCommands)
+    if (input.command !== undefined) {
+      assertAllowedCommand(argv, config.allowedCommands)
+    }
 
     const cwd =
       input.cwd !== undefined

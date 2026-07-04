@@ -18,9 +18,11 @@ export const Route = createFileRoute("/api/cli/v1/status")({
             "read runtime status"
           )
 
+          const canReadVault = actor.scopes.includes("vault:status")
+
           return {
             controlPlane: await getRuntimeControlPlaneStatus(),
-            vault: await getVaultStatus(),
+            vault: canReadVault ? await getVaultStatus() : null,
             session: {
               id: actor.session.id,
               kind: actor.session.kind,
