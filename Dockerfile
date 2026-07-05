@@ -32,4 +32,4 @@ ENV DATABASE_URL=http://db:8080
 
 EXPOSE 3377
 
-CMD ["bun", "run", "--cwd", "apps/web", "preview", "--host", "0.0.0.0", "--port", "3377"]
+CMD ["bun", "run", "--cwd", "apps/web", "start"]
