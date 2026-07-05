@@ -1,15 +1,10 @@
 import { createServerFn } from "@tanstack/react-start"
 
 import { requireScopes } from "@/features/auth/scope-middleware"
+import { assertLocalAdmin } from "@/features/auth/local-admin"
 
-async function assertLocalAdmin() {
-  const { isAdminPassphraseAllowedForCurrentRequest } =
-    await import("@/features/auth/auth.server")
-
-  if (!isAdminPassphraseAllowedForCurrentRequest()) {
-    throw new Error("Tailscale can only be configured from a local session.")
-  }
-}
+const TAILSCALE_LOCAL_ONLY =
+  "Tailscale can only be configured from a local session."
 
 export const getTailscaleStatusFn = createServerFn({ method: "GET" })
   .middleware([requireScopes("connections:read")])
@@ -23,7 +18,7 @@ export const getTailscaleStatusFn = createServerFn({ method: "GET" })
 export const startTailscaleLoginFn = createServerFn({ method: "POST" })
   .middleware([requireScopes("connections:manage")])
   .handler(async () => {
-    await assertLocalAdmin()
+    await assertLocalAdmin(TAILSCALE_LOCAL_ONLY)
     const { startTailscaleLogin } =
       await import("@/features/tailscale/tailscale-control.server")
 
@@ -33,7 +28,7 @@ export const startTailscaleLoginFn = createServerFn({ method: "POST" })
 export const enableTailscaleServeFn = createServerFn({ method: "POST" })
   .middleware([requireScopes("connections:manage")])
   .handler(async () => {
-    await assertLocalAdmin()
+    await assertLocalAdmin(TAILSCALE_LOCAL_ONLY)
     const { enableTailscaleServe } =
       await import("@/features/tailscale/tailscale-control.server")
 

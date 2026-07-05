@@ -4,6 +4,7 @@ import { accessScopes, scopesIncludeAll } from "@upster/core"
 
 import { requireScopes } from "@/features/auth/scope-middleware"
 import { ScopeDeniedError } from "@/features/auth/scope-error"
+import { assertLocalAdmin } from "@/features/auth/local-admin"
 import type { ParsedUserAgent } from "@/features/connections/user-agent"
 
 const labelSchema = z.string().trim().min(1).max(64)
@@ -201,6 +202,27 @@ export const revokeConnectionFn = createServerFn({ method: "POST" })
     await revokeAccessSession(session.id)
     await lockCloudflareVault()
     return { ok: true }
+  })
+
+export const panicLockdownFn = createServerFn({ method: "POST" })
+  .middleware([requireScopes("connections:manage")])
+  .handler(async () => {
+    await assertLocalAdmin(
+      "Remote access lockdown can only be triggered from a local session."
+    )
+
+    const { revokeAllConnectionSessions } =
+      await import("@/db/repositories.server")
+    const { lockCloudflareVault } =
+      await import("@/features/secrets/vault-session.server")
+    const { disableTailscaleServe } =
+      await import("@/features/tailscale/tailscale-control.server")
+
+    const revoked = await revokeAllConnectionSessions()
+    await lockCloudflareVault()
+    await disableTailscaleServe()
+
+    return { ok: true, revoked }
   })
 
 export const getConnectionEndpointsFn = createServerFn({ method: "GET" })

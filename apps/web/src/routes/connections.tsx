@@ -85,6 +85,7 @@ import {
   getConnectionEndpointsFn,
   listConnectionsFn,
   listPairingLinksFn,
+  panicLockdownFn,
   renameConnectionFn,
   revokeConnectionFn,
   revokePairingLinkFn,
@@ -409,6 +410,7 @@ function RemoteAccessCard({
   const startLogin = useServerFn(startTailscaleLoginFn)
   const enableServe = useServerFn(enableTailscaleServeFn)
   const disableServe = useServerFn(disableTailscaleServeFn)
+  const panicLockdown = useServerFn(panicLockdownFn)
   const canManage = useHasScopes("connections:manage")
   const [authUrl, setAuthUrl] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
@@ -525,9 +527,68 @@ function RemoteAccessCard({
               ) : null}
             </div>
           )}
+          {!remote && canManage ? (
+            <PanicLockdownButton
+              pending={pending}
+              onConfirm={() =>
+                void run(async () => {
+                  const result = await panicLockdown()
+                  return result
+                }, "Remote access locked down.")
+              }
+            />
+          ) : null}
         </CardContent>
       ) : null}
     </Card>
+  )
+}
+
+function PanicLockdownButton({
+  pending,
+  onConfirm,
+}: {
+  pending: boolean
+  onConfirm: () => void
+}) {
+  return (
+    <div className="flex flex-col gap-2 border-t pt-4">
+      <div className="text-sm font-medium">Emergency lockdown</div>
+      <p className="text-xs text-muted-foreground">
+        Revoke every connection, lock the Cloudflare vault, and turn off remote
+        access in one step. Running pills keep serving.
+      </p>
+      <div>
+        <AlertDialog>
+          <AlertDialogTrigger
+            render={<Button variant="destructive" disabled={pending} />}
+          >
+            Lock down remote access
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Lock down remote access?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This immediately revokes all paired connections, locks the
+                Cloudflare vault, and disables Tailscale serve. Already running
+                pills and tunnels are not affected. You can re-enable remote
+                access afterwards from this host.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                disabled={pending}
+                onClick={onConfirm}
+              >
+                Lock down
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </div>
   )
 }
 

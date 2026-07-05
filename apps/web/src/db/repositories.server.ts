@@ -821,6 +821,20 @@ export async function revokeAccessSession(id: string) {
   publishEvent({ domain: "sessions", type: "revoked", id })
 }
 
+export async function revokeAllConnectionSessions() {
+  await ensureDatabase()
+  const sessions = await listAccessSessions()
+  const active = sessions.filter(
+    (session) => session.kind === "connection" && !session.revokedAt
+  )
+
+  for (const session of active) {
+    await revokeAccessSession(session.id)
+  }
+
+  return active.length
+}
+
 export async function touchAccessSession(id: string) {
   await ensureDatabase()
   await db
