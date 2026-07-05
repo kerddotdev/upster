@@ -9,7 +9,7 @@ services:
       UPSTER_WORKSPACE_ROOTS: "${UPSTER_WORKSPACE_ROOTS:-/workspaces}"
       UPSTER_ALLOWED_COMMANDS: "${UPSTER_ALLOWED_COMMANDS:-}"
       UPSTER_TAILSCALE_SOCKET: "/var/run/tailscale/tailscaled.sock"
-      UPSTER_TAILSCALE_TARGET: "http://upster:${UPSTER_PORT:-3377}"
+      UPSTER_TAILSCALE_TARGET: "http://upster-app:${UPSTER_PORT:-3377}"
       UPSTER_SESSION_SECRET: "${UPSTER_SESSION_SECRET:-}"
       UPSTER_SECURE_COOKIES: "${UPSTER_SECURE_COOKIES:-}"
       DATABASE_URL: "${DATABASE_URL:-http://db:8080}"
@@ -24,6 +24,10 @@ services:
       - upster_data:/data
       - tailscale_sock:/var/run/tailscale
       - ${UPSTER_HOST_WORKSPACE:-./workspaces}:/workspaces:rw
+    networks:
+      default:
+        aliases:
+          - upster-app
     depends_on:
       - db
       - tailscale

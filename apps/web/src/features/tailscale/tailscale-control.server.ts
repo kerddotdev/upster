@@ -8,7 +8,7 @@ const SOCKET =
   "/var/run/tailscale/tailscaled.sock"
 const TARGET =
   process.env.UPSTER_TAILSCALE_TARGET?.trim() ||
-  `http://upster:${process.env.UPSTER_PORT?.trim() || "3377"}`
+  `http://upster-app:${process.env.UPSTER_PORT?.trim() || "3377"}`
 
 export const SERVE_HTTPS_PORT = 443
 export const SERVE_HTTP_PORT = 10000
