@@ -196,7 +196,7 @@ function ConnectionsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-medium">Remote access</h1>
+        <h1 className="text-xl font-medium">Remote Access</h1>
         <p className="text-sm text-muted-foreground">
           Expose this dashboard over Tailscale and pair trusted browsers.
         </p>
@@ -473,7 +473,7 @@ function RemoteAccessCard({
                   remote={remote}
                   pending={pending}
                   onDisable={() =>
-                    void run(() => disableServe(), "Remote access disabled.")
+                    void run(() => disableServe(), "Remote Access disabled.")
                   }
                 />
               ) : (
@@ -481,7 +481,7 @@ function RemoteAccessCard({
                   <Button
                     disabled={pending}
                     onClick={() =>
-                      void run(() => enableServe(), "Remote access enabled.")
+                      void run(() => enableServe(), "Remote Access enabled.")
                     }
                   >
                     Enable remote access
@@ -537,7 +537,7 @@ function RemoteAccessCard({
                 void run(async () => {
                   const result = await panicLockdown()
                   return result
-                }, "Remote access locked down.")
+                }, "Remote Access locked down.")
               }
             />
           ) : null}
@@ -1063,7 +1063,7 @@ function CreatePairingLinkDialog({
               ) : (
                 <div className="flex flex-col gap-3">
                   <Alert>
-                    <AlertTitle>Remote access not enabled</AlertTitle>
+                    <AlertTitle>Remote Access not enabled</AlertTitle>
                     <AlertDescription>
                       Enable remote access above to pair over Tailscale, or copy
                       the pairing code below to enter it manually.

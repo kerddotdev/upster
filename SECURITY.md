@@ -131,15 +131,15 @@ changes.
   host-side `tailscale` command and no status-file bridge. The Connections page
   advertises this machine (`127.0.0.1`), Tailscale HTTPS
   (`https://<magic-dns>`), and Tailscale IP (`http://<100.x>:10000`).
-- Remote access is a runtime toggle. From a local session the operator enables
-  it on the Remote access page: the dashboard drives the sidecar over the shared
+- Remote Access is a runtime toggle. From a local session the operator enables
+  it on the Remote Access page: the dashboard drives the sidecar over the shared
   `tailscaled` control socket to log in (interactive auth URL) and to turn
   `tailscale serve` on or off. The dashboard only ever calls `serve`, never
   `funnel`, so it cannot expose the dashboard to the public internet; as
   defense-in-depth the operator's tailnet ACL should not grant this node the
   Funnel attribute (it is off by default). If Funnel is nevertheless enabled on
   the node out of band, the dashboard reads it from the live serve config and
-  shows a prominent warning on the Remote access page so the operator can turn
+  shows a prominent warning on the Remote Access page so the operator can turn
   it off.
 - Remote paired connections are bound to the tailnet identity that redeemed
   them. Tailscale serve injects the peer identity (`Tailscale-User-Login`) and

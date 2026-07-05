@@ -287,7 +287,7 @@ export const panicLockdownFn = createServerFn({ method: "POST" })
   .middleware([requireScopes("connections:manage")])
   .handler(async ({ context }) => {
     await assertLocalAdmin(
-      "Remote access lockdown can only be triggered from a local session."
+      "Remote Access lockdown can only be triggered from a local session."
     )
 
     const { revokeAllConnectionSessions } =

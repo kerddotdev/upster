@@ -55,7 +55,7 @@ const navItems = [
   },
   {
     to: "/connections",
-    label: "Remote access",
+    label: "Remote Access",
     icon: RadioTowerIcon,
     scope: "connections:read",
   },
