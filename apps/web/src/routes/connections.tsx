@@ -9,7 +9,11 @@ import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { ChevronDownIcon, CopyIcon, PencilIcon, PlusIcon } from "lucide-react"
 import { toast } from "sonner"
-import { connectionScopePresets } from "@upster/core"
+import {
+  connectionScopePresets,
+  type AccessScope,
+  type ConnectionScopePreset,
+} from "@upster/core"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
@@ -25,6 +29,13 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   Card,
   CardAction,
@@ -79,6 +90,12 @@ import {
   startTailscaleLoginFn,
 } from "@/features/tailscale/tailscale.functions"
 import { AccessDenied } from "@/components/access-denied"
+import { useScopes } from "@/features/auth/use-scopes"
+import {
+  describeScopes,
+  presetMeta,
+  scopeGroups,
+} from "@/features/connections/scope-presets"
 
 export const Route = createFileRoute("/connections")({
   loader: loadConnectionsPage,
@@ -547,6 +564,27 @@ function PairingCard({
   )
 }
 
+function ScopeBadge({ scopes }: { scopes: Array<string> }) {
+  const list = scopes as Array<AccessScope>
+
+  return (
+    <Tooltip>
+      <TooltipTrigger render={<Badge variant="outline" className="shrink-0" />}>
+        {describeScopes(list)}
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs">
+        <div className="flex flex-col gap-0.5">
+          {list.map((scope) => (
+            <span key={scope} className="font-mono text-xs">
+              {scope}
+            </span>
+          ))}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 function PairingLinkRow({
   link,
   endpoints,
@@ -578,6 +616,7 @@ function PairingLinkRow({
         </span>
         <span className="text-xs text-muted-foreground">{expiryLabel}</span>
       </div>
+      <ScopeBadge scopes={link.scopes} />
       {token ? (
         <CopyPairingMenu
           token={token}
@@ -642,9 +681,16 @@ function CreatePairingLinkDialog({
   onCreated: (linkId: string, token: string) => void
 }) {
   const router = useRouter()
+  const callerScopes = useScopes()
   const createPairingLink = useServerFn(createPairingLinkFn)
   const [open, setOpen] = useState(false)
   const [label, setLabel] = useState("")
+  const [preset, setPreset] = useState<ConnectionScopePreset | "custom">(
+    "viewer"
+  )
+  const [customScopes, setCustomScopes] = useState<Array<AccessScope>>(
+    connectionScopePresets.viewer
+  )
   const [pending, setPending] = useState(false)
   const [created, setCreated] = useState<{
     token: string
@@ -659,10 +705,32 @@ function CreatePairingLinkDialog({
     endpoints[0] ??
     null
 
+  const effectiveScopes: Array<AccessScope> =
+    preset === "custom" ? customScopes : connectionScopePresets[preset]
+
+  function canGrant(scope: AccessScope) {
+    return callerScopes === null || callerScopes.includes(scope)
+  }
+
+  function handlePresetChange(next: ConnectionScopePreset | "custom") {
+    if (next === "custom") {
+      setCustomScopes(effectiveScopes)
+    }
+    setPreset(next)
+  }
+
+  function toggleCustomScope(scope: AccessScope) {
+    setCustomScopes((current) =>
+      current.includes(scope)
+        ? current.filter((entry) => entry !== scope)
+        : [...current, scope]
+    )
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const trimmedLabel = label.trim()
-    if (!trimmedLabel) {
+    if (!trimmedLabel || effectiveScopes.length === 0) {
       return
     }
 
@@ -671,7 +739,7 @@ function CreatePairingLinkDialog({
       const result = await createPairingLink({
         data: {
           label: trimmedLabel,
-          scopes: connectionScopePresets.fullAdmin,
+          scopes: effectiveScopes,
         },
       })
       setCreated(result)
@@ -690,6 +758,8 @@ function CreatePairingLinkDialog({
 
   function reset() {
     setLabel("")
+    setPreset("viewer")
+    setCustomScopes(connectionScopePresets.viewer)
     setCreated(null)
     setSelectedEndpointId(endpoints[0]?.id ?? "")
     setPending(false)
@@ -830,13 +900,92 @@ function CreatePairingLinkDialog({
                   placeholder="Work laptop"
                 />
               </Field>
+
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium">Permissions</span>
+                <RadioGroup
+                  value={preset}
+                  onValueChange={(value) =>
+                    handlePresetChange(
+                      value as ConnectionScopePreset | "custom"
+                    )
+                  }
+                >
+                  {(["viewer", "operator", "fullAdmin"] as const).map(
+                    (name) => (
+                      <label
+                        key={name}
+                        className="flex cursor-pointer items-start gap-3 rounded-md border p-3"
+                      >
+                        <RadioGroupItem value={name} className="mt-0.5" />
+                        <span className="flex flex-col gap-0.5">
+                          <span className="text-sm font-medium">
+                            {presetMeta[name].label}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {presetMeta[name].description}
+                          </span>
+                        </span>
+                      </label>
+                    )
+                  )}
+                  <label className="flex cursor-pointer items-start gap-3 rounded-md border p-3">
+                    <RadioGroupItem value="custom" className="mt-0.5" />
+                    <span className="flex flex-col gap-0.5">
+                      <span className="text-sm font-medium">Custom</span>
+                      <span className="text-xs text-muted-foreground">
+                        Pick exactly which permissions to grant.
+                      </span>
+                    </span>
+                  </label>
+                </RadioGroup>
+              </div>
+
+              {preset === "custom" ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {scopeGroups.map((group) => (
+                    <div key={group.domain} className="flex flex-col gap-1.5">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {group.label}
+                      </span>
+                      {group.scopes.map((scope) => {
+                        const disabled = !canGrant(scope)
+                        return (
+                          <label
+                            key={scope}
+                            className={cn(
+                              "flex items-center gap-2 text-xs",
+                              disabled
+                                ? "cursor-not-allowed opacity-50"
+                                : "cursor-pointer"
+                            )}
+                          >
+                            <Checkbox
+                              checked={customScopes.includes(scope)}
+                              disabled={disabled}
+                              onCheckedChange={() => toggleCustomScope(scope)}
+                            />
+                            <span className="font-mono">{scope}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
               <DialogFooter>
                 <DialogClose
                   render={<Button variant="outline" type="button" />}
                 >
                   Cancel
                 </DialogClose>
-                <Button type="submit" disabled={pending || !label.trim()}>
+                <Button
+                  type="submit"
+                  disabled={
+                    pending || !label.trim() || effectiveScopes.length === 0
+                  }
+                >
                   {pending ? "Creating..." : "Create pairing link"}
                 </Button>
               </DialogFooter>
@@ -961,6 +1110,7 @@ function ConnectionRowItem({
               This device
             </Badge>
           ) : null}
+          <ScopeBadge scopes={connection.scopes} />
           <RenameConnectionDialog connection={connection} onRename={onRename} />
         </div>
         <span className="truncate text-xs text-muted-foreground">
