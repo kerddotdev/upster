@@ -31,18 +31,18 @@ const offlineStatus: TailscaleStatus = {
 }
 
 describe("connection endpoints", () => {
-  it("builds loopback, tailscale https and tailscale ip when serve is active", () => {
+  it("builds loopback, tailscale https and tailscale http by magic dns name", () => {
     const endpoints = buildConnectionEndpoints(activeStatus, 3377)
 
     expect(endpoints.map((endpoint) => endpoint.kind)).toEqual([
       "loopback",
       "tailscale-https",
-      "tailscale-ip",
+      "tailscale-http",
     ])
     expect(endpoints.map((endpoint) => endpoint.origin)).toEqual([
       "http://127.0.0.1:3377",
       "https://host.example.ts.net",
-      "http://100.64.1.2:10000",
+      "http://host.example.ts.net:10000",
     ])
     expect(endpoints.every((endpoint) => !endpoint.setupRequired)).toBe(true)
   })
@@ -56,15 +56,15 @@ describe("connection endpoints", () => {
     ])
   })
 
-  it("omits the tailscale ip endpoint when http serve is off", () => {
+  it("omits the tailscale http endpoint when http serve is off", () => {
     const endpoints = buildConnectionEndpoints(
       { ...activeStatus, serveHttpActive: false },
       3377
     )
 
-    expect(endpoints.some((endpoint) => endpoint.kind === "tailscale-ip")).toBe(
-      false
-    )
+    expect(
+      endpoints.some((endpoint) => endpoint.kind === "tailscale-http")
+    ).toBe(false)
   })
 
   it("adds the current request origin when it is not already listed", () => {

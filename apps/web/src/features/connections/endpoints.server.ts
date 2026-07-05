@@ -4,7 +4,7 @@ export type ConnectionEndpoint = {
   id: string
   label: string
   origin: string | null
-  kind: "loopback" | "tailscale-https" | "tailscale-ip" | "current"
+  kind: "loopback" | "tailscale-https" | "tailscale-http" | "current"
   setupRequired: boolean
   current: boolean
 }
@@ -45,19 +45,15 @@ export function buildConnectionEndpoints(
     current: false,
   })
 
-  if (status.loggedIn && status.serveHttpActive) {
-    for (const ip of status.tailscaleIps.filter(
-      (value) => !value.includes(":")
-    )) {
-      endpoints.push({
-        id: `tailscale-ip-${ip}`,
-        label: "Tailscale IP",
-        origin: originFor("http", ip, status.httpPort),
-        kind: "tailscale-ip",
-        setupRequired: false,
-        current: false,
-      })
-    }
+  if (status.loggedIn && status.magicDnsName && status.serveHttpActive) {
+    endpoints.push({
+      id: "tailscale-http",
+      label: "Tailscale HTTP",
+      origin: originFor("http", status.magicDnsName, status.httpPort),
+      kind: "tailscale-http",
+      setupRequired: false,
+      current: false,
+    })
   }
 
   return endpoints

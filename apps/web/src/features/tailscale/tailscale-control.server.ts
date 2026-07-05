@@ -94,16 +94,14 @@ async function readServeConfig() {
 }
 
 function computeAllowedOrigins(status: TailscaleStatus) {
-  const origins: Array<string> = []
-  if (status.magicDnsName) {
-    origins.push(originFor("https", status.magicDnsName, status.httpsPort))
+  if (!status.magicDnsName) {
+    return []
   }
-  for (const ip of status.tailscaleIps.filter(
-    (value) => !value.includes(":")
-  )) {
-    origins.push(originFor("http", ip, status.httpPort))
-  }
-  return origins
+
+  return [
+    originFor("https", status.magicDnsName, status.httpsPort),
+    originFor("http", status.magicDnsName, status.httpPort),
+  ]
 }
 
 function originFor(proto: string, host: string, port: number) {
