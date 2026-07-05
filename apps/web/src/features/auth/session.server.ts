@@ -4,7 +4,7 @@ import {
   getRequestHeader,
   setResponseHeader,
 } from "@tanstack/react-start/server"
-import { adminScopes } from "@upster/core"
+import { adminScopes, type AccessScope } from "@upster/core"
 
 import {
   createAccessSession,
@@ -14,6 +14,7 @@ import {
   revokeAccessSession,
   touchAccessSession,
   type AccessSession,
+  type AccessSessionKind,
 } from "@/db/repositories.server"
 import {
   SESSION_TTL_SECONDS,
@@ -147,6 +148,7 @@ export async function issueConnectionCookie(input: {
   label: string
   userAgent?: string | null
   remoteAddr?: string | null
+  scopes?: Array<AccessScope>
   metadata?: Record<string, unknown>
 }) {
   const secret = await getSessionSecret()
@@ -154,7 +156,7 @@ export async function issueConnectionCookie(input: {
     kind: "connection",
     subject: "admin",
     label: input.label,
-    scopes: adminScopes,
+    scopes: input.scopes ?? adminScopes,
     expiresAt: CONNECTION_EXPIRES_AT_SENTINEL,
     userAgent: input.userAgent ?? getRequestHeader("user-agent"),
     remoteAddr: input.remoteAddr ?? null,
@@ -178,7 +180,25 @@ export function clearSessionCookie() {
   )
 }
 
-export async function readSession(): Promise<SessionPayload | null> {
+export type SessionContext = {
+  sub: string
+  sid: string
+  exp: number
+  kind: AccessSessionKind
+  scopes: Array<AccessScope>
+}
+
+function toSessionContext(verified: VerifiedSession): SessionContext {
+  return {
+    sub: verified.payload.sub,
+    sid: verified.payload.sid,
+    exp: verified.payload.exp,
+    kind: verified.session.kind,
+    scopes: verified.session.scopes,
+  }
+}
+
+export async function readSession(): Promise<SessionContext | null> {
   const secret = await getSessionSecret()
   const verified = await verifySessionPayload(
     readSessionCookie(),
@@ -190,13 +210,13 @@ export async function readSession(): Promise<SessionPayload | null> {
   }
 
   await renewConnectionCookieIfNeeded(verified, secret)
-  return verified.payload
+  return toSessionContext(verified)
 }
 
 export async function verifyRequestSession(
   cookieHeader: string | null,
   originInfo?: RequestOriginInfo | null
-): Promise<SessionPayload | null> {
+): Promise<SessionContext | null> {
   const secret = await getSessionSecret()
   const verified = await verifySessionPayload(
     readTokenFromCookieHeader(cookieHeader),
@@ -204,7 +224,7 @@ export async function verifyRequestSession(
     originInfo ?? null
   )
 
-  return verified?.payload ?? null
+  return verified ? toSessionContext(verified) : null
 }
 
 type VerifiedSession = {
