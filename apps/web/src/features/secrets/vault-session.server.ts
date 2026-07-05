@@ -3,6 +3,7 @@ import {
   getSecretVault,
   saveSecretVault,
 } from "@/db/repositories.server"
+import { publishEvent } from "@/features/events/event-bus.server"
 import { CloudflareClient } from "@/features/cloudflare/client.server"
 import type { CloudflareConfig } from "@/features/pills/types"
 import {
@@ -171,12 +172,14 @@ export async function unlockCloudflareVault(input: {
 
 export async function lockCloudflareVault() {
   cloudflareSession = null
+  publishEvent({ domain: "vault", type: "locked" })
   return getVaultStatus()
 }
 
 export async function deleteCloudflareVaultInteractive() {
   cloudflareSession = null
   await deleteSecretVault("cloudflare")
+  publishEvent({ domain: "vault", type: "deleted" })
   return getVaultStatus()
 }
 
@@ -217,4 +220,5 @@ function unlockInMemory(
     expiresAt: new Date(Date.now() + ttlSeconds * 1000).toISOString(),
     lastUsedAt: unlockedAt,
   }
+  publishEvent({ domain: "vault", type: "unlocked" })
 }

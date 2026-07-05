@@ -4,6 +4,7 @@ import { and, desc, eq, gt, isNotNull, isNull, sql } from "drizzle-orm"
 import type { AccessScope } from "@upster/core"
 
 import { db, ensureDatabase } from "@/db/client.server"
+import { publishEvent } from "@/features/events/event-bus.server"
 import {
   accessSessions,
   adminUsers,
@@ -283,6 +284,7 @@ export async function updatePillStatus(pillId: string, status: PillStatus) {
     .update(pills)
     .set({ status, updatedAt: now() })
     .where(eq(pills.id, pillId))
+  publishEvent({ domain: "runs", type: status, id: pillId })
 }
 
 export async function getPillCommand(pillId: string, commandName: string) {
@@ -383,6 +385,7 @@ export async function createCapsule(input: {
     updatedAt: ts,
   })
 
+  publishEvent({ domain: "capsules", type: "created", id: input.id })
   return getCapsuleById(input.id)
 }
 
@@ -448,6 +451,7 @@ export async function updateCapsule(
     })
     .where(eq(capsules.id, id))
 
+  publishEvent({ domain: "capsules", type: "updated", id })
   return getCapsuleById(id)
 }
 
@@ -483,11 +487,13 @@ export async function getLatestReadyCapsule(pillId: string) {
 export async function deleteCapsuleById(id: string) {
   await ensureDatabase()
   await db.delete(capsules).where(eq(capsules.id, id))
+  publishEvent({ domain: "capsules", type: "deleted", id })
 }
 
 export async function deleteCapsulesByPill(pillId: string) {
   await ensureDatabase()
   await db.delete(capsules).where(eq(capsules.pillId, pillId))
+  publishEvent({ domain: "capsules", type: "deleted", id: pillId })
 }
 
 export async function getRun(runId: string) {
@@ -812,6 +818,7 @@ export async function revokeAccessSession(id: string) {
     .update(accessSessions)
     .set({ revokedAt: now() })
     .where(eq(accessSessions.id, id))
+  publishEvent({ domain: "sessions", type: "revoked", id })
 }
 
 export async function touchAccessSession(id: string) {
@@ -828,6 +835,7 @@ export async function updateAccessSessionLabel(id: string, label: string) {
     .update(accessSessions)
     .set({ label })
     .where(eq(accessSessions.id, id))
+  publishEvent({ domain: "sessions", type: "updated", id })
 }
 
 export type PairingLink = {
@@ -866,6 +874,7 @@ export async function createPairingLink(input: {
   }
 
   await db.insert(pairingLinks).values(record)
+  publishEvent({ domain: "connections", type: "link-created" })
   return parsePairingLink(record)
 }
 
@@ -885,6 +894,7 @@ export async function revokePairingLink(id: string) {
     .update(pairingLinks)
     .set({ revokedAt: now() })
     .where(eq(pairingLinks.id, id))
+  publishEvent({ domain: "connections", type: "link-revoked", id })
 }
 
 export async function consumePairingLink(
@@ -905,6 +915,10 @@ export async function consumePairingLink(
       )
     )
     .returning()
+
+  if (row) {
+    publishEvent({ domain: "connections", type: "paired", id: row.id })
+  }
 
   return row ? parsePairingLink(row) : null
 }

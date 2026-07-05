@@ -8,6 +8,7 @@ import {
   updatePillRecord,
 } from "@/db/repositories.server"
 import { removeAllCapsules } from "@/features/capsules/capsule.server"
+import { publishEvent } from "@/features/events/event-bus.server"
 import { createCloudflareClient } from "@/features/cloudflare/client.server"
 import type {
   CloudflareConfig,
@@ -44,7 +45,7 @@ export async function createPill(input: CreatePillInput) {
 
   assertAllowedCommand(argv, config.allowedCommands)
 
-  return createPillRecord({
+  const pill = await createPillRecord({
     ...input,
     name,
     slug,
@@ -52,6 +53,8 @@ export async function createPill(input: CreatePillInput) {
     cwd,
     argv,
   })
+  publishEvent({ domain: "pills", type: "created" })
+  return pill
 }
 
 export async function updatePill(input: UpdatePillInput) {
@@ -133,12 +136,14 @@ export async function updatePill(input: UpdatePillInput) {
     pill.defaultEnv
   ).trim()
 
-  return updatePillRecord({
+  const updated = await updatePillRecord({
     pillId: input.pillId,
     name,
     defaultEnv,
     command,
   })
+  publishEvent({ domain: "pills", type: "updated", id: input.pillId })
+  return updated
 }
 
 type CloudflareCleanup = "ok" | "failed" | "skipped"
@@ -157,6 +162,7 @@ export async function deletePill(input: { pillId: string }) {
 
   await removeAllCapsules(input.pillId)
   await deletePillRecord(input.pillId)
+  publishEvent({ domain: "pills", type: "deleted", id: input.pillId })
 
   return { cloudflareCleanup }
 }
