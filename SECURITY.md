@@ -75,40 +75,47 @@ changes.
   server functions are auth status, login, setup, logout, and
   `redeemPairingToken`.
 - TanStack Start's CSRF protection rejects cross-origin calls to server
-  functions. `UPSTER_ALLOWED_ORIGINS` can add explicit origins for trusted local
-  proxies such as Tailscale Serve while non-allowlisted cross-origin POSTs remain
-  forbidden.
+  functions. The allowed origins are derived at runtime from the live Tailscale
+  status (the node's MagicDNS name and serve ports), not from an environment
+  variable, so non-allowlisted cross-origin POSTs remain forbidden. Same-origin
+  requests pass through the browser `Sec-Fetch-Site` check regardless.
 
 ### Network exposure
 
-- The container binds the dashboard on `127.0.0.1` by default and remote access
-  is exclusively through Tailscale HTTPS, provided by a host-side
-  `tailscale serve` proxy. The Connections page advertises two access modes:
-  this machine (`127.0.0.1`) and Tailscale HTTPS. Binding the container directly
-  to the network with `UPSTER_BIND_HOST=0.0.0.0` is not a supported remote
-  access path and is strongly discouraged (see below).
+- The dashboard container binds on `127.0.0.1` by default and remote access is
+  exclusively through a Tailscale sidecar container that joins the private
+  tailnet and reverse-proxies to the dashboard. The sidecar runs Tailscale in
+  userspace mode (`TS_USERSPACE=true`), so it needs no `NET_ADMIN` capability or
+  `/dev/net/tun` device, and the dashboard keeps `cap_drop: ALL`. There is no
+  host-side `tailscale` command and no status-file bridge. The Connections page
+  advertises this machine (`127.0.0.1`), Tailscale HTTPS
+  (`https://<magic-dns>`), and Tailscale IP (`http://<100.x>:10000`).
+- Remote access is a runtime toggle. From a local session the operator enables
+  it in Settings > Tailscale: the dashboard drives the sidecar over the shared
+  `tailscaled` control socket to log in (interactive auth URL) and to turn
+  `tailscale serve` on or off. The dashboard only ever calls `serve`, never
+  `funnel`, so it cannot expose the dashboard to the public internet; as
+  defense-in-depth the operator's tailnet ACL should not grant this node the
+  Funnel attribute (it is off by default).
 - The password login and setup screens, and any `dashboard`-kind session, are
   restricted to genuinely local requests. Locality is not decided from the
   spoofable `Host` header alone: a request is treated as privileged-local only
   when the deployment is bound to loopback (`UPSTER_BIND_HOST` unset or a
   loopback address) and the request did not arrive through a proxy (no
-  `x-forwarded-*` / `forwarded` headers). Any request coming through Tailscale
-  Serve carries forwarding headers and is therefore treated as remote, so it
-  must pair; it cannot reach the password path by faking `Host: 127.0.0.1`. If
-  the container is bound to a non-loopback address, no request is trusted as
-  local, so the password path is disabled entirely and every client must pair.
-- `UPSTER_ALLOWED_HOSTS` controls which hostnames Vite preview accepts in
-  production, and `UPSTER_ALLOWED_ORIGINS` controls the server-function CSRF
-  Origin fallback allowlist. Both must include the Tailscale Serve origin that
-  should serve the dashboard.
-- The container never runs the `tailscale` CLI and never holds tailnet
-  credentials. The host setup script is the bridge: it configures Tailscale
-  Serve on the host and writes a non-secret status file containing the hostname,
-  IPs, and ports. Docker mounts that file read-only at `/tailscale/status.json`.
-- Tailscale HTTPS terminates TLS in the local Tailscale Serve proxy and forwards
+  `x-forwarded-*` / `forwarded` headers). Traffic that arrives through the
+  Tailscale sidecar (both the HTTPS serve and the plain-HTTP Tailscale IP serve)
+  carries forwarding headers and is therefore treated as remote, so it must
+  pair; it cannot reach the password path by faking `Host: 127.0.0.1`. The
+  dashboard is never bound to the network directly and the tailnet reaches it
+  only through the sidecar's serve proxy, so there is no raw path an attacker
+  could use to bypass the forwarding-header check. Binding the container to a
+  non-loopback address with `UPSTER_BIND_HOST=0.0.0.0` remains unsupported; in
+  that mode no request is trusted as local and the password path is disabled.
+- Tailscale HTTPS terminates TLS in the sidecar and forwards
   `x-forwarded-proto: https`, which makes the dashboard cookie Secure for that
-  origin. Loopback access on `127.0.0.1` stays plaintext, which is safe because
-  it never leaves the host.
+  origin. The Tailscale IP mode is plain HTTP over the encrypted WireGuard
+  transport (no TLS, so no Secure cookie there) and loopback access on
+  `127.0.0.1` stays plaintext, which is safe because it never leaves the host.
 
 ### Secret handling
 
@@ -204,9 +211,9 @@ changes.
   network could read the database, including the session signing secret, and
   forge an admin session. Setting `UPSTER_SESSION_SECRET` also keeps the secret
   out of the database.
-- **Prefer Tailscale HTTPS over direct network binding.** For remote access,
-  keep the loopback bind and run the host setup script to expose the dashboard
-  through Tailscale Serve (E2EE over WireGuard, TLS, and Secure cookies). Setting
+- **Prefer Tailscale over direct network binding.** For remote access, keep the
+  loopback bind and enable Tailscale in Settings > Tailscale (E2EE over
+  WireGuard, and TLS with Secure cookies on the HTTPS mode). Setting
   `UPSTER_BIND_HOST` to a non-loopback address exposes the dashboard directly and
   disables the local password path (every client must pair). If you must do it,
   put the dashboard behind a TLS-terminating proxy and set

@@ -60,35 +60,33 @@ Cloudflare credentials are never placed in `.env`; you provide them once through
 ### Remote Access Over Tailscale
 
 Upster can expose the dashboard to other devices in your private Tailscale
-tailnet without giving the container Tailscale credentials. The native
-Tailscale app runs on the host, and a small setup script writes a non-secret
-status file that Docker mounts read-only.
+tailnet without giving the dashboard container any Tailscale credentials. A
+Tailscale sidecar container (started automatically by `docker compose up`) joins
+the tailnet and reverse-proxies to the dashboard. There is no host command and
+no extra environment variables to set.
 
-From a source checkout on the host that runs Docker:
+To enable it:
 
-```bash
-bun run tailscale:setup
-docker compose up -d
-```
+1. Start the stack: `docker compose up -d` (this brings up the Tailscale
+   sidecar alongside the dashboard).
+2. Open the dashboard at `http://127.0.0.1:3377`, go to Settings > Tailscale,
+   and click "Connect to tailnet". Approve the printed login URL in your
+   Tailscale admin console.
+3. Click "Enable remote access". The dashboard becomes reachable at
+   `https://<magic-dns-name>` (and `http://<tailscale-ip>:10000`) for your
+   tailnet peers.
 
-The script prints the Tailscale HTTPS URL and the matching `.env` values:
-
-```bash
-UPSTER_ALLOWED_HOSTS=<magic-dns-name>
-UPSTER_ALLOWED_ORIGINS=https://<magic-dns-name>:8443
-UPSTER_TRUST_PROXY=true
-UPSTER_TAILSCALE_DIR=./.tailscale
-```
-
-Open the dashboard, go to Connections, create a pairing link, and use the
-Tailscale HTTPS tab or QR code on the device you want to pair.
+Then open Connections, create a pairing link, and use the Tailscale HTTPS URL or
+QR code on the device you want to pair. For unattended or headless setups you can
+instead provide a Tailscale auth key via the optional `TS_AUTHKEY` environment
+variable.
 
 ## Security
 
 See [SECURITY.md](SECURITY.md) for the full security model, operator caveats, and contributor and AI-agent guidance. Highlights:
 
 - The dashboard requires an admin passphrase. On first run, open the app and set it on the setup screen. The passphrase is stored only as an Argon2id verifier and access is gated by a signed, HttpOnly session cookie.
-- The dashboard port is published on `127.0.0.1` by default. For remote access, keep the loopback bind and expose it through Tailscale HTTPS with `bun run tailscale:setup`. Binding directly to the network with `UPSTER_BIND_HOST=0.0.0.0` is discouraged and disables the local password path (every client must pair).
+- The dashboard port is published on `127.0.0.1` by default. For remote access, keep the loopback bind and enable Tailscale in Settings > Tailscale (served by the sidecar container). Binding directly to the network with `UPSTER_BIND_HOST=0.0.0.0` is discouraged and disables the local password path (every client must pair).
 - Cloudflare credentials are stored only as encrypted vault ciphertext and are decrypted in the browser, never persisted in plaintext.
 - Pill processes run with a minimal environment and never inherit the dashboard environment or its secrets.
 - The libSQL database can require an auth token so pill processes cannot read it directly. Generate credentials with `bun run db:credentials` and set `SQLD_AUTH_JWT_KEY` (db) and `DATABASE_AUTH_TOKEN` (dashboard).
