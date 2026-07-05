@@ -88,7 +88,7 @@ Tailscale HTTPS tab or QR code on the device you want to pair.
 See [SECURITY.md](SECURITY.md) for the full security model, operator caveats, and contributor and AI-agent guidance. Highlights:
 
 - The dashboard requires an admin passphrase. On first run, open the app and set it on the setup screen. The passphrase is stored only as an Argon2id verifier and access is gated by a signed, HttpOnly session cookie.
-- The dashboard port is published on `127.0.0.1` by default. Set `UPSTER_BIND_HOST=0.0.0.0` to expose it on the local network, and only do so behind TLS once you have set an admin passphrase.
+- The dashboard port is published on `127.0.0.1` by default. For remote access, keep the loopback bind and expose it through Tailscale HTTPS with `bun run tailscale:setup`. Binding directly to the network with `UPSTER_BIND_HOST=0.0.0.0` is discouraged and disables the local password path (every client must pair).
 - Cloudflare credentials are stored only as encrypted vault ciphertext and are decrypted in the browser, never persisted in plaintext.
 - Pill processes run with a minimal environment and never inherit the dashboard environment or its secrets.
 - The libSQL database can require an auth token so pill processes cannot read it directly. Generate credentials with `bun run db:credentials` and set `SQLD_AUTH_JWT_KEY` (db) and `DATABASE_AUTH_TOKEN` (dashboard).

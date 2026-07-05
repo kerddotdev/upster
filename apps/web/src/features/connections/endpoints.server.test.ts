@@ -52,24 +52,17 @@ describe("tailscale endpoint discovery", () => {
     }
   })
 
-  it("builds endpoints in the expected order with bind flags", () => {
+  it("advertises only loopback and tailscale https endpoints", () => {
     const endpoints = buildConnectionEndpoints(freshStatus, 3377)
 
     expect(endpoints.map((endpoint) => endpoint.kind)).toEqual([
       "loopback",
-      "lan",
-      "tailscale-ip",
       "tailscale-https",
     ])
     expect(endpoints.map((endpoint) => endpoint.origin)).toEqual([
       "http://127.0.0.1:3377",
-      "http://192.168.1.10:3377",
-      "http://100.64.1.2:3377",
       "https://host.example.ts.net:8443",
     ])
-    expect(endpoints[1]?.requiresBindHost).toBe(true)
-    expect(endpoints[2]?.requiresBindHost).toBe(true)
-    expect(endpoints[3]?.requiresBindHost).toBe(false)
   })
 
   it("marks stale status files", () => {

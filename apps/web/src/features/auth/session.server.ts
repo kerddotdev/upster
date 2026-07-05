@@ -21,7 +21,11 @@ import {
   verifySessionToken,
   type SessionPayload,
 } from "@/features/auth/session-token"
-import { isSessionKindAllowedForHost } from "@/features/auth/admin-origin"
+import {
+  isSessionKindAllowedForRequest,
+  readRequestOriginInfo,
+  type RequestOriginInfo,
+} from "@/features/auth/admin-origin"
 
 const COOKIE_NAME = "upster_session"
 const SECRET_SETTING_KEY = "session_secret"
@@ -176,7 +180,11 @@ export function clearSessionCookie() {
 
 export async function readSession(): Promise<SessionPayload | null> {
   const secret = await getSessionSecret()
-  const verified = await verifySessionPayload(readSessionCookie(), secret)
+  const verified = await verifySessionPayload(
+    readSessionCookie(),
+    secret,
+    readCurrentRequestOriginInfo()
+  )
   if (!verified) {
     return null
   }
@@ -187,13 +195,13 @@ export async function readSession(): Promise<SessionPayload | null> {
 
 export async function verifyRequestSession(
   cookieHeader: string | null,
-  hostHeader?: string | null
+  originInfo?: RequestOriginInfo | null
 ): Promise<SessionPayload | null> {
   const secret = await getSessionSecret()
   const verified = await verifySessionPayload(
     readTokenFromCookieHeader(cookieHeader),
     secret,
-    hostHeader
+    originInfo ?? null
   )
 
   return verified?.payload ?? null
@@ -207,7 +215,7 @@ type VerifiedSession = {
 async function verifySessionPayload(
   token: string | null,
   secret: string,
-  hostHeader?: string | null
+  originInfo: RequestOriginInfo | null
 ): Promise<VerifiedSession | null> {
   const payload = verifySessionToken(token, secret)
   if (!payload) {
@@ -219,7 +227,7 @@ async function verifySessionPayload(
     !session ||
     session.revokedAt ||
     new Date(session.expiresAt).getTime() <= Date.now() ||
-    isDisallowedDashboardSession(session, hostHeader)
+    isDisallowedDashboardSession(session, originInfo)
   ) {
     return null
   }
@@ -230,20 +238,23 @@ async function verifySessionPayload(
 
 function isDisallowedDashboardSession(
   session: AccessSession,
-  hostHeader?: string | null
+  originInfo: RequestOriginInfo | null
 ) {
-  return !isSessionKindAllowedForHost(
+  return !isSessionKindAllowedForRequest(
     session.kind,
-    hostHeader ?? readCurrentRequestHost()
+    originInfo ?? readCurrentRequestOriginInfo(),
+    process.env.UPSTER_BIND_HOST
   )
 }
 
-function readCurrentRequestHost() {
-  try {
-    return getRequestHeader("host") ?? null
-  } catch {
-    return null
-  }
+function readCurrentRequestOriginInfo(): RequestOriginInfo {
+  return readRequestOriginInfo((name) => {
+    try {
+      return getRequestHeader(name) ?? null
+    } catch {
+      return null
+    }
+  })
 }
 
 async function renewConnectionCookieIfNeeded(

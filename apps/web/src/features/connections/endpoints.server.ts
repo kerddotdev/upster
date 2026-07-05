@@ -18,8 +18,7 @@ export type ConnectionEndpoint = {
   id: string
   label: string
   origin: string | null
-  kind: "loopback" | "lan" | "tailscale-ip" | "tailscale-https" | "current"
-  requiresBindHost: boolean
+  kind: "loopback" | "tailscale-https" | "current"
   setupRequired: boolean
   stale: boolean
   current: boolean
@@ -50,7 +49,6 @@ export function buildConnectionEndpoints(
       label: "This machine",
       origin: `http://127.0.0.1:${effectiveAppPort}`,
       kind: "loopback",
-      requiresBindHost: false,
       setupRequired: false,
       stale,
       current: false,
@@ -63,7 +61,6 @@ export function buildConnectionEndpoints(
       label: "Tailscale HTTPS",
       origin: null,
       kind: "tailscale-https",
-      requiresBindHost: false,
       setupRequired: true,
       stale: false,
       current: false,
@@ -71,40 +68,11 @@ export function buildConnectionEndpoints(
     return endpoints
   }
 
-  for (const ip of status.lanIps) {
-    endpoints.push({
-      id: `lan-${ip}`,
-      label: "Local network",
-      origin: `http://${ip}:${effectiveAppPort}`,
-      kind: "lan",
-      requiresBindHost: true,
-      setupRequired: false,
-      stale,
-      current: false,
-    })
-  }
-
-  for (const ip of status.tailscaleIps.filter(
-    (value) => !value.includes(":")
-  )) {
-    endpoints.push({
-      id: `tailscale-ip-${ip}`,
-      label: "Tailscale IP",
-      origin: `http://${ip}:${effectiveAppPort}`,
-      kind: "tailscale-ip",
-      requiresBindHost: true,
-      setupRequired: false,
-      stale,
-      current: false,
-    })
-  }
-
   endpoints.push({
     id: "tailscale-https",
     label: "Tailscale HTTPS",
     origin: `https://${status.magicDnsName}:${status.servePort}`,
     kind: "tailscale-https",
-    requiresBindHost: false,
     setupRequired: false,
     stale,
     current: false,
@@ -128,7 +96,6 @@ export function addCurrentRequestEndpoint(
       label: "Current origin",
       origin,
       kind: "current",
-      requiresBindHost: false,
       setupRequired: false,
       stale: false,
       current: true,

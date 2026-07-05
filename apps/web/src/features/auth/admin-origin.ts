@@ -1,4 +1,16 @@
-export function isAdminPassphraseAllowedForHost(host: string | null) {
+export type RequestOriginInfo = {
+  host: string | null
+  cameThroughProxy: boolean
+}
+
+const FORWARDING_HEADERS = [
+  "x-forwarded-for",
+  "x-forwarded-proto",
+  "x-forwarded-host",
+  "forwarded",
+]
+
+export function isLocalHostName(host: string | null) {
   if (!host) {
     return false
   }
@@ -12,8 +24,53 @@ export function isAdminPassphraseAllowedForHost(host: string | null) {
   )
 }
 
-export function isSessionKindAllowedForHost(kind: string, host: string | null) {
-  return kind !== "dashboard" || isAdminPassphraseAllowedForHost(host)
+export function isLoopbackBindHost(bindHost: string | null | undefined) {
+  const value = (bindHost ?? "").trim().toLowerCase()
+  if (value === "") {
+    return true
+  }
+
+  return value === "localhost" || value === "::1" || value.startsWith("127.")
+}
+
+export function readRequestOriginInfo(
+  getHeader: (name: string) => string | null | undefined
+): RequestOriginInfo {
+  return {
+    host: getHeader("host") ?? null,
+    cameThroughProxy: FORWARDING_HEADERS.some((name) =>
+      Boolean(getHeader(name))
+    ),
+  }
+}
+
+export function readRequestOriginInfoFromHeaders(
+  headers: Headers
+): RequestOriginInfo {
+  return readRequestOriginInfo((name) => headers.get(name))
+}
+
+export function isPrivilegedLocalRequest(
+  info: RequestOriginInfo,
+  bindHost: string | null | undefined
+) {
+  if (!isLoopbackBindHost(bindHost)) {
+    return false
+  }
+
+  if (info.cameThroughProxy) {
+    return false
+  }
+
+  return isLocalHostName(info.host)
+}
+
+export function isSessionKindAllowedForRequest(
+  kind: string,
+  info: RequestOriginInfo,
+  bindHost: string | null | undefined
+) {
+  return kind !== "dashboard" || isPrivilegedLocalRequest(info, bindHost)
 }
 
 function normalizeHostName(host: string) {

@@ -3,6 +3,7 @@ services:
     image: ghcr.io/kerdofficial/upster:${UPSTER_VERSION:-latest}
     environment:
       UPSTER_PORT: "${UPSTER_PORT:-3377}"
+      UPSTER_BIND_HOST: "${UPSTER_BIND_HOST:-127.0.0.1}"
       UPSTER_DATA_DIR: "${UPSTER_DATA_DIR:-/data}"
       UPSTER_HOST_WORKSPACE: "${UPSTER_HOST_WORKSPACE:-}"
       UPSTER_WORKSPACE_ROOTS: "${UPSTER_WORKSPACE_ROOTS:-/workspaces}"

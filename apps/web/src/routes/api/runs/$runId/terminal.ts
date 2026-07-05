@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { getRunLogs } from "@/db/repositories.server"
+import { readRequestOriginInfoFromHeaders } from "@/features/auth/admin-origin"
 import { verifyRequestSession } from "@/features/auth/session.server"
 import { subscribeRunLogs } from "@/features/terminal/log-bus.server"
 
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/api/runs/$runId/terminal")({
       GET: async ({ params, request }) => {
         const session = await verifyRequestSession(
           request.headers.get("cookie"),
-          request.headers.get("host")
+          readRequestOriginInfoFromHeaders(request.headers)
         )
         if (!session) {
           return new Response("Unauthorized", { status: 401 })

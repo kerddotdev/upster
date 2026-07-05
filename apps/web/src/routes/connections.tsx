@@ -162,7 +162,6 @@ function ConnectionsPage() {
 function EndpointHints({ endpoint }: { endpoint: EndpointRow }) {
   const hints = [
     endpoint.current ? "You are connected via this origin." : null,
-    endpoint.requiresBindHost ? "Requires UPSTER_BIND_HOST=0.0.0.0." : null,
     endpoint.setupRequired
       ? "Tailscale setup required - run bun run tailscale:setup."
       : null,

@@ -75,25 +75,34 @@ changes.
 
 ### Network exposure
 
-- The container binds the dashboard on `127.0.0.1` by default. Exposing it on
-  the local network is an explicit opt-in through `UPSTER_BIND_HOST`.
-- The Connections page can advertise four access modes: this machine
-  (`127.0.0.1`), local network IPs, Tailscale IPs, and Tailscale HTTPS. Local
-  network and Tailscale IP origins require `UPSTER_BIND_HOST=0.0.0.0` because
-  they reach the container directly. Tailscale HTTPS is provided by a host-side
-  `tailscale serve` proxy.
+- The container binds the dashboard on `127.0.0.1` by default and remote access
+  is exclusively through Tailscale HTTPS, provided by a host-side
+  `tailscale serve` proxy. The Connections page advertises two access modes:
+  this machine (`127.0.0.1`) and Tailscale HTTPS. Binding the container directly
+  to the network with `UPSTER_BIND_HOST=0.0.0.0` is not a supported remote
+  access path and is strongly discouraged (see below).
+- The password login and setup screens, and any `dashboard`-kind session, are
+  restricted to genuinely local requests. Locality is not decided from the
+  spoofable `Host` header alone: a request is treated as privileged-local only
+  when the deployment is bound to loopback (`UPSTER_BIND_HOST` unset or a
+  loopback address) and the request did not arrive through a proxy (no
+  `x-forwarded-*` / `forwarded` headers). Any request coming through Tailscale
+  Serve carries forwarding headers and is therefore treated as remote, so it
+  must pair; it cannot reach the password path by faking `Host: 127.0.0.1`. If
+  the container is bound to a non-loopback address, no request is trusted as
+  local, so the password path is disabled entirely and every client must pair.
 - `UPSTER_ALLOWED_HOSTS` controls which hostnames Vite preview accepts in
   production, and `UPSTER_ALLOWED_ORIGINS` controls the server-function CSRF
-  Origin fallback allowlist. Both must include any trusted proxy origin that
+  Origin fallback allowlist. Both must include the Tailscale Serve origin that
   should serve the dashboard.
 - The container never runs the `tailscale` CLI and never holds tailnet
   credentials. The host setup script is the bridge: it configures Tailscale
-  Serve on the host and writes a non-secret status file containing hostnames,
+  Serve on the host and writes a non-secret status file containing the hostname,
   IPs, and ports. Docker mounts that file read-only at `/tailscale/status.json`.
-- There is no TLS by default for direct loopback, LAN IP, or Tailscale IP
-  origins. Tailscale HTTPS terminates TLS in the local Tailscale Serve proxy and
-  forwards `x-forwarded-proto: https`, which makes the dashboard cookie Secure
-  for that origin.
+- Tailscale HTTPS terminates TLS in the local Tailscale Serve proxy and forwards
+  `x-forwarded-proto: https`, which makes the dashboard cookie Secure for that
+  origin. Loopback access on `127.0.0.1` stays plaintext, which is safe because
+  it never leaves the host.
 
 ### Secret handling
 
@@ -107,6 +116,16 @@ changes.
   ciphertext, read the vault passphrase, or read decrypted Cloudflare config.
   They can only read vault status fields such as whether a vault exists, whether
   it is unlocked, and the root domain.
+- A vault unlock is process-wide, not scoped to the unlocking session. The
+  decrypted config powers process-level operations (tunnel and pill management)
+  that run outside any single browser session, so every authenticated admin
+  session, including remote paired connections, sees the vault as unlocked and
+  can trigger operations that use the Cloudflare token for the unlock TTL. The
+  plaintext token itself is never returned to any client; only status fields and
+  the root domain are. To limit the window, the vault is automatically locked on
+  security events: whenever a connection is revoked or the current session logs
+  out. Revoking a lost or untrusted device therefore also drops the unlocked
+  Cloudflare token from memory.
 
 ### Database isolation
 
@@ -179,10 +198,13 @@ changes.
   network could read the database, including the session signing secret, and
   forge an admin session. Setting `UPSTER_SESSION_SECRET` also keeps the secret
   out of the database.
-- **Use TLS before exposing on a network.** If you set `UPSTER_BIND_HOST` to a
-  non-loopback address, put the dashboard behind a TLS-terminating proxy and set
-  `UPSTER_SECURE_COOKIES=true`, or use Tailscale HTTPS through the host setup
-  script.
+- **Prefer Tailscale HTTPS over direct network binding.** For remote access,
+  keep the loopback bind and run the host setup script to expose the dashboard
+  through Tailscale Serve (E2EE over WireGuard, TLS, and Secure cookies). Setting
+  `UPSTER_BIND_HOST` to a non-loopback address exposes the dashboard directly and
+  disables the local password path (every client must pair). If you must do it,
+  put the dashboard behind a TLS-terminating proxy and set
+  `UPSTER_SECURE_COOKIES=true`.
 - **Revoke lost devices.** Paired browser connections are permanent until
   revoked. If a device is lost or no longer trusted, revoke its connection on
   the Connections page. Use logout for the current browser.
@@ -190,8 +212,10 @@ changes.
   shown only once and expires after 5 minutes. Create a new link if the old one
   is lost.
 - **Complete the first-run setup promptly.** Before an admin passphrase exists,
-  anyone who can reach the dashboard can claim it. Loopback-only binding limits
-  this to the local machine.
+  anyone who can reach the dashboard locally can claim it. Setup is restricted to
+  privileged-local requests, so with the default loopback bind only the local
+  machine can run it; remote tailnet peers are sent to pairing and cannot create
+  the admin.
 - **Choose a strong vault passphrase.** Vault passphrase strength is enforced
   only in the browser (minimum 12 characters). A weak passphrase weakens offline
   resistance if the ciphertext is ever exposed.

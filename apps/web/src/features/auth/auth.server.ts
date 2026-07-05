@@ -6,7 +6,10 @@ import {
   hashPassphrase,
   verifyPassphrase,
 } from "@/features/auth/passwords.server"
-import { isAdminPassphraseAllowedForHost } from "@/features/auth/admin-origin"
+import {
+  isPrivilegedLocalRequest,
+  readRequestOriginInfo,
+} from "@/features/auth/admin-origin"
 import {
   endCurrentSession,
   issueSessionCookie,
@@ -47,7 +50,10 @@ export async function startSession() {
 }
 
 export async function endSession() {
+  const { lockCloudflareVault } =
+    await import("@/features/secrets/vault-session.server")
   await endCurrentSession()
+  await lockCloudflareVault()
 }
 
 export async function getSession() {
@@ -70,7 +76,10 @@ export async function requireSession() {
 }
 
 export function isAdminPassphraseAllowedForCurrentRequest() {
-  return isAdminPassphraseAllowedForHost(getRequestHost())
+  return isPrivilegedLocalRequest(
+    readRequestOriginInfo(safeRequestHeader),
+    process.env.UPSTER_BIND_HOST
+  )
 }
 
 export function assertAdminPassphraseAllowed() {
@@ -79,9 +88,9 @@ export function assertAdminPassphraseAllowed() {
   }
 }
 
-function getRequestHost() {
+function safeRequestHeader(name: string) {
   try {
-    return getRequestHeader("host") ?? null
+    return getRequestHeader(name) ?? null
   } catch {
     return null
   }

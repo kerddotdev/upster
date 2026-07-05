@@ -171,6 +171,8 @@ export const revokeConnectionFn = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { getAccessSession, revokeAccessSession } =
       await import("@/db/repositories.server")
+    const { lockCloudflareVault } =
+      await import("@/features/secrets/vault-session.server")
 
     if (data.sessionId === context.session.sid) {
       throw new Error("Use logout instead.")
@@ -182,6 +184,7 @@ export const revokeConnectionFn = createServerFn({ method: "POST" })
     }
 
     await revokeAccessSession(session.id)
+    await lockCloudflareVault()
     return { ok: true }
   })
 

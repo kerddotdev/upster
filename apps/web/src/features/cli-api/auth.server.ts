@@ -22,6 +22,7 @@ import {
   createAccessToken,
   hashAccessToken,
 } from "@/features/auth/access-tokens.server"
+import { readRequestOriginInfoFromHeaders } from "@/features/auth/admin-origin"
 import { verifyRequestSession } from "@/features/auth/session.server"
 
 export type CliActor = {
@@ -169,7 +170,7 @@ async function authenticateBearerToken(token: string) {
 async function authenticateCookie(request: Request) {
   const payload = await verifyRequestSession(
     request.headers.get("cookie"),
-    request.headers.get("host")
+    readRequestOriginInfoFromHeaders(request.headers)
   )
 
   if (!payload) {
