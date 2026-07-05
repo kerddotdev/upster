@@ -105,6 +105,16 @@ changes.
   buttons with a required-scope tooltip, and an access-denied page on scope
   errors). The server remains the sole authority; the client gate never grants
   access the server would deny.
+- A connection's scopes can be narrowed after pairing without re-pairing. Because
+  every request reloads the session row and its scopes from the database, a scope
+  change takes effect on the next request. Editing scopes requires
+  `connections:manage` and is capped to the caller's own scopes (same subset rule
+  as pairing link creation), so it can never grant a scope the editor lacks.
+- Security-relevant events are recorded to the append-only `events` table and
+  surfaced on the Sessions page: denied scope checks, denied privilege-escalation
+  attempts, pairings, connection revocations, logins, and lockdowns. Audit rows
+  store only event types, the actor session id and kind, and short messages;
+  they never contain secrets, tokens, or decrypted config.
 - TanStack Start's CSRF protection rejects cross-origin calls to server
   functions. The allowed origins are derived at runtime from the live Tailscale
   status (the node's MagicDNS name and serve ports), not from an environment
@@ -122,12 +132,23 @@ changes.
   advertises this machine (`127.0.0.1`), Tailscale HTTPS
   (`https://<magic-dns>`), and Tailscale IP (`http://<100.x>:10000`).
 - Remote access is a runtime toggle. From a local session the operator enables
-  it in Settings > Tailscale: the dashboard drives the sidecar over the shared
+  it on the Remote access page: the dashboard drives the sidecar over the shared
   `tailscaled` control socket to log in (interactive auth URL) and to turn
   `tailscale serve` on or off. The dashboard only ever calls `serve`, never
   `funnel`, so it cannot expose the dashboard to the public internet; as
   defense-in-depth the operator's tailnet ACL should not grant this node the
-  Funnel attribute (it is off by default).
+  Funnel attribute (it is off by default). If Funnel is nevertheless enabled on
+  the node out of band, the dashboard reads it from the live serve config and
+  shows a prominent warning on the Remote access page so the operator can turn
+  it off.
+- Remote paired connections are bound to the tailnet identity that redeemed
+  them. Tailscale serve injects the peer identity (`Tailscale-User-Login`) and
+  strips any client-supplied copy, so it cannot be spoofed over the proxy. The
+  redeem captures this identity and every later request re-checks it: a
+  connection cookie replayed from a different tailnet identity is rejected. The
+  check only trusts the identity header on proxied requests and falls back to no
+  enforcement when no identity was captured (older connections, or a tailnet
+  that does not surface the header), so it can never lock out the host.
 - The password login and setup screens, and any `dashboard`-kind session, are
   restricted to genuinely local requests. Locality is not decided from the
   spoofable `Host` header alone: a request is treated as privileged-local only
@@ -164,16 +185,24 @@ changes.
   `vault:unlock`, and `vault:delete` are enforced per function. A remote paired
   connection can unlock the vault only if its scope set includes `vault:unlock`,
   which stays a human-only scope that agents can never receive.
-- A vault unlock is process-wide, not scoped to the unlocking session. The
-  decrypted config powers process-level operations (tunnel and pill management)
-  that run outside any single browser session, so every authenticated admin
-  session, including remote paired connections, sees the vault as unlocked and
-  can trigger operations that use the Cloudflare token for the unlock TTL. The
-  plaintext token itself is never returned to any client; only status fields and
-  the root domain are. To limit the window, the vault is automatically locked on
-  security events: whenever a connection is revoked or the current session logs
-  out. Revoking a lost or untrusted device therefore also drops the unlocked
-  Cloudflare token from memory.
+- Vault unlocks are isolated per acting session, with one shared slot for the
+  trusted host side. A `connection`-kind (remote paired) session unlocks the
+  vault only for itself, keyed by its session id, so a remote unlock never
+  unlocks the vault for the host or for another connection. Dashboard, CLI, and
+  agent sessions share a single host slot, so a local unlock still lets host-side
+  automation and CLI/agent deploys use the token (agents cannot unlock, only
+  consume an already-unlocked host slot). Each unlock has its own TTL. The
+  plaintext token is never returned to any client; only status fields and the
+  root domain are.
+- The vault is locked automatically on security events. Revoking a connection
+  drops that connection's unlocked slot, logging out drops the current session's
+  slot, and the emergency lockdown clears every slot.
+- The emergency lockdown ("panic") is a local-admin action that revokes all
+  paired connections, clears every unlocked vault slot, and disables Tailscale
+  serve in one step. It requires `connections:manage` and a genuine local
+  session, so a remote connection cannot trigger it. Already-running pills and
+  tunnels keep serving because a running tunnel uses its own tunnel token, not
+  the vault.
 
 ### Database isolation
 
