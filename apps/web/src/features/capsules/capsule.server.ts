@@ -5,6 +5,7 @@ import { existsSync, mkdirSync } from "node:fs"
 import { basename, join } from "node:path"
 
 import { getUpsterConfig } from "@/config/env.server"
+import { getCapsuleRetention } from "@/config/settings.server"
 import {
   appendEvent,
   createCapsule,
@@ -382,7 +383,7 @@ export async function pruneCapsules(pillId: string, keep: number) {
 }
 
 export async function runPrune(pillId: string, keep?: number) {
-  const limit = keep ?? getUpsterConfig().capsuleRetention
+  const limit = keep ?? (await getCapsuleRetention())
   await pruneCapsules(pillId, limit)
   return getCapsuleInfo(pillId)
 }

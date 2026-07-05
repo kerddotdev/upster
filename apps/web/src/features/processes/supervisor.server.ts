@@ -18,6 +18,11 @@ import {
 } from "@/db/repositories.server"
 import { resolveCapsuleCwd } from "@/features/capsules/detect"
 import { getUpsterConfig } from "@/config/env.server"
+import {
+  getAppPortRange,
+  getCloudflaredBin,
+  getMetricsPortRange,
+} from "@/config/settings.server"
 import { createCloudflareClient } from "@/features/cloudflare/client.server"
 import type {
   CloudflareConfig,
@@ -61,14 +66,17 @@ async function logRun(runId: string, stream: RunLog["stream"], chunk: string) {
 }
 
 async function preparePorts(pillId: string, rotatePorts: boolean) {
-  const config = getUpsterConfig()
+  const [appPortRange, metricsPortRange] = await Promise.all([
+    getAppPortRange(),
+    getMetricsPortRange(),
+  ])
   const existing = await getPillPorts(pillId)
   const app = await findAvailablePort(
-    config.appPortRange,
+    appPortRange,
     rotatePorts ? null : existing?.appPort
   )
   const metrics = await findAvailablePort(
-    config.metricsPortRange,
+    metricsPortRange,
     rotatePorts ? null : existing?.metricsPort
   )
   const rotationCount =
@@ -412,10 +420,10 @@ export async function startPillRuntime(input: StartPillInput) {
       )
     }
 
-    const config = getUpsterConfig()
+    const cloudflaredBin = await getCloudflaredBin()
     const { child: tunnelProcess } = spawnLoggedProcess({
       runId: run.id,
-      command: config.cloudflaredBin,
+      command: cloudflaredBin,
       args: [
         "tunnel",
         "--no-autoupdate",

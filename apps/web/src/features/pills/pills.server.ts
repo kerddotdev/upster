@@ -206,17 +206,3 @@ export async function getPills() {
 export async function getPillStatus(input: { pillId: string }) {
   return getPillDetail(input.pillId)
 }
-
-export function getRuntimeSettings() {
-  const config = getUpsterConfig()
-
-  return {
-    workspaceRoots: config.workspaceRoots,
-    hostWorkspaceRoot: config.hostWorkspaceRoot,
-    allowedCommands: config.allowedCommands,
-    appPortRange: config.appPortRange,
-    metricsPortRange: config.metricsPortRange,
-    publicOrigin: config.publicOrigin,
-    cloudflaredBin: config.cloudflaredBin,
-  }
-}

@@ -8,7 +8,6 @@ import {
   deletePill,
   getPillStatus,
   getPills,
-  getRuntimeSettings,
   updatePill,
 } from "@/features/pills/pills.server"
 import {
@@ -72,10 +71,6 @@ const stopPillSchema = z.object({
 export const listPillsFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(() => getPills())
-
-export const getRuntimeSettingsFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
-  .handler(() => getRuntimeSettings())
 
 export const getPillStatusFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
