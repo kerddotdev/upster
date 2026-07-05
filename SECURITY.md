@@ -40,11 +40,23 @@ changes.
   `expires_at` value, and receive a signed session cookie with a 400 day token
   expiry that is renewed on dashboard server-function reads after half its life
   has elapsed.
+- Paired connections carry the scope set chosen for their pairing link, not full
+  admin. The link creator picks a preset (Viewer, Operator, Full admin) or a
+  custom scope set; the redeemed connection is issued exactly those scopes and
+  every dashboard server function and cookie-authenticated `/api` route enforces
+  them server-side. The password dashboard session keeps full admin scopes.
+- Pairing link creation is capped to a subset of the creator's own scopes and
+  requires `connections:manage`. A connection cannot mint a link that grants a
+  scope it does not itself hold (no privilege escalation); the server revalidates
+  this cap even though the picker also hides scopes the creator lacks.
+- Links created before the scope column existed (pre-`0007`) redeem as full admin
+  connections for backward compatibility. New links always store an explicit,
+  non-empty scope set.
 - Pairing links are 60-bit, single-use tokens with a 5 minute TTL. The plaintext
   token is returned only once, travels in the URL fragment, and is never stored
-  by Upster. The database stores only a SHA-256 token hash. Redemption uses one
-  atomic consume operation so invalid, expired, consumed, and revoked links all
-  produce the same failure result.
+  by Upster. The database stores only a SHA-256 token hash and the granted scope
+  set. Redemption uses one atomic consume operation so invalid, expired,
+  consumed, and revoked links all produce the same failure result.
 - The connections dashboard keeps tokens it just created in volatile page memory
   so an operator can re-copy the pairing URL or code from the list without
   reopening the dialog. This memory is never persisted, is scoped to the open
@@ -69,11 +81,24 @@ changes.
   Non-interactive commands do not automatically use the saved human credential,
   so agent and automation processes must use scoped tokens through `--agent`,
   `UPSTER_AGENT`, `--token`, `--token-file`, or `UPSTER_TOKEN`.
-- Every protected TanStack Start server function carries the auth middleware,
-  and the streaming and metrics server routes verify the session manually
-  because route handlers do not run server-function middleware. The only public
-  server functions are auth status, login, setup, logout, and
-  `redeemPairingToken`.
+- Every protected TanStack Start server function carries a `requireScopes(...)`
+  middleware that runs the auth middleware and then rejects the request with a
+  `Missing permission: <scopes>` error when the session lacks a required scope.
+  The scope required by each function is declared at its definition, so
+  `grep requireScopes` is the full authorization map. Streaming, metrics, and
+  capsule-archive routes verify the session and its scopes manually because route
+  handlers do not run server-function middleware: missing session returns 401 and
+  missing scope returns 403. The only public server functions are auth status,
+  login, setup, logout, and `redeemPairingToken`; `logout` runs with no scope so
+  it always works.
+- Local-admin gates (changing the cloudflared binary, Tailscale login and serve
+  enable) stay above the scope layer: they still require a genuine local session
+  in addition to the relevant scope, so a remote connection cannot perform them
+  even with the scope.
+- The front end mirrors these rules for UX only (hidden navigation, disabled
+  buttons with a required-scope tooltip, and an access-denied page on scope
+  errors). The server remains the sole authority; the client gate never grants
+  access the server would deny.
 - TanStack Start's CSRF protection rejects cross-origin calls to server
   functions. The allowed origins are derived at runtime from the live Tailscale
   status (the node's MagicDNS name and serve ports), not from an environment
@@ -129,6 +154,10 @@ changes.
   ciphertext, read the vault passphrase, or read decrypted Cloudflare config.
   They can only read vault status fields such as whether a vault exists, whether
   it is unlocked, and the root domain.
+- Vault operations are individually scoped: `vault:status`, `vault:write`,
+  `vault:unlock`, and `vault:delete` are enforced per function. A remote paired
+  connection can unlock the vault only if its scope set includes `vault:unlock`,
+  which stays a human-only scope that agents can never receive.
 - A vault unlock is process-wide, not scoped to the unlocking session. The
   decrypted config powers process-level operations (tunnel and pill management)
   that run outside any single browser session, so every authenticated admin
