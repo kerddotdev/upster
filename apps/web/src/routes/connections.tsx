@@ -61,6 +61,7 @@ import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { QrCode } from "@/components/qr-code"
 import { cn } from "@/lib/utils"
+import { useIsRemoteEnvironment } from "@/lib/environment"
 import {
   createPairingLinkFn,
   getConnectionEndpointsFn,
@@ -70,6 +71,12 @@ import {
   revokeConnectionFn,
   revokePairingLinkFn,
 } from "@/features/connections/connection.functions"
+import {
+  disableTailscaleServeFn,
+  enableTailscaleServeFn,
+  getTailscaleStatusFn,
+  startTailscaleLoginFn,
+} from "@/features/tailscale/tailscale.functions"
 
 export const Route = createFileRoute("/connections")({
   loader: loadConnectionsPage,
@@ -77,22 +84,26 @@ export const Route = createFileRoute("/connections")({
 })
 
 async function loadConnectionsPage() {
-  const [connections, pairingLinks, endpoints] = await Promise.all([
+  const [connections, pairingLinks, endpoints, tailscale] = await Promise.all([
     listConnectionsFn(),
     listPairingLinksFn(),
     getConnectionEndpointsFn(),
+    getTailscaleStatusFn(),
   ])
 
-  return { connections, pairingLinks, endpoints }
+  return { connections, pairingLinks, endpoints, tailscale }
 }
 
 type LoaderData = Awaited<ReturnType<typeof loadConnectionsPage>>
 type ConnectionRow = LoaderData["connections"][number]
 type PairingLinkRow = LoaderData["pairingLinks"][number]
 type EndpointRow = LoaderData["endpoints"][number]
+type TailscaleStatusRow = LoaderData["tailscale"]
 
 function ConnectionsPage() {
-  const { connections, pairingLinks, endpoints } = Route.useLoaderData()
+  const { connections, pairingLinks, endpoints, tailscale } =
+    Route.useLoaderData()
+  const remote = useIsRemoteEnvironment()
   const router = useRouter()
   const revokePairingLink = useServerFn(revokePairingLinkFn)
   const renameConnection = useServerFn(renameConnectionFn)
@@ -154,11 +165,13 @@ function ConnectionsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-medium">Connections</h1>
+        <h1 className="text-xl font-medium">Remote access</h1>
         <p className="text-sm text-muted-foreground">
-          Pair trusted browsers and manage their permanent access.
+          Expose this dashboard over Tailscale and pair trusted browsers.
         </p>
       </div>
+
+      <RemoteAccessCard status={tailscale} remote={remote} />
 
       <PairingCard
         endpoints={endpoints}
@@ -263,7 +276,7 @@ function EndpointHints({ endpoint }: { endpoint: EndpointRow }) {
   const hints = [
     endpoint.current ? "You are connected via this origin." : null,
     endpoint.setupRequired
-      ? "Enable remote access in Settings > Tailscale."
+      ? "Enable remote access above to use this endpoint."
       : null,
   ].filter(Boolean)
 
@@ -277,6 +290,195 @@ function EndpointHints({ endpoint }: { endpoint: EndpointRow }) {
         <span key={hint}>{hint}</span>
       ))}
     </div>
+  )
+}
+
+function RemoteAccessBadge({ status }: { status: TailscaleStatusRow }) {
+  if (!status.available) {
+    return <Badge variant="outline">Unavailable</Badge>
+  }
+  if (!status.loggedIn) {
+    return <Badge variant="outline">Not connected</Badge>
+  }
+  if (status.serveHttpsActive) {
+    return <Badge>On</Badge>
+  }
+  return <Badge variant="outline">Connected</Badge>
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border p-3">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="mt-1 text-sm font-medium break-all">{value}</div>
+    </div>
+  )
+}
+
+function RemoteAccessDisableButton({
+  remote,
+  pending,
+  onDisable,
+}: {
+  remote: boolean
+  pending: boolean
+  onDisable: () => void
+}) {
+  if (!remote) {
+    return (
+      <div>
+        <Button variant="outline" disabled={pending} onClick={onDisable}>
+          Disable remote access
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <AlertDialog>
+        <AlertDialogTrigger
+          render={<Button variant="outline" disabled={pending} />}
+        >
+          Disable remote access
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disable remote access?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are connected through Tailscale right now. Turning off remote
+              access ends this session immediately, and you will not be able to
+              reconnect from here until you re-enable it directly on the host
+              machine.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>Keep it on</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={pending}
+              onClick={onDisable}
+            >
+              Disable anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}
+
+function RemoteAccessCard({
+  status,
+  remote,
+}: {
+  status: TailscaleStatusRow
+  remote: boolean
+}) {
+  const router = useRouter()
+  const startLogin = useServerFn(startTailscaleLoginFn)
+  const enableServe = useServerFn(enableTailscaleServeFn)
+  const disableServe = useServerFn(disableTailscaleServeFn)
+  const [authUrl, setAuthUrl] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
+
+  async function run(action: () => Promise<unknown>, success: string) {
+    setPending(true)
+    try {
+      await action()
+      toast.success(success)
+      await router.invalidate()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Action failed.")
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          Tailscale
+          <RemoteAccessBadge status={status} />
+        </CardTitle>
+        <CardDescription>
+          {status.available
+            ? "Reach this dashboard from other devices on your private tailnet."
+            : "The Tailscale sidecar is not reachable. Start the stack with docker compose up."}
+        </CardDescription>
+      </CardHeader>
+      {status.available ? (
+        <CardContent className="flex flex-col gap-4">
+          {status.loggedIn ? (
+            <>
+              {status.magicDnsName ? (
+                <Detail label="MagicDNS name" value={status.magicDnsName} />
+              ) : null}
+              {status.serveHttpsActive ? (
+                <RemoteAccessDisableButton
+                  remote={remote}
+                  pending={pending}
+                  onDisable={() =>
+                    void run(() => disableServe(), "Remote access disabled.")
+                  }
+                />
+              ) : (
+                <div>
+                  <Button
+                    disabled={pending}
+                    onClick={() =>
+                      void run(() => enableServe(), "Remote access enabled.")
+                    }
+                  >
+                    Enable remote access
+                  </Button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-muted-foreground">
+                Connect this node to your tailnet to enable remote access.
+              </p>
+              <div>
+                <Button
+                  disabled={pending}
+                  onClick={() =>
+                    void run(async () => {
+                      const result = await startLogin()
+                      setAuthUrl(result.authUrl)
+                      if (!result.authUrl) {
+                        throw new Error(
+                          "No login URL returned. Check the sidecar logs."
+                        )
+                      }
+                    }, "Login started.")
+                  }
+                >
+                  Connect to tailnet
+                </Button>
+              </div>
+              {authUrl ? (
+                <Alert>
+                  <AlertTitle>Approve this node</AlertTitle>
+                  <AlertDescription>
+                    <a
+                      href={authUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="break-all underline"
+                    >
+                      {authUrl}
+                    </a>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+            </div>
+          )}
+        </CardContent>
+      ) : null}
+    </Card>
   )
 }
 
@@ -572,13 +774,25 @@ function CreatePairingLinkDialog({
                   ) : null}
                 </>
               ) : (
-                <Alert>
-                  <AlertTitle>Tailscale setup required</AlertTitle>
-                  <AlertDescription>
-                    Run bun run tailscale:setup on the host, then reopen this
-                    dialog.
-                  </AlertDescription>
-                </Alert>
+                <div className="flex flex-col gap-3">
+                  <Alert>
+                    <AlertTitle>Remote access not enabled</AlertTitle>
+                    <AlertDescription>
+                      Enable remote access above to pair over Tailscale, or copy
+                      the pairing code below to enter it manually.
+                    </AlertDescription>
+                  </Alert>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      void copyText(created.token, "Pairing code copied.")
+                    }
+                  >
+                    <CopyIcon data-icon="inline-start" />
+                    Copy code only
+                  </Button>
+                </div>
               )}
             </div>
 

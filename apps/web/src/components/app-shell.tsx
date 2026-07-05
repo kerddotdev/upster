@@ -3,7 +3,6 @@ import {
   CloudIcon,
   FolderKanbanIcon,
   KeyRoundIcon,
-  NetworkIcon,
   RadioTowerIcon,
   SettingsIcon,
 } from "lucide-react"
@@ -27,6 +26,7 @@ import { Badge } from "@/components/ui/badge"
 import { LogoutButton } from "@/features/auth/logout-button"
 import { CloudflareLockButton } from "@/features/secrets/cloudflare-lock-button"
 import { EventsListener } from "@/features/events/events-listener"
+import { useIsRemoteEnvironment } from "@/lib/environment"
 
 const UNAUTHENTICATED_PATHS = ["/login", "/setup", "/pair"]
 
@@ -34,15 +34,15 @@ const navItems = [
   { to: "/", label: "Pills", icon: FolderKanbanIcon },
   { to: "/settings/cloudflare", label: "Cloudflare", icon: CloudIcon },
   { to: "/settings/runtime", label: "Runtime", icon: SettingsIcon },
-  { to: "/settings/tailscale", label: "Tailscale", icon: RadioTowerIcon },
   { to: "/sessions", label: "Sessions", icon: KeyRoundIcon },
-  { to: "/connections", label: "Connections", icon: NetworkIcon },
+  { to: "/connections", label: "Remote access", icon: RadioTowerIcon },
 ] as const
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
+  const remote = useIsRemoteEnvironment()
 
   if (UNAUTHENTICATED_PATHS.includes(pathname)) {
     return <>{children}</>
@@ -68,6 +68,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </SidebarHeader>
+        {remote ? (
+          <div className="px-2 pt-1">
+            <Badge
+              variant="outline"
+              className="w-full justify-center gap-1.5 py-1"
+            >
+              <RadioTowerIcon className="size-3" />
+              Remote environment
+            </Badge>
+          </div>
+        ) : null}
         <SidebarContent>
           <SidebarGroup>
             <SidebarGroupLabel>Workspace</SidebarGroupLabel>

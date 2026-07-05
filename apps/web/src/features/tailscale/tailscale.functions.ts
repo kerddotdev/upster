@@ -43,7 +43,6 @@ export const enableTailscaleServeFn = createServerFn({ method: "POST" })
 export const disableTailscaleServeFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async () => {
-    await assertLocalAdmin()
     const { disableTailscaleServe } =
       await import("@/features/tailscale/tailscale-control.server")
 
