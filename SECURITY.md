@@ -91,6 +91,12 @@ changes.
   missing scope returns 403. The only public server functions are auth status,
   login, setup, logout, and `redeemPairingToken`; `logout` runs with no scope so
   it always works.
+- The `/api/events` SSE stream requires an authenticated session and then filters
+  each event by the session's scopes: a domain is delivered only when the session
+  holds its read scope (`pills`/`runs` need `pills:read`, `capsules` needs
+  `capsules:read`, `sessions` needs `sessions:read`, `connections` needs
+  `connections:read`, `vault` needs `vault:status`). Event payloads never carry
+  secrets, tokens, or decrypted config in the first place.
 - Local-admin gates (changing the cloudflared binary, Tailscale login and serve
   enable) stay above the scope layer: they still require a genuine local session
   in addition to the relevant scope, so a remote connection cannot perform them
