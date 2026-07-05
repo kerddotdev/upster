@@ -41,6 +41,7 @@ function runTailscale(args: Array<string>): Promise<CommandResult> {
 
 type StatusJson = {
   BackendState?: string
+  AuthURL?: string
   Self?: {
     DNSName?: string
     TailscaleIPs?: Array<string>
@@ -157,13 +158,30 @@ export async function getTailscaleStatus(): Promise<TailscaleStatus> {
   return resolved
 }
 
+async function readAuthUrl(): Promise<string | null> {
+  const result = await runTailscale(["status", "--json"])
+  const parsed = parseJson<StatusJson>(result.stdout)
+  const url = parsed?.AuthURL?.trim()
+  return url ? url : null
+}
+
 export async function startTailscaleLogin(): Promise<{
   authUrl: string | null
 }> {
-  const result = await runTailscale(["login"])
+  const existing = await readAuthUrl()
+  if (existing) {
+    return { authUrl: existing }
+  }
+
+  const login = await runTailscale(["login"]).catch(() => null)
+  const fromStatus = await readAuthUrl()
+  if (fromStatus) {
+    return { authUrl: fromStatus }
+  }
+
   const match =
-    result.stdout.match(/https:\/\/login\.tailscale\.com\/\S+/) ??
-    result.stderr.match(/https:\/\/login\.tailscale\.com\/\S+/)
+    login?.stdout.match(/https:\/\/login\.tailscale\.com\/\S+/) ??
+    login?.stderr.match(/https:\/\/login\.tailscale\.com\/\S+/)
 
   return { authUrl: match ? match[0] : null }
 }

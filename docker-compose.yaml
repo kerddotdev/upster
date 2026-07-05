@@ -31,10 +31,11 @@ services:
   tailscale:
     image: tailscale/tailscale:latest
     hostname: "${UPSTER_TAILSCALE_HOSTNAME:-upster}"
-    environment:
-      TS_USERSPACE: "true"
-      TS_STATE_DIR: "/var/lib/tailscale"
-      TS_AUTHKEY: "${TS_AUTHKEY:-}"
+    entrypoint: ["/usr/local/bin/tailscaled"]
+    command:
+      - "--tun=userspace-networking"
+      - "--statedir=/var/lib/tailscale"
+      - "--socket=/var/run/tailscale/tailscaled.sock"
     volumes:
       - tailscale_state:/var/lib/tailscale
       - tailscale_sock:/var/run/tailscale
