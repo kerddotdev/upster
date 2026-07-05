@@ -25,6 +25,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { LogoutButton } from "@/features/auth/logout-button"
 import { CloudflareLockButton } from "@/features/secrets/cloudflare-lock-button"
+import { EventsListener } from "@/features/events/events-listener"
 
 const UNAUTHENTICATED_PATHS = ["/login", "/setup", "/pair"]
 
@@ -47,6 +48,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
+      <EventsListener />
       <Sidebar variant="inset">
         <SidebarHeader>
           <div className="flex items-center gap-2 px-2 py-1">
