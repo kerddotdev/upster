@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 
-import { and, desc, eq, gt, isNotNull, isNull, sql } from "drizzle-orm"
+import { and, desc, eq, gt, isNotNull, isNull, like, sql } from "drizzle-orm"
 import { adminScopes, isAccessScope, type AccessScope } from "@upster/core"
 
 import { db, ensureDatabase } from "@/db/client.server"
@@ -709,6 +709,38 @@ export async function appendEvent(input: {
     metadataJson: JSON.stringify(input.metadata ?? {}),
     createdAt: now(),
   })
+}
+
+export type SecurityEventRow = {
+  id: string
+  type: string
+  actorSessionId: string | null
+  actorKind: string | null
+  source: string | null
+  message: string
+  createdAt: string
+}
+
+export async function listSecurityEvents(
+  limit = 200
+): Promise<Array<SecurityEventRow>> {
+  await ensureDatabase()
+  const rows = await db
+    .select()
+    .from(events)
+    .where(like(events.type, "security.%"))
+    .orderBy(desc(events.createdAt))
+    .limit(limit)
+
+  return rows.map((row) => ({
+    id: row.id,
+    type: row.type,
+    actorSessionId: row.actorSessionId,
+    actorKind: row.actorKind,
+    source: row.source,
+    message: row.message,
+    createdAt: row.createdAt,
+  }))
 }
 
 export type AccessSessionKind = "dashboard" | "cli" | "agent" | "connection"

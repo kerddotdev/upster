@@ -48,6 +48,17 @@ export const redeemPairingTokenFn = createServerFn({ method: "POST" })
       metadata: parseUserAgent(userAgent),
     })
 
+    const { recordSecurityEvent } =
+      await import("@/features/auth/security-audit.server")
+    await recordSecurityEvent({
+      type: "security.paired",
+      message: `Paired a new connection: ${link.label}.`,
+      actorSessionId: session.id,
+      actorKind: "connection",
+      source: "pairing",
+      metadata: { scopes: link.scopes },
+    })
+
     try {
       await setPairingLinkConnectionSessionId(link.id, session.id)
     } catch {

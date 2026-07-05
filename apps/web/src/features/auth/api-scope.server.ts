@@ -24,6 +24,16 @@ export async function authorizeApiRequest(
   }
 
   if (!scopesIncludeAll(session.scopes, requiredScopes)) {
+    const { recordSecurityEvent } =
+      await import("@/features/auth/security-audit.server")
+    await recordSecurityEvent({
+      type: "security.scope_denied",
+      message: `Denied an API request requiring ${requiredScopes.join(", ")}.`,
+      actorSessionId: session.sid,
+      actorKind: session.kind,
+      source: "api",
+      metadata: { requiredScopes, path: new URL(request.url).pathname },
+    })
     return { ok: false, status: 403, message: "Forbidden" }
   }
 

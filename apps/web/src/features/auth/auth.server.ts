@@ -46,7 +46,17 @@ export async function verifyAdmin(passphrase: string) {
 
 export async function startSession() {
   assertAdminPassphraseAllowed()
-  await issueSessionCookie(ADMIN_ID)
+  const session = await issueSessionCookie(ADMIN_ID)
+
+  const { recordSecurityEvent } =
+    await import("@/features/auth/security-audit.server")
+  await recordSecurityEvent({
+    type: "security.login",
+    message: "Local admin signed in.",
+    actorSessionId: session.id,
+    actorKind: "dashboard",
+    source: "login",
+  })
 }
 
 export async function endSession() {

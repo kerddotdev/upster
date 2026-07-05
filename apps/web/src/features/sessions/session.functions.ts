@@ -31,6 +31,14 @@ export const listSessionsFn = createServerFn({ method: "GET" })
       }))
   })
 
+export const listSecurityEventsFn = createServerFn({ method: "GET" })
+  .middleware([requireScopes("sessions:read")])
+  .handler(async () => {
+    const { listSecurityEvents } = await import("@/db/repositories.server")
+
+    return listSecurityEvents(200)
+  })
+
 export const revokeSessionFn = createServerFn({ method: "POST" })
   .middleware([requireScopes("sessions:revoke")])
   .validator((data: unknown) => revokeSessionSchema.parse(data))

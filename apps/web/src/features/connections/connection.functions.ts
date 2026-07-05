@@ -94,11 +94,20 @@ export const createPairingLinkFn = createServerFn({ method: "POST" })
 
     const requestedScopes = Array.from(new Set(data.scopes))
     if (!scopesIncludeAll(context.session.scopes, requestedScopes)) {
-      throw new ScopeDeniedError(
-        requestedScopes.filter(
-          (scope) => !context.session.scopes.includes(scope)
-        )
+      const missing = requestedScopes.filter(
+        (scope) => !context.session.scopes.includes(scope)
       )
+      const { recordSecurityEvent } =
+        await import("@/features/auth/security-audit.server")
+      await recordSecurityEvent({
+        type: "security.escalation_denied",
+        message: `Denied a pairing link requesting scopes beyond the creator: ${missing.join(", ")}.`,
+        actorSessionId: context.session.sid,
+        actorKind: context.session.kind,
+        source: "pairing-link",
+        metadata: { requestedScopes, missingScopes: missing },
+      })
+      throw new ScopeDeniedError(missing)
     }
 
     const token = createPairingToken()
@@ -201,12 +210,24 @@ export const revokeConnectionFn = createServerFn({ method: "POST" })
 
     await revokeAccessSession(session.id)
     await lockCloudflareVault()
+
+    const { recordSecurityEvent } =
+      await import("@/features/auth/security-audit.server")
+    await recordSecurityEvent({
+      type: "security.connection_revoked",
+      message: `Revoked connection ${session.label}.`,
+      actorSessionId: context.session.sid,
+      actorKind: context.session.kind,
+      source: "connection",
+      metadata: { connectionId: session.id },
+    })
+
     return { ok: true }
   })
 
 export const panicLockdownFn = createServerFn({ method: "POST" })
   .middleware([requireScopes("connections:manage")])
-  .handler(async () => {
+  .handler(async ({ context }) => {
     await assertLocalAdmin(
       "Remote access lockdown can only be triggered from a local session."
     )
@@ -217,10 +238,21 @@ export const panicLockdownFn = createServerFn({ method: "POST" })
       await import("@/features/secrets/vault-session.server")
     const { disableTailscaleServe } =
       await import("@/features/tailscale/tailscale-control.server")
+    const { recordSecurityEvent } =
+      await import("@/features/auth/security-audit.server")
 
     const revoked = await revokeAllConnectionSessions()
     await lockCloudflareVault()
     await disableTailscaleServe()
+
+    await recordSecurityEvent({
+      type: "security.panic",
+      message: `Emergency lockdown revoked ${revoked} connection(s), locked the vault and disabled remote access.`,
+      actorSessionId: context.session.sid,
+      actorKind: context.session.kind,
+      source: "panic",
+      metadata: { revoked },
+    })
 
     return { ok: true, revoked }
   })
