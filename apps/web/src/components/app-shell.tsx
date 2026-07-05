@@ -4,6 +4,7 @@ import {
   FolderKanbanIcon,
   KeyRoundIcon,
   NetworkIcon,
+  RadioTowerIcon,
   SettingsIcon,
 } from "lucide-react"
 
@@ -33,6 +34,7 @@ const navItems = [
   { to: "/", label: "Pills", icon: FolderKanbanIcon },
   { to: "/settings/cloudflare", label: "Cloudflare", icon: CloudIcon },
   { to: "/settings/runtime", label: "Runtime", icon: SettingsIcon },
+  { to: "/settings/tailscale", label: "Tailscale", icon: RadioTowerIcon },
   { to: "/sessions", label: "Sessions", icon: KeyRoundIcon },
   { to: "/connections", label: "Connections", icon: NetworkIcon },
 ] as const

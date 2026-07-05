@@ -15,6 +15,7 @@ import { Route as PairRouteImport } from './routes/pair'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ConnectionsRouteImport } from './routes/connections'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SettingsTailscaleRouteImport } from './routes/settings/tailscale'
 import { Route as SettingsRuntimeRouteImport } from './routes/settings/runtime'
 import { Route as SettingsCloudflareRouteImport } from './routes/settings/cloudflare'
 import { Route as PillsPillIdRouteImport } from './routes/pills/$pillId'
@@ -78,6 +79,11 @@ const ConnectionsRoute = ConnectionsRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsTailscaleRoute = SettingsTailscaleRouteImport.update({
+  id: '/settings/tailscale',
+  path: '/settings/tailscale',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRuntimeRoute = SettingsRuntimeRouteImport.update({
@@ -273,6 +279,7 @@ export interface FileRoutesByFullPath {
   '/pills/$pillId': typeof PillsPillIdRoute
   '/settings/cloudflare': typeof SettingsCloudflareRoute
   '/settings/runtime': typeof SettingsRuntimeRoute
+  '/settings/tailscale': typeof SettingsTailscaleRoute
   '/api/capsules/$capsuleId/archive': typeof ApiCapsulesCapsuleIdArchiveRoute
   '/api/cli/v1/agent-sessions': typeof ApiCliV1AgentSessionsRoute
   '/api/cli/v1/pills': typeof ApiCliV1PillsRouteWithChildren
@@ -315,6 +322,7 @@ export interface FileRoutesByTo {
   '/pills/$pillId': typeof PillsPillIdRoute
   '/settings/cloudflare': typeof SettingsCloudflareRoute
   '/settings/runtime': typeof SettingsRuntimeRoute
+  '/settings/tailscale': typeof SettingsTailscaleRoute
   '/api/capsules/$capsuleId/archive': typeof ApiCapsulesCapsuleIdArchiveRoute
   '/api/cli/v1/agent-sessions': typeof ApiCliV1AgentSessionsRoute
   '/api/cli/v1/pills': typeof ApiCliV1PillsRouteWithChildren
@@ -358,6 +366,7 @@ export interface FileRoutesById {
   '/pills/$pillId': typeof PillsPillIdRoute
   '/settings/cloudflare': typeof SettingsCloudflareRoute
   '/settings/runtime': typeof SettingsRuntimeRoute
+  '/settings/tailscale': typeof SettingsTailscaleRoute
   '/api/capsules/$capsuleId/archive': typeof ApiCapsulesCapsuleIdArchiveRoute
   '/api/cli/v1/agent-sessions': typeof ApiCliV1AgentSessionsRoute
   '/api/cli/v1/pills': typeof ApiCliV1PillsRouteWithChildren
@@ -402,6 +411,7 @@ export interface FileRouteTypes {
     | '/pills/$pillId'
     | '/settings/cloudflare'
     | '/settings/runtime'
+    | '/settings/tailscale'
     | '/api/capsules/$capsuleId/archive'
     | '/api/cli/v1/agent-sessions'
     | '/api/cli/v1/pills'
@@ -444,6 +454,7 @@ export interface FileRouteTypes {
     | '/pills/$pillId'
     | '/settings/cloudflare'
     | '/settings/runtime'
+    | '/settings/tailscale'
     | '/api/capsules/$capsuleId/archive'
     | '/api/cli/v1/agent-sessions'
     | '/api/cli/v1/pills'
@@ -486,6 +497,7 @@ export interface FileRouteTypes {
     | '/pills/$pillId'
     | '/settings/cloudflare'
     | '/settings/runtime'
+    | '/settings/tailscale'
     | '/api/capsules/$capsuleId/archive'
     | '/api/cli/v1/agent-sessions'
     | '/api/cli/v1/pills'
@@ -529,6 +541,7 @@ export interface RootRouteChildren {
   PillsPillIdRoute: typeof PillsPillIdRoute
   SettingsCloudflareRoute: typeof SettingsCloudflareRoute
   SettingsRuntimeRoute: typeof SettingsRuntimeRoute
+  SettingsTailscaleRoute: typeof SettingsTailscaleRoute
   ApiCapsulesCapsuleIdArchiveRoute: typeof ApiCapsulesCapsuleIdArchiveRoute
   ApiCliV1AgentSessionsRoute: typeof ApiCliV1AgentSessionsRoute
   ApiCliV1PillsRoute: typeof ApiCliV1PillsRouteWithChildren
@@ -587,6 +600,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/tailscale': {
+      id: '/settings/tailscale'
+      path: '/settings/tailscale'
+      fullPath: '/settings/tailscale'
+      preLoaderRoute: typeof SettingsTailscaleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings/runtime': {
@@ -958,6 +978,7 @@ const rootRouteChildren: RootRouteChildren = {
   PillsPillIdRoute: PillsPillIdRoute,
   SettingsCloudflareRoute: SettingsCloudflareRoute,
   SettingsRuntimeRoute: SettingsRuntimeRoute,
+  SettingsTailscaleRoute: SettingsTailscaleRoute,
   ApiCapsulesCapsuleIdArchiveRoute: ApiCapsulesCapsuleIdArchiveRoute,
   ApiCliV1AgentSessionsRoute: ApiCliV1AgentSessionsRoute,
   ApiCliV1PillsRoute: ApiCliV1PillsRouteWithChildren,
