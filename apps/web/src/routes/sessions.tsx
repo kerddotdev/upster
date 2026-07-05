@@ -53,6 +53,7 @@ import {
   revokeSessionFn,
 } from "@/features/sessions/session.functions"
 import { AccessDenied } from "@/components/access-denied"
+import { GatedButton } from "@/features/auth/gated-button"
 
 export const Route = createFileRoute("/sessions")({
   loader: () => listSessionsFn(),
@@ -519,7 +520,8 @@ function createSessionColumns({
       header: "",
       enableSorting: false,
       cell: ({ row }) => (
-        <Button
+        <GatedButton
+          scopes={["sessions:revoke"]}
           variant="outline"
           size="sm"
           disabled={
@@ -529,7 +531,7 @@ function createSessionColumns({
         >
           <BanIcon data-icon="inline-start" />
           Revoke
-        </Button>
+        </GatedButton>
       ),
     },
   ]

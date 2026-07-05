@@ -42,6 +42,8 @@ import { cn } from "@/lib/utils"
 import type { CloudflareConfig } from "@/features/pills/types"
 import { CloudflareSetupGuide } from "@/features/secrets/cloudflare-setup-guide"
 import { useCloudflareVault } from "@/features/secrets/cloudflare-vault-provider"
+import { GatedButton } from "@/features/auth/gated-button"
+import { useHasScopes } from "@/features/auth/use-scopes"
 import type { getCloudflareVaultStatusFn } from "@/features/secrets/secret.functions"
 import {
   deleteCloudflareVaultFn,
@@ -98,6 +100,8 @@ function VaultManager() {
   const { isUnlocked, rootDomain, lock, requestUnlock, refreshVault } =
     useCloudflareVault()
   const deleteVault = useServerFn(deleteCloudflareVaultFn)
+  const canUnlock = useHasScopes("vault:unlock")
+  const canDelete = useHasScopes("vault:delete")
   const [deleting, setDeleting] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [locking, setLocking] = useState(false)
@@ -131,7 +135,12 @@ function VaultManager() {
         )}
 
         <div className="flex flex-wrap gap-2">
-          {isUnlocked ? (
+          {!canUnlock ? (
+            <GatedButton scopes={["vault:unlock"]} variant="outline">
+              <LockOpenIcon data-icon="inline-start" />
+              {isUnlocked ? "Lock session" : "Unlock vault"}
+            </GatedButton>
+          ) : isUnlocked ? (
             <Button
               variant="outline"
               disabled={locking}
@@ -154,50 +163,58 @@ function VaultManager() {
             </Button>
           )}
 
-          <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-            <AlertDialogTrigger render={<Button variant="outline" />}>
+          {!canDelete ? (
+            <GatedButton scopes={["vault:delete"]} variant="outline">
               <Trash2Icon data-icon="inline-start" />
               Delete vault
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Cloudflare vault?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This removes the encrypted config from local storage and locks
-                  the current session. You can save a new vault afterwards.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={deleting}>
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  variant="destructive"
-                  disabled={deleting}
-                  onClick={async () => {
-                    setDeleting(true)
-                    try {
-                      await deleteVault()
-                      await refreshVault()
-                      toast.success("Cloudflare vault deleted.")
-                      setDeleteOpen(false)
-                      await router.invalidate()
-                    } catch (err) {
-                      toast.error(
-                        err instanceof Error
-                          ? err.message
-                          : "Failed to delete vault."
-                      )
-                    } finally {
-                      setDeleting(false)
-                    }
-                  }}
-                >
-                  Delete vault
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+            </GatedButton>
+          ) : (
+            <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+              <AlertDialogTrigger render={<Button variant="outline" />}>
+                <Trash2Icon data-icon="inline-start" />
+                Delete vault
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Cloudflare vault?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This removes the encrypted config from local storage and
+                    locks the current session. You can save a new vault
+                    afterwards.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deleting}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="destructive"
+                    disabled={deleting}
+                    onClick={async () => {
+                      setDeleting(true)
+                      try {
+                        await deleteVault()
+                        await refreshVault()
+                        toast.success("Cloudflare vault deleted.")
+                        setDeleteOpen(false)
+                        await router.invalidate()
+                      } catch (err) {
+                        toast.error(
+                          err instanceof Error
+                            ? err.message
+                            : "Failed to delete vault."
+                        )
+                      } finally {
+                        setDeleting(false)
+                      }
+                    }}
+                  >
+                    Delete vault
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -208,6 +225,7 @@ function VaultSetup() {
   const router = useRouter()
   const { refreshVault } = useCloudflareVault()
   const saveVault = useServerFn(saveCloudflareVaultFn)
+  const canSave = useHasScopes("vault:write")
   const [pending, setPending] = useState(false)
 
   async function handleSave(event: React.FormEvent<HTMLFormElement>) {
@@ -297,9 +315,13 @@ function VaultSetup() {
                 </FieldDescription>
               </Field>
             </FieldGroup>
-            <Button type="submit" disabled={pending}>
+            <GatedButton
+              scopes={["vault:write"]}
+              type="submit"
+              disabled={pending || !canSave}
+            >
               {pending ? "Saving..." : "Validate and save vault"}
-            </Button>
+            </GatedButton>
           </form>
 
           <Alert className="mt-4">

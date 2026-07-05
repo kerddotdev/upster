@@ -48,6 +48,8 @@ import {
   startPillFn,
   stopPillFn,
 } from "@/features/pills/pill.functions"
+import { GatedButton } from "@/features/auth/gated-button"
+import { useHasScopes } from "@/features/auth/use-scopes"
 import type { PillDetail, PillListItem } from "@/features/pills/types"
 
 type CapsuleAction = {
@@ -82,6 +84,9 @@ export function PillActions({
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [capsuleAction, setCapsuleAction] = useState<CapsuleAction | null>(null)
   const [deployCapsuleId, setDeployCapsuleId] = useState<string | null>(null)
+  const canStart = useHasScopes("runs:start")
+  const canStop = useHasScopes("runs:stop")
+  const canDelete = useHasScopes("pills:delete")
   const isRunning = Boolean(pill.activeRun)
 
   function ensureUnlocked(action: () => void) {
@@ -201,7 +206,8 @@ export function PillActions({
       ) : null}
       {isRunning ? (
         <div className="inline-flex">
-          <Button
+          <GatedButton
+            scopes={["runs:stop"]}
             variant="destructive"
             className="rounded-r-none"
             onClick={async () => {
@@ -227,7 +233,7 @@ export function PillActions({
           >
             <SquareIcon data-icon="inline-start" />
             Stop
-          </Button>
+          </GatedButton>
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
@@ -235,7 +241,7 @@ export function PillActions({
                   variant="destructive"
                   size="icon"
                   className="rounded-l-none border-l border-destructive/20"
-                  disabled={pending}
+                  disabled={pending || !canStop}
                   aria-label="More run options"
                 />
               }
@@ -253,21 +259,22 @@ export function PillActions({
         </div>
       ) : (
         <div className="inline-flex">
-          <Button
+          <GatedButton
+            scopes={["runs:start"]}
             className="rounded-r-none"
             onClick={() => ensureUnlocked(() => void runStart(false))}
             disabled={pending}
           >
             <RotateCwIcon data-icon="inline-start" />
             Start
-          </Button>
+          </GatedButton>
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
                 <Button
                   size="icon"
                   className="rounded-l-none border-l border-primary-foreground/20 ring-0 outline-none focus:outline-none"
-                  disabled={pending}
+                  disabled={pending || !canStart}
                   aria-label="More start options"
                 />
               }
@@ -297,7 +304,13 @@ export function PillActions({
           Details
         </Button>
       ) : null}
-      {showDelete && (
+      {showDelete && !canDelete ? (
+        <GatedButton scopes={["pills:delete"]} variant="outline">
+          <Trash2Icon data-icon="inline-start" />
+          Delete
+        </GatedButton>
+      ) : null}
+      {showDelete && canDelete && (
         <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
           <AlertDialogTrigger render={<Button variant="outline" />}>
             <Trash2Icon data-icon="inline-start" />

@@ -90,7 +90,8 @@ import {
   startTailscaleLoginFn,
 } from "@/features/tailscale/tailscale.functions"
 import { AccessDenied } from "@/components/access-denied"
-import { useScopes } from "@/features/auth/use-scopes"
+import { GatedButton } from "@/features/auth/gated-button"
+import { useHasScopes, useScopes } from "@/features/auth/use-scopes"
 import {
   describeScopes,
   presetMeta,
@@ -399,6 +400,7 @@ function RemoteAccessCard({
   const startLogin = useServerFn(startTailscaleLoginFn)
   const enableServe = useServerFn(enableTailscaleServeFn)
   const disableServe = useServerFn(disableTailscaleServeFn)
+  const canManage = useHasScopes("connections:manage")
   const [authUrl, setAuthUrl] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
@@ -435,7 +437,13 @@ function RemoteAccessCard({
               {status.magicDnsName ? (
                 <Detail label="MagicDNS name" value={status.magicDnsName} />
               ) : null}
-              {status.serveHttpsActive ? (
+              {!canManage ? (
+                <GatedButton scopes={["connections:manage"]} variant="outline">
+                  {status.serveHttpsActive
+                    ? "Disable remote access"
+                    : "Enable remote access"}
+                </GatedButton>
+              ) : status.serveHttpsActive ? (
                 <RemoteAccessDisableButton
                   remote={remote}
                   pending={pending}
@@ -462,7 +470,8 @@ function RemoteAccessCard({
                 Connect this node to your tailnet to enable remote access.
               </p>
               <div>
-                <Button
+                <GatedButton
+                  scopes={["connections:manage"]}
                   disabled={pending}
                   onClick={() =>
                     void run(async () => {
@@ -477,7 +486,7 @@ function RemoteAccessCard({
                   }
                 >
                   Connect to tailnet
-                </Button>
+                </GatedButton>
               </div>
               {authUrl ? (
                 <Alert>
@@ -682,6 +691,7 @@ function CreatePairingLinkDialog({
 }) {
   const router = useRouter()
   const callerScopes = useScopes()
+  const canManage = useHasScopes("connections:manage")
   const createPairingLink = useServerFn(createPairingLinkFn)
   const [open, setOpen] = useState(false)
   const [label, setLabel] = useState("")
@@ -769,6 +779,15 @@ function CreatePairingLinkDialog({
     created && selectedEndpoint?.origin
       ? buildPairingUrl(selectedEndpoint.origin, created.token)
       : null
+
+  if (!canManage) {
+    return (
+      <GatedButton scopes={["connections:manage"]}>
+        <PlusIcon data-icon="inline-start" />
+        New pairing link
+      </GatedButton>
+    )
+  }
 
   return (
     <Dialog
@@ -1006,6 +1025,20 @@ function RevokePairingLinkButton({
   pending: boolean
   onRevoke: (linkId: string) => Promise<void>
 }) {
+  const canManage = useHasScopes("connections:manage")
+
+  if (!canManage) {
+    return (
+      <GatedButton
+        scopes={["connections:manage"]}
+        variant="destructive"
+        size="sm"
+      >
+        Revoke
+      </GatedButton>
+    )
+  }
+
   return (
     <AlertDialog>
       <AlertDialogTrigger render={<Button variant="destructive" size="sm" />}>
@@ -1136,12 +1169,17 @@ function RenameConnectionDialog({
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState(connection.label)
   const [pending, setPending] = useState(false)
+  const canManage = useHasScopes("connections:manage")
 
   useEffect(() => {
     if (!open) {
       setValue(connection.label)
     }
   }, [connection.label, open])
+
+  if (!canManage) {
+    return null
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -1216,11 +1254,25 @@ function RevokeConnectionButton({
   pending: boolean
   onRevoke: (sessionId: string) => Promise<void>
 }) {
+  const canManage = useHasScopes("connections:manage")
+
   if (connection.isCurrent) {
     return (
       <Button variant="ghost" size="sm" disabled title="Use logout instead">
         Revoke
       </Button>
+    )
+  }
+
+  if (!canManage) {
+    return (
+      <GatedButton
+        scopes={["connections:manage"]}
+        variant="destructive"
+        size="sm"
+      >
+        Revoke
+      </GatedButton>
     )
   }
 

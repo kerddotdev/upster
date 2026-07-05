@@ -10,12 +10,12 @@ type MetricsResponse =
   | { raw: string; parsed: ParsedMetrics }
   | { error: string }
 
-export function useTunnelMetrics(runId: string | null) {
+export function useTunnelMetrics(runId: string | null, enabled = true) {
   const [metrics, setMetrics] = useState<MetricsResponse | null>(null)
   const lastErrorRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!runId) {
+    if (!runId || !enabled) {
       setMetrics(null)
       return
     }
@@ -53,7 +53,7 @@ export function useTunnelMetrics(runId: string | null) {
       cancelled = true
       clearInterval(timer)
     }
-  }, [runId])
+  }, [runId, enabled])
 
   return metrics
 }

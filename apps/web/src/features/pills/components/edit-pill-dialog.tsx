@@ -26,6 +26,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { updatePillFn } from "@/features/pills/pill.functions"
+import { GatedButton } from "@/features/auth/gated-button"
+import { useHasScopes } from "@/features/auth/use-scopes"
 import type { PillDetail } from "@/features/pills/types"
 
 function quoteArg(arg: string) {
@@ -67,10 +69,20 @@ export function EditPillDialog({ pill }: { pill: PillDetail }) {
   const updatePill = useServerFn(updatePillFn)
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(false)
+  const canEdit = useHasScopes("pills:write")
 
   const command =
     pill.commands.find((entry) => entry.name === pill.defaultEnv) ??
     pill.commands[0]
+
+  if (!canEdit) {
+    return (
+      <GatedButton scopes={["pills:write"]} variant="outline">
+        <PencilIcon data-icon="inline-start" />
+        Edit
+      </GatedButton>
+    )
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

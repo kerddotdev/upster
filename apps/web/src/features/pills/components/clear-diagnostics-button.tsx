@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { clearPillDiagnosticsFn } from "@/features/pills/pill.functions"
+import { GatedButton } from "@/features/auth/gated-button"
+import { useHasScopes } from "@/features/auth/use-scopes"
 
 export function ClearDiagnosticsButton({
   pillId,
@@ -29,7 +31,17 @@ export function ClearDiagnosticsButton({
 }) {
   const clearDiagnostics = useServerFn(clearPillDiagnosticsFn)
   const reportError = useErrorReporter()
+  const canClear = useHasScopes("pills:delete")
   const [clearing, setClearing] = useState(false)
+
+  if (!canClear) {
+    return (
+      <GatedButton scopes={["pills:delete"]} size="sm" variant="outline">
+        <Trash2Icon data-icon="inline-start" />
+        Clear diagnostics
+      </GatedButton>
+    )
+  }
 
   async function clear() {
     setClearing(true)

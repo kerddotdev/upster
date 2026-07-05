@@ -9,9 +9,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useCloudflareVault } from "@/features/secrets/cloudflare-vault-provider"
+import { useHasScopes } from "@/features/auth/use-scopes"
 
 export function CloudflareLockButton({ className }: { className?: string }) {
   const { isUnlocked, requestUnlock, lock } = useCloudflareVault()
+  const canUnlock = useHasScopes("vault:unlock")
+
+  if (!canUnlock) {
+    return null
+  }
 
   return (
     <Tooltip>

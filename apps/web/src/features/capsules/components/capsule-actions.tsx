@@ -6,7 +6,6 @@ import { PackagePlusIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { useErrorReporter } from "@/components/error-report"
-import { Button } from "@/components/ui/button"
 import {
   CapsuleDialog,
   type CapsuleBuildOptions,
@@ -15,6 +14,7 @@ import {
   buildCapsuleFn,
   prunePillCapsulesFn,
 } from "@/features/capsules/capsule.functions"
+import { GatedButton } from "@/features/auth/gated-button"
 
 export function CapsuleActions({
   pillId,
@@ -50,18 +50,24 @@ export function CapsuleActions({
 
   return (
     <div className="flex gap-2">
-      <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)}>
+      <GatedButton
+        scopes={["capsules:write"]}
+        size="sm"
+        variant="outline"
+        onClick={() => setDialogOpen(true)}
+      >
         <PackagePlusIcon data-icon="inline-start" />
         Build snapshot
-      </Button>
-      <Button
+      </GatedButton>
+      <GatedButton
+        scopes={["capsules:delete"]}
         size="sm"
         variant="ghost"
         onClick={() => void prune()}
         disabled={pruning}
       >
         Prune
-      </Button>
+      </GatedButton>
       <CapsuleDialog
         pillId={pillId}
         open={dialogOpen}

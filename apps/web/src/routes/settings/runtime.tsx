@@ -11,7 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
@@ -20,6 +19,7 @@ import {
   updateRuntimeSettingsFn,
 } from "@/features/config/settings.functions"
 import { AccessDenied } from "@/components/access-denied"
+import { GatedButton } from "@/features/auth/gated-button"
 
 export const Route = createFileRoute("/settings/runtime")({
   loader: () => getRuntimeSettingsFn(),
@@ -131,9 +131,13 @@ function RuntimeSettingsPage() {
               placeholder="10"
             />
             <div className="md:col-span-2">
-              <Button type="submit" disabled={savingRuntime}>
+              <GatedButton
+                scopes={["settings:write"]}
+                type="submit"
+                disabled={savingRuntime}
+              >
                 {savingRuntime ? "Saving..." : "Save"}
-              </Button>
+              </GatedButton>
             </div>
           </form>
         </CardContent>
@@ -163,7 +167,8 @@ function RuntimeSettingsPage() {
               </p>
             ) : null}
             <div>
-              <Button
+              <GatedButton
+                scopes={["settings:write"]}
                 type="submit"
                 disabled={
                   savingBin ||
@@ -172,7 +177,7 @@ function RuntimeSettingsPage() {
                 }
               >
                 {savingBin ? "Saving..." : "Save"}
-              </Button>
+              </GatedButton>
             </div>
           </form>
         </CardContent>
