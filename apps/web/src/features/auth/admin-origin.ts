@@ -1,6 +1,7 @@
 export type RequestOriginInfo = {
   host: string | null
   cameThroughProxy: boolean
+  tailnetIdentity: string | null
 }
 
 const FORWARDING_HEADERS = [
@@ -9,6 +10,20 @@ const FORWARDING_HEADERS = [
   "x-forwarded-host",
   "forwarded",
 ]
+
+const TAILNET_IDENTITY_HEADER = "tailscale-user-login"
+
+export function readTailnetIdentity(
+  getHeader: (name: string) => string | null | undefined,
+  cameThroughProxy: boolean
+) {
+  if (!cameThroughProxy) {
+    return null
+  }
+
+  const value = getHeader(TAILNET_IDENTITY_HEADER)?.trim()
+  return value ? value : null
+}
 
 export function isLocalHostName(host: string | null) {
   if (!host) {
@@ -36,11 +51,14 @@ export function isLoopbackBindHost(bindHost: string | null | undefined) {
 export function readRequestOriginInfo(
   getHeader: (name: string) => string | null | undefined
 ): RequestOriginInfo {
+  const cameThroughProxy = FORWARDING_HEADERS.some((name) =>
+    Boolean(getHeader(name))
+  )
+
   return {
     host: getHeader("host") ?? null,
-    cameThroughProxy: FORWARDING_HEADERS.some((name) =>
-      Boolean(getHeader(name))
-    ),
+    cameThroughProxy,
+    tailnetIdentity: readTailnetIdentity(getHeader, cameThroughProxy),
   }
 }
 
@@ -63,6 +81,17 @@ export function isPrivilegedLocalRequest(
   }
 
   return isLocalHostName(info.host)
+}
+
+export function isTailnetIdentityMismatch(
+  storedIdentity: string | null,
+  info: RequestOriginInfo
+) {
+  if (!storedIdentity || !info.cameThroughProxy) {
+    return false
+  }
+
+  return info.tailnetIdentity !== storedIdentity
 }
 
 export function isSessionKindAllowedForRequest(

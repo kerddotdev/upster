@@ -24,8 +24,15 @@ export const redeemPairingTokenFn = createServerFn({ method: "POST" })
       await import("@/db/repositories.server")
     const { issueConnectionCookie } =
       await import("@/features/auth/session.server")
+    const { readRequestOriginInfoFromHeaders, readTailnetIdentity } =
+      await import("@/features/auth/admin-origin")
 
     const request = getRequest()
+    const origin = readRequestOriginInfoFromHeaders(request.headers)
+    const tailnetIdentity = readTailnetIdentity(
+      (name) => request.headers.get(name),
+      origin.cameThroughProxy
+    )
     const remoteAddr = getClientAddr(request.headers)
     const globalLimit = redeemGlobalRateLimiter.take("global")
     const ipLimit = redeemIpRateLimiter.take(remoteAddr ?? "direct")
@@ -45,6 +52,7 @@ export const redeemPairingTokenFn = createServerFn({ method: "POST" })
       userAgent,
       remoteAddr,
       scopes: link.scopes,
+      tailnetIdentity,
       metadata: parseUserAgent(userAgent),
     })
 

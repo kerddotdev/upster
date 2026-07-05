@@ -39,6 +39,10 @@ type SerializedPairingLink = {
   scopes: Array<string>
 }
 
+type ConnectionMetadata = ParsedUserAgent & {
+  tailnetIdentity: string | null
+}
+
 type SerializedConnection = {
   id: string
   label: string
@@ -50,7 +54,7 @@ type SerializedConnection = {
   revokedAt: string | null
   userAgent: string | null
   remoteAddr: string | null
-  metadata: ParsedUserAgent
+  metadata: ConnectionMetadata
   isCurrent: boolean
   connectedNow: boolean
 }
@@ -71,7 +75,7 @@ function serializePairingLink(link: SerializedPairingLink) {
 
 function serializeConnectionMetadata(
   metadata: Record<string, unknown>
-): ParsedUserAgent {
+): ConnectionMetadata {
   const device = metadata.device
 
   return {
@@ -80,6 +84,10 @@ function serializeConnectionMetadata(
     device:
       device === "desktop" || device === "mobile" || device === "tablet"
         ? device
+        : null,
+    tailnetIdentity:
+      typeof metadata.tailnetIdentity === "string"
+        ? metadata.tailnetIdentity
         : null,
   }
 }

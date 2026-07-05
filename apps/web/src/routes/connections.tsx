@@ -1412,6 +1412,9 @@ function deviceSummary(connection: ConnectionRow) {
   const bits = [
     os ? `${browser} on ${os}` : browser,
     connection.metadata.device,
+    connection.metadata.tailnetIdentity
+      ? `paired by ${connection.metadata.tailnetIdentity}`
+      : null,
     connection.remoteAddr,
     connection.connectedNow
       ? "Active now"

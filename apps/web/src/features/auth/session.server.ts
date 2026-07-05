@@ -24,6 +24,7 @@ import {
 } from "@/features/auth/session-token"
 import {
   isSessionKindAllowedForRequest,
+  isTailnetIdentityMismatch,
   readRequestOriginInfo,
   type RequestOriginInfo,
 } from "@/features/auth/admin-origin"
@@ -149,6 +150,7 @@ export async function issueConnectionCookie(input: {
   userAgent?: string | null
   remoteAddr?: string | null
   scopes?: Array<AccessScope>
+  tailnetIdentity?: string | null
   metadata?: Record<string, unknown>
 }) {
   const secret = await getSessionSecret()
@@ -160,7 +162,10 @@ export async function issueConnectionCookie(input: {
     expiresAt: CONNECTION_EXPIRES_AT_SENTINEL,
     userAgent: input.userAgent ?? getRequestHeader("user-agent"),
     remoteAddr: input.remoteAddr ?? null,
-    metadata: input.metadata ?? {},
+    metadata: {
+      ...(input.metadata ?? {}),
+      tailnetIdentity: input.tailnetIdentity ?? null,
+    },
   })
   const token = createSessionToken(
     "admin",
@@ -243,17 +248,35 @@ async function verifySessionPayload(
   }
 
   const session = await getAccessSession(payload.sid)
+  const effectiveOrigin = originInfo ?? readCurrentRequestOriginInfo()
   if (
     !session ||
     session.revokedAt ||
     new Date(session.expiresAt).getTime() <= Date.now() ||
-    isDisallowedDashboardSession(session, originInfo)
+    isDisallowedDashboardSession(session, effectiveOrigin) ||
+    isReplayedConnection(session, effectiveOrigin)
   ) {
     return null
   }
 
   await touchAccessSession(session.id)
   return { payload, session }
+}
+
+function isReplayedConnection(
+  session: AccessSession,
+  originInfo: RequestOriginInfo
+) {
+  if (session.kind !== "connection") {
+    return false
+  }
+
+  const storedIdentity =
+    typeof session.metadata.tailnetIdentity === "string"
+      ? session.metadata.tailnetIdentity
+      : null
+
+  return isTailnetIdentityMismatch(storedIdentity, originInfo)
 }
 
 function isDisallowedDashboardSession(
