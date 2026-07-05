@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
-import { accessScopes, scopesIncludeAll } from "@upster/core"
+import { accessScopes, scopesIncludeAll, type AccessScope } from "@upster/core"
 
 import { requireScopes } from "@/features/auth/scope-middleware"
 import { ScopeDeniedError } from "@/features/auth/scope-error"
@@ -25,6 +25,11 @@ const renameConnectionSchema = z.object({
 
 const revokeConnectionSchema = z.object({
   sessionId: z.string().min(1),
+})
+
+const updateConnectionScopesSchema = z.object({
+  sessionId: z.string().min(1),
+  scopes: z.array(z.enum(accessScopes)).min(1),
 })
 
 type SerializedPairingLink = {
@@ -92,6 +97,37 @@ function serializeConnectionMetadata(
   }
 }
 
+type ScopeCapActor = {
+  sid: string
+  kind: string
+  scopes: Array<AccessScope>
+}
+
+async function capRequestedScopes(
+  actor: ScopeCapActor,
+  requested: Array<AccessScope>,
+  source: string,
+  describe: (missing: Array<AccessScope>) => string
+) {
+  const deduped = Array.from(new Set(requested))
+  if (scopesIncludeAll(actor.scopes, deduped)) {
+    return deduped
+  }
+
+  const missing = deduped.filter((scope) => !actor.scopes.includes(scope))
+  const { recordSecurityEvent } =
+    await import("@/features/auth/security-audit.server")
+  await recordSecurityEvent({
+    type: "security.escalation_denied",
+    message: describe(missing),
+    actorSessionId: actor.sid,
+    actorKind: actor.kind,
+    source,
+    metadata: { requestedScopes: deduped, missingScopes: missing },
+  })
+  throw new ScopeDeniedError(missing)
+}
+
 export const createPairingLinkFn = createServerFn({ method: "POST" })
   .middleware([requireScopes("connections:manage")])
   .validator((data: unknown) => createPairingLinkSchema.parse(data))
@@ -100,23 +136,13 @@ export const createPairingLinkFn = createServerFn({ method: "POST" })
     const { PAIRING_LINK_TTL_SECONDS, createPairingToken, hashPairingToken } =
       await import("@/features/connections/pairing-token.server")
 
-    const requestedScopes = Array.from(new Set(data.scopes))
-    if (!scopesIncludeAll(context.session.scopes, requestedScopes)) {
-      const missing = requestedScopes.filter(
-        (scope) => !context.session.scopes.includes(scope)
-      )
-      const { recordSecurityEvent } =
-        await import("@/features/auth/security-audit.server")
-      await recordSecurityEvent({
-        type: "security.escalation_denied",
-        message: `Denied a pairing link requesting scopes beyond the creator: ${missing.join(", ")}.`,
-        actorSessionId: context.session.sid,
-        actorKind: context.session.kind,
-        source: "pairing-link",
-        metadata: { requestedScopes, missingScopes: missing },
-      })
-      throw new ScopeDeniedError(missing)
-    }
+    const requestedScopes = await capRequestedScopes(
+      context.session,
+      data.scopes,
+      "pairing-link",
+      (missing) =>
+        `Denied a pairing link requesting scopes beyond the creator: ${missing.join(", ")}.`
+    )
 
     const token = createPairingToken()
     const link = await createPairingLink({
@@ -195,6 +221,30 @@ export const renameConnectionFn = createServerFn({ method: "POST" })
     }
 
     await updateAccessSessionLabel(session.id, data.label)
+    return { ok: true }
+  })
+
+export const updateConnectionScopesFn = createServerFn({ method: "POST" })
+  .middleware([requireScopes("connections:manage")])
+  .validator((data: unknown) => updateConnectionScopesSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    const { getAccessSession, updateAccessSessionScopes } =
+      await import("@/db/repositories.server")
+    const session = await getAccessSession(data.sessionId)
+
+    if (!session || session.kind !== "connection") {
+      throw new Error("Connection not found.")
+    }
+
+    const scopes = await capRequestedScopes(
+      context.session,
+      data.scopes,
+      "connection-scopes",
+      (missing) =>
+        `Denied a connection scope update beyond the caller: ${missing.join(", ")}.`
+    )
+
+    await updateAccessSessionScopes(session.id, scopes)
     return { ok: true }
   })
 

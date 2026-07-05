@@ -13,6 +13,7 @@ import {
   InfoIcon,
   PencilIcon,
   PlusIcon,
+  ShieldIcon,
 } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -89,6 +90,7 @@ import {
   renameConnectionFn,
   revokeConnectionFn,
   revokePairingLinkFn,
+  updateConnectionScopesFn,
 } from "@/features/connections/connection.functions"
 import {
   disableTailscaleServeFn,
@@ -101,6 +103,7 @@ import { GatedButton } from "@/features/auth/gated-button"
 import { useHasScopes, useScopes } from "@/features/auth/use-scopes"
 import {
   describeScopes,
+  matchPreset,
   presetMeta,
   scopeGroups,
 } from "@/features/connections/scope-presets"
@@ -763,6 +766,114 @@ function EndpointSegmented({
   )
 }
 
+function ScopePicker({
+  preset,
+  customScopes,
+  canGrant,
+  onPresetChange,
+  onToggleScope,
+}: {
+  preset: ConnectionScopePreset | "custom"
+  customScopes: Array<AccessScope>
+  canGrant: (scope: AccessScope) => boolean
+  onPresetChange: (next: ConnectionScopePreset | "custom") => void
+  onToggleScope: (scope: AccessScope) => void
+}) {
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium">Permissions</span>
+        <RadioGroup
+          value={preset}
+          onValueChange={(value) =>
+            onPresetChange(value as ConnectionScopePreset | "custom")
+          }
+        >
+          {(["viewer", "operator", "fullAdmin"] as const).map((name) => (
+            <label
+              key={name}
+              className="flex cursor-pointer items-start gap-3 rounded-md border p-3"
+            >
+              <RadioGroupItem value={name} className="mt-0.5" />
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm font-medium">
+                  {presetMeta[name].label}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {presetMeta[name].description}
+                </span>
+              </span>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <span className="ml-auto inline-flex shrink-0 self-center text-muted-foreground hover:text-foreground" />
+                  }
+                >
+                  <InfoIcon className="size-4" />
+                  <span className="sr-only">
+                    Show {presetMeta[name].label} scopes
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <div className="flex flex-col gap-0.5">
+                    {connectionScopePresets[name].map((scope) => (
+                      <span key={scope} className="font-mono text-xs">
+                        {scope}
+                      </span>
+                    ))}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </label>
+          ))}
+          <label className="flex cursor-pointer items-start gap-3 rounded-md border p-3">
+            <RadioGroupItem value="custom" className="mt-0.5" />
+            <span className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium">Custom</span>
+              <span className="text-xs text-muted-foreground">
+                Pick exactly which permissions to grant.
+              </span>
+            </span>
+          </label>
+        </RadioGroup>
+      </div>
+
+      {preset === "custom" ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {scopeGroups.map((group) => (
+            <div key={group.domain} className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-muted-foreground">
+                {group.label}
+              </span>
+              {group.scopes.map((scope) => {
+                const disabled = !canGrant(scope)
+                return (
+                  <label
+                    key={scope}
+                    className={cn(
+                      "flex items-center gap-2 text-xs",
+                      disabled
+                        ? "cursor-not-allowed opacity-50"
+                        : "cursor-pointer"
+                    )}
+                  >
+                    <Checkbox
+                      checked={customScopes.includes(scope)}
+                      disabled={disabled}
+                      onCheckedChange={() => onToggleScope(scope)}
+                    />
+                    <span className="font-mono">{scope}</span>
+                  </label>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </>
+  )
+}
+
 function CreatePairingLinkDialog({
   endpoints,
   onCreated,
@@ -1001,99 +1112,13 @@ function CreatePairingLinkDialog({
                 />
               </Field>
 
-              <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium">Permissions</span>
-                <RadioGroup
-                  value={preset}
-                  onValueChange={(value) =>
-                    handlePresetChange(
-                      value as ConnectionScopePreset | "custom"
-                    )
-                  }
-                >
-                  {(["viewer", "operator", "fullAdmin"] as const).map(
-                    (name) => (
-                      <label
-                        key={name}
-                        className="flex cursor-pointer items-start gap-3 rounded-md border p-3"
-                      >
-                        <RadioGroupItem value={name} className="mt-0.5" />
-                        <span className="flex flex-col gap-0.5">
-                          <span className="text-sm font-medium">
-                            {presetMeta[name].label}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {presetMeta[name].description}
-                          </span>
-                        </span>
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={
-                              <span className="ml-auto inline-flex shrink-0 self-center text-muted-foreground hover:text-foreground" />
-                            }
-                          >
-                            <InfoIcon className="size-4" />
-                            <span className="sr-only">
-                              Show {presetMeta[name].label} scopes
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-xs">
-                            <div className="flex flex-col gap-0.5">
-                              {connectionScopePresets[name].map((scope) => (
-                                <span key={scope} className="font-mono text-xs">
-                                  {scope}
-                                </span>
-                              ))}
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </label>
-                    )
-                  )}
-                  <label className="flex cursor-pointer items-start gap-3 rounded-md border p-3">
-                    <RadioGroupItem value="custom" className="mt-0.5" />
-                    <span className="flex flex-col gap-0.5">
-                      <span className="text-sm font-medium">Custom</span>
-                      <span className="text-xs text-muted-foreground">
-                        Pick exactly which permissions to grant.
-                      </span>
-                    </span>
-                  </label>
-                </RadioGroup>
-              </div>
-
-              {preset === "custom" ? (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {scopeGroups.map((group) => (
-                    <div key={group.domain} className="flex flex-col gap-1.5">
-                      <span className="text-xs font-medium text-muted-foreground">
-                        {group.label}
-                      </span>
-                      {group.scopes.map((scope) => {
-                        const disabled = !canGrant(scope)
-                        return (
-                          <label
-                            key={scope}
-                            className={cn(
-                              "flex items-center gap-2 text-xs",
-                              disabled
-                                ? "cursor-not-allowed opacity-50"
-                                : "cursor-pointer"
-                            )}
-                          >
-                            <Checkbox
-                              checked={customScopes.includes(scope)}
-                              disabled={disabled}
-                              onCheckedChange={() => toggleCustomScope(scope)}
-                            />
-                            <span className="font-mono">{scope}</span>
-                          </label>
-                        )
-                      })}
-                    </div>
-                  ))}
-                </div>
-              ) : null}
+              <ScopePicker
+                preset={preset}
+                customScopes={customScopes}
+                canGrant={canGrant}
+                onPresetChange={handlePresetChange}
+                onToggleScope={toggleCustomScope}
+              />
 
               <DialogFooter>
                 <DialogClose
@@ -1247,6 +1272,7 @@ function ConnectionRowItem({
           ) : null}
           <ScopeBadge scopes={connection.scopes} />
           <RenameConnectionDialog connection={connection} onRename={onRename} />
+          <EditConnectionScopesDialog connection={connection} />
         </div>
         <span className="truncate text-xs text-muted-foreground">
           {deviceSummary(connection)}
@@ -1339,6 +1365,132 @@ function RenameConnectionDialog({
             </DialogClose>
             <Button type="submit" disabled={pending || !value.trim()}>
               {pending ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function EditConnectionScopesDialog({
+  connection,
+}: {
+  connection: ConnectionRow
+}) {
+  const router = useRouter()
+  const callerScopes = useScopes()
+  const canManage = useHasScopes("connections:manage")
+  const updateScopes = useServerFn(updateConnectionScopesFn)
+  const [open, setOpen] = useState(false)
+  const [pending, setPending] = useState(false)
+
+  const current = connection.scopes as Array<AccessScope>
+  const [preset, setPreset] = useState<ConnectionScopePreset | "custom">(
+    () => matchPreset(current) ?? "custom"
+  )
+  const [customScopes, setCustomScopes] = useState<Array<AccessScope>>(current)
+
+  useEffect(() => {
+    if (!open) {
+      setPreset(matchPreset(current) ?? "custom")
+      setCustomScopes(current)
+    }
+  }, [connection.id, open])
+
+  if (!canManage) {
+    return null
+  }
+
+  const effectiveScopes: Array<AccessScope> =
+    preset === "custom" ? customScopes : connectionScopePresets[preset]
+
+  function canGrant(scope: AccessScope) {
+    return callerScopes === null || callerScopes.includes(scope)
+  }
+
+  function handlePresetChange(next: ConnectionScopePreset | "custom") {
+    if (next === "custom") {
+      setCustomScopes(effectiveScopes)
+    }
+    setPreset(next)
+  }
+
+  function toggleCustomScope(scope: AccessScope) {
+    setCustomScopes((entries) =>
+      entries.includes(scope)
+        ? entries.filter((entry) => entry !== scope)
+        : [...entries, scope]
+    )
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (effectiveScopes.length === 0) {
+      return
+    }
+
+    setPending(true)
+    try {
+      await updateScopes({
+        data: { sessionId: connection.id, scopes: effectiveScopes },
+      })
+      toast.success("Connection permissions updated.")
+      setOpen(false)
+      await router.invalidate()
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update permissions."
+      )
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button variant="ghost" size="icon-xs" />}>
+        <ShieldIcon />
+        <span className="sr-only">Edit permissions</span>
+      </DialogTrigger>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit permissions</DialogTitle>
+          <DialogDescription>
+            Narrowing scopes takes effect immediately on the next request. You
+            can only grant scopes you hold yourself.
+          </DialogDescription>
+        </DialogHeader>
+        <form className="flex flex-col gap-4" onSubmit={submit}>
+          {connection.isCurrent ? (
+            <Alert>
+              <AlertTitle>This is your current connection</AlertTitle>
+              <AlertDescription>
+                Removing your own permissions may lock you out of parts of the
+                dashboard until you pair again.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          <ScopePicker
+            preset={preset}
+            customScopes={customScopes}
+            canGrant={canGrant}
+            onPresetChange={handlePresetChange}
+            onToggleScope={toggleCustomScope}
+          />
+          <DialogFooter>
+            <DialogClose
+              render={
+                <Button variant="outline" type="button" disabled={pending} />
+              }
+            >
+              Cancel
+            </DialogClose>
+            <Button
+              type="submit"
+              disabled={pending || effectiveScopes.length === 0}
+            >
+              {pending ? "Saving..." : "Save permissions"}
             </Button>
           </DialogFooter>
         </form>

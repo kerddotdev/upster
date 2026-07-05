@@ -884,6 +884,18 @@ export async function updateAccessSessionLabel(id: string, label: string) {
   publishEvent({ domain: "sessions", type: "updated", id })
 }
 
+export async function updateAccessSessionScopes(
+  id: string,
+  scopes: Array<AccessScope>
+) {
+  await ensureDatabase()
+  await db
+    .update(accessSessions)
+    .set({ scopesJson: JSON.stringify(scopes) })
+    .where(eq(accessSessions.id, id))
+  publishEvent({ domain: "sessions", type: "updated", id })
+}
+
 export type PairingLink = {
   id: string
   tokenHash: string
