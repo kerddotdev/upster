@@ -45,6 +45,12 @@ changes.
   by Upster. The database stores only a SHA-256 token hash. Redemption uses one
   atomic consume operation so invalid, expired, consumed, and revoked links all
   produce the same failure result.
+- The connections dashboard keeps tokens it just created in volatile page memory
+  so an operator can re-copy the pairing URL or code from the list without
+  reopening the dialog. This memory is never persisted, is scoped to the open
+  page, and is cleared on reload or navigation. The server still returns each
+  token only once and never re-exposes it, so a link created in a previous
+  session cannot be re-copied.
 - The public pairing redeem function is rate limited in memory with a per-IP
   bucket and a global bucket. `x-forwarded-for` is trusted only when
   `UPSTER_TRUST_PROXY=true`; otherwise redeem attempts share the direct bucket

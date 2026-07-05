@@ -1,14 +1,13 @@
-import { useEffect, useState, type FormEvent } from "react"
+import {
+  useEffect,
+  useState,
+  type FormEvent,
+  type ReactElement,
+  type ReactNode,
+} from "react"
 import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import {
-  CheckCircle2Icon,
-  CopyIcon,
-  PencilIcon,
-  PlusIcon,
-  Trash2Icon,
-  XIcon,
-} from "lucide-react"
+import { ChevronDownIcon, CopyIcon, PencilIcon, PlusIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -27,6 +26,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -34,24 +34,33 @@ import {
 } from "@/components/ui/card"
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { QrCode } from "@/components/qr-code"
+import { cn } from "@/lib/utils"
 import {
   createPairingLinkFn,
   getConnectionEndpointsFn,
@@ -95,11 +104,21 @@ function ConnectionsPage() {
   const [pendingConnectionId, setPendingConnectionId] = useState<string | null>(
     null
   )
+  const [createdTokens, setCreatedTokens] = useState<Record<string, string>>({})
+
+  function rememberToken(linkId: string, token: string) {
+    setCreatedTokens((current) => ({ ...current, [linkId]: token }))
+  }
 
   async function handleRevokePairingLink(linkId: string) {
     setPendingPairingLinkId(linkId)
     try {
       await revokePairingLink({ data: { linkId } })
+      setCreatedTokens((current) => {
+        const next = { ...current }
+        delete next[linkId]
+        return next
+      })
       toast.success("Pairing link revoked.")
       await router.invalidate()
     } catch (err) {
@@ -144,8 +163,10 @@ function ConnectionsPage() {
       <PairingCard
         endpoints={endpoints}
         links={pairingLinks}
+        tokens={createdTokens}
         now={now}
         pendingId={pendingPairingLinkId}
+        onCreated={rememberToken}
         onRevoke={handleRevokePairingLink}
       />
 
@@ -156,6 +177,85 @@ function ConnectionsPage() {
         onRevoke={handleRevokeConnection}
       />
     </div>
+  )
+}
+
+function StatusDot({ className, ping }: { className: string; ping?: boolean }) {
+  return (
+    <span className="relative flex size-2.5 shrink-0 items-center justify-center">
+      {ping ? (
+        <span
+          className={cn(
+            "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
+            className
+          )}
+        />
+      ) : null}
+      <span
+        className={cn("relative inline-flex size-2 rounded-full", className)}
+      />
+    </span>
+  )
+}
+
+function ListRows({ children }: { children: ReactNode }) {
+  return (
+    <div className="divide-y divide-border/60 border-t border-border/60">
+      {children}
+    </div>
+  )
+}
+
+function pairingUrlOptions(endpoints: Array<EndpointRow>, token: string) {
+  return endpoints
+    .filter((endpoint) => endpoint.origin)
+    .map((endpoint) => ({
+      id: endpoint.id,
+      label: endpoint.label,
+      url: buildPairingUrl(endpoint.origin as string, token),
+    }))
+}
+
+function CopyPairingMenu({
+  token,
+  endpoints,
+  trigger,
+}: {
+  token: string
+  endpoints: Array<EndpointRow>
+  trigger: ReactElement
+}) {
+  const options = pairingUrlOptions(endpoints, token)
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={trigger} />
+      <DropdownMenuContent align="end" className="w-auto min-w-56">
+        {options.length ? (
+          <>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Copy pairing URL</DropdownMenuLabel>
+              {options.map((option) => (
+                <DropdownMenuItem
+                  key={option.id}
+                  onClick={() =>
+                    void copyText(option.url, `${option.label} URL copied.`)
+                  }
+                >
+                  {option.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+          </>
+        ) : null}
+        <DropdownMenuItem
+          onClick={() => void copyText(token, "Pairing code copied.")}
+        >
+          Copy code only
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
@@ -186,69 +286,155 @@ function EndpointHints({ endpoint }: { endpoint: EndpointRow }) {
 function PairingCard({
   endpoints,
   links,
+  tokens,
   now,
   pendingId,
+  onCreated,
   onRevoke,
 }: {
   endpoints: Array<EndpointRow>
   links: Array<PairingLinkRow>
+  tokens: Record<string, string>
   now: number
   pendingId: string | null
+  onCreated: (linkId: string, token: string) => void
   onRevoke: (linkId: string) => Promise<void>
 }) {
   return (
     <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex flex-col gap-1">
-          <CardTitle>Pairing links</CardTitle>
-          <CardDescription>
-            Create a short-lived link for the browser you want to pair.
-          </CardDescription>
-        </div>
-        <CreatePairingLinkDialog endpoints={endpoints} />
+      <CardHeader>
+        <CardTitle>Pairing links</CardTitle>
+        <CardDescription>
+          Create a short-lived link for the browser you want to pair.
+        </CardDescription>
+        <CardAction>
+          <CreatePairingLinkDialog endpoints={endpoints} onCreated={onCreated} />
+        </CardAction>
       </CardHeader>
-      <CardContent>
-        {links.length ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Label</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Expires</TableHead>
-                <TableHead className="w-20 text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {links.map((link) => (
-                <TableRow key={link.id}>
-                  <TableCell className="font-medium">{link.label}</TableCell>
-                  <TableCell>{formatDateTime(link.createdAt)}</TableCell>
-                  <TableCell>{formatCountdown(link.expiresAt, now)}</TableCell>
-                  <TableCell className="text-right">
-                    <RevokePairingLinkButton
-                      link={link}
-                      pending={pendingId === link.id}
-                      onRevoke={onRevoke}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        ) : (
-          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-            No active pairing links.
-          </div>
-        )}
-      </CardContent>
+      {links.length ? (
+        <ListRows>
+          {links.map((link) => (
+            <PairingLinkRow
+              key={link.id}
+              link={link}
+              endpoints={endpoints}
+              token={tokens[link.id]}
+              now={now}
+              pending={pendingId === link.id}
+              onRevoke={onRevoke}
+            />
+          ))}
+        </ListRows>
+      ) : (
+        <CardContent>
+          <Empty className="border p-8">
+            <EmptyHeader>
+              <EmptyTitle>No active pairing links</EmptyTitle>
+              <EmptyDescription>
+                New pairing links you create will show up here until they are
+                used or expire.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        </CardContent>
+      )}
     </Card>
+  )
+}
+
+function PairingLinkRow({
+  link,
+  endpoints,
+  token,
+  now,
+  pending,
+  onRevoke,
+}: {
+  link: PairingLinkRow
+  endpoints: Array<EndpointRow>
+  token: string | undefined
+  now: number
+  pending: boolean
+  onRevoke: (linkId: string) => Promise<void>
+}) {
+  const countdown = formatCountdown(link.expiresAt, now)
+  const expiryLabel =
+    countdown === "Expired" ? "Expired" : `Expires in ${countdown}`
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-3">
+      <StatusDot className="bg-amber-500" />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span
+          className="truncate text-sm font-medium"
+          title={`Created ${formatDateTime(link.createdAt)}`}
+        >
+          {link.label}
+        </span>
+        <span className="text-xs text-muted-foreground">{expiryLabel}</span>
+      </div>
+      {token ? (
+        <CopyPairingMenu
+          token={token}
+          endpoints={endpoints}
+          trigger={
+            <Button variant="outline" size="sm">
+              <CopyIcon data-icon="inline-start" />
+              Copy
+              <ChevronDownIcon data-icon="inline-end" />
+            </Button>
+          }
+        />
+      ) : null}
+      <RevokePairingLinkButton
+        link={link}
+        pending={pending}
+        onRevoke={onRevoke}
+      />
+    </div>
+  )
+}
+
+function EndpointSegmented({
+  endpoints,
+  value,
+  onChange,
+}: {
+  endpoints: Array<EndpointRow>
+  value: string
+  onChange: (id: string) => void
+}) {
+  if (endpoints.length < 2) {
+    return null
+  }
+
+  return (
+    <div className="flex w-full gap-1 rounded-lg bg-muted p-1">
+      {endpoints.map((endpoint) => (
+        <button
+          key={endpoint.id}
+          type="button"
+          onClick={() => onChange(endpoint.id)}
+          className={cn(
+            "min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/30",
+            endpoint.id === value
+              ? "bg-background text-foreground ring-1 ring-foreground/10"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {endpoint.label}
+        </button>
+      ))}
+    </div>
   )
 }
 
 function CreatePairingLinkDialog({
   endpoints,
+  onCreated,
 }: {
   endpoints: Array<EndpointRow>
+  onCreated: (linkId: string, token: string) => void
 }) {
   const router = useRouter()
   const createPairingLink = useServerFn(createPairingLinkFn)
@@ -282,6 +468,7 @@ function CreatePairingLinkDialog({
       })
       setCreated(result)
       setSelectedEndpointId(endpoints[0]?.id ?? "")
+      onCreated(result.link.id, result.token)
       toast.success("Pairing link created.")
       await router.invalidate()
     } catch (err) {
@@ -300,6 +487,11 @@ function CreatePairingLinkDialog({
     setPending(false)
   }
 
+  const url =
+    created && selectedEndpoint?.origin
+      ? buildPairingUrl(selectedEndpoint.origin, created.token)
+      : null
+
   return (
     <Dialog
       open={open}
@@ -314,113 +506,118 @@ function CreatePairingLinkDialog({
         <PlusIcon data-icon="inline-start" />
         New pairing link
       </DialogTrigger>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>New pairing link</DialogTitle>
-          <DialogDescription>
-            The token is shown once and expires after 5 minutes.
-          </DialogDescription>
-        </DialogHeader>
-
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
         {created ? (
-          <div className="flex flex-col gap-4">
-            <Alert>
-              <CheckCircle2Icon />
-              <AlertTitle>Pairing link ready</AlertTitle>
-              <AlertDescription>
-                This link is shown only once and expires in 5 minutes.
-              </AlertDescription>
-            </Alert>
+          <>
+            <DialogHeader>
+              <DialogTitle>Pairing link ready</DialogTitle>
+              <DialogDescription>
+                Scan or copy it now - it is shown once and expires in 5 minutes.
+              </DialogDescription>
+            </DialogHeader>
 
-            <Tabs
-              value={selectedEndpoint?.id ?? ""}
-              onValueChange={setSelectedEndpointId}
-            >
-              <TabsList className="max-w-full overflow-x-auto">
-                {endpoints.map((endpoint) => (
-                  <TabsTrigger key={endpoint.id} value={endpoint.id}>
-                    {endpoint.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              {endpoints.map((endpoint) => {
-                const url = endpoint.origin
-                  ? buildPairingUrl(endpoint.origin, created.token)
-                  : null
+            <div className="flex min-w-0 flex-col gap-4">
+              <EndpointSegmented
+                endpoints={endpoints}
+                value={selectedEndpoint?.id ?? ""}
+                onChange={setSelectedEndpointId}
+              />
 
-                return (
-                  <TabsContent
-                    key={endpoint.id}
-                    value={endpoint.id}
-                    className="flex flex-col gap-3"
-                  >
-                    {url ? (
-                      <>
-                        <div className="flex flex-col gap-2 rounded-lg border p-3">
-                          <div className="text-xs font-medium">Pairing URL</div>
-                          <code className="rounded bg-muted px-2 py-1.5 font-mono text-[0.6875rem] break-all">
-                            {url}
-                          </code>
-                          <div className="flex flex-wrap gap-2">
+              {url ? (
+                <>
+                  <div className="flex flex-col items-center gap-3">
+                    <QrCode value={url} className="w-44" />
+                    <p className="text-center text-xs text-muted-foreground">
+                      Scan from the device you want to pair.
+                    </p>
+                  </div>
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Pairing URL
+                    </span>
+                    <code className="block w-full overflow-x-auto rounded-md bg-muted px-2.5 py-2 font-mono text-xs whitespace-nowrap">
+                      {url}
+                    </code>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        className="flex-1"
+                        onClick={() =>
+                          void copyText(url, "Pairing URL copied.")
+                        }
+                      >
+                        <CopyIcon data-icon="inline-start" />
+                        Copy pairing URL
+                      </Button>
+                      {created ? (
+                        <CopyPairingMenu
+                          token={created.token}
+                          endpoints={endpoints}
+                          trigger={
                             <Button
                               type="button"
-                              size="sm"
                               variant="outline"
-                              onClick={() =>
-                                void copyText(url, "Pairing URL copied.")
-                              }
+                              size="icon"
+                              aria-label="More copy options"
                             >
-                              <CopyIcon data-icon="inline-start" />
-                              Copy URL
+                              <ChevronDownIcon />
                             </Button>
-                          </div>
-                        </div>
-                        <div className="grid gap-3 sm:grid-cols-[12rem_1fr]">
-                          <QrCode value={url} className="w-48 max-w-full" />
-                          <div className="flex flex-col justify-center gap-1 text-sm text-muted-foreground">
-                            <div className="font-medium text-foreground">
-                              Scan from the device you want to pair.
-                            </div>
-                            <div>
-                              Use the origin that device will use for the
-                              dashboard.
-                            </div>
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <Alert>
-                        <AlertTitle>Tailscale setup required</AlertTitle>
-                        <AlertDescription>
-                          Run bun run tailscale:setup on the host, then reopen
-                          this dialog.
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                    <EndpointHints endpoint={endpoint} />
-                  </TabsContent>
-                )
-              })}
-            </Tabs>
-          </div>
+                          }
+                        />
+                      ) : null}
+                    </div>
+                  </div>
+                  {selectedEndpoint ? (
+                    <EndpointHints endpoint={selectedEndpoint} />
+                  ) : null}
+                </>
+              ) : (
+                <Alert>
+                  <AlertTitle>Tailscale setup required</AlertTitle>
+                  <AlertDescription>
+                    Run bun run tailscale:setup on the host, then reopen this
+                    dialog.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline" />}>Done</DialogClose>
+            </DialogFooter>
+          </>
         ) : (
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-            <Field>
-              <FieldLabel htmlFor="connectionLabel">Label</FieldLabel>
-              <Input
-                id="connectionLabel"
-                value={label}
-                onChange={(event) => setLabel(event.target.value)}
-                maxLength={64}
-                autoFocus
-                required
-                placeholder="Work laptop"
-              />
-            </Field>
-            <Button type="submit" disabled={pending || !label.trim()}>
-              {pending ? "Creating..." : "Create pairing link"}
-            </Button>
-          </form>
+          <>
+            <DialogHeader>
+              <DialogTitle>New pairing link</DialogTitle>
+              <DialogDescription>
+                Name the browser you want to pair. The link is shown once and
+                expires after 5 minutes.
+              </DialogDescription>
+            </DialogHeader>
+            <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+              <Field>
+                <FieldLabel htmlFor="connectionLabel">Label</FieldLabel>
+                <Input
+                  id="connectionLabel"
+                  value={label}
+                  onChange={(event) => setLabel(event.target.value)}
+                  maxLength={64}
+                  autoFocus
+                  required
+                  placeholder="Work laptop"
+                />
+              </Field>
+              <DialogFooter>
+                <DialogClose render={<Button variant="outline" type="button" />}>
+                  Cancel
+                </DialogClose>
+                <Button type="submit" disabled={pending || !label.trim()}>
+                  {pending ? "Creating..." : "Create pairing link"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </>
         )}
       </DialogContent>
     </Dialog>
@@ -438,9 +635,8 @@ function RevokePairingLinkButton({
 }) {
   return (
     <AlertDialog>
-      <AlertDialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
-        <Trash2Icon />
-        <span className="sr-only">Revoke pairing link</span>
+      <AlertDialogTrigger render={<Button variant="destructive" size="sm" />}>
+        Revoke
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -483,97 +679,108 @@ function ConnectionsCard({
           Permanent browser credentials can be renamed or revoked here.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        {connections.length ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Label</TableHead>
-                <TableHead>Device</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Last seen</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-20 text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {connections.map((connection) => (
-                <TableRow key={connection.id}>
-                  <TableCell className="min-w-56">
-                    <ConnectionLabelCell
-                      connection={connection}
-                      onRename={onRename}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <DeviceSummary connection={connection} />
-                  </TableCell>
-                  <TableCell>{formatDateTime(connection.createdAt)}</TableCell>
-                  <TableCell>
-                    {formatNullableDate(connection.lastSeenAt)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {connection.connectedNow ? (
-                        <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
-                          Connected now
-                        </Badge>
-                      ) : null}
-                      {connection.isCurrent ? (
-                        <Badge variant="outline">This device</Badge>
-                      ) : null}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <RevokeConnectionButton
-                      connection={connection}
-                      pending={pendingId === connection.id}
-                      onRevoke={onRevoke}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        ) : (
-          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-            No paired connections yet.
-          </div>
-        )}
-      </CardContent>
+      {connections.length ? (
+        <ListRows>
+          {connections.map((connection) => (
+            <ConnectionRowItem
+              key={connection.id}
+              connection={connection}
+              pending={pendingId === connection.id}
+              onRename={onRename}
+              onRevoke={onRevoke}
+            />
+          ))}
+        </ListRows>
+      ) : (
+        <CardContent>
+          <Empty className="border p-8">
+            <EmptyHeader>
+              <EmptyTitle>No paired connections yet</EmptyTitle>
+              <EmptyDescription>
+                Pair a browser with a link above and it will appear here with
+                permanent access.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        </CardContent>
+      )}
     </Card>
   )
 }
 
-function ConnectionLabelCell({
+function ConnectionRowItem({
+  connection,
+  pending,
+  onRename,
+  onRevoke,
+}: {
+  connection: ConnectionRow
+  pending: boolean
+  onRename: (sessionId: string, label: string) => Promise<void>
+  onRevoke: (sessionId: string) => Promise<void>
+}) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3">
+      <StatusDot
+        className={
+          connection.connectedNow ? "bg-emerald-500" : "bg-muted-foreground/40"
+        }
+        ping={connection.connectedNow}
+      />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-medium">
+            {connection.label}
+          </span>
+          {connection.isCurrent ? (
+            <Badge variant="outline" className="shrink-0">
+              This device
+            </Badge>
+          ) : null}
+          <RenameConnectionDialog connection={connection} onRename={onRename} />
+        </div>
+        <span className="truncate text-xs text-muted-foreground">
+          {deviceSummary(connection)}
+        </span>
+      </div>
+      <RevokeConnectionButton
+        connection={connection}
+        pending={pending}
+        onRevoke={onRevoke}
+      />
+    </div>
+  )
+}
+
+function RenameConnectionDialog({
   connection,
   onRename,
 }: {
   connection: ConnectionRow
   onRename: (sessionId: string, label: string) => Promise<void>
 }) {
-  const [editing, setEditing] = useState(false)
+  const [open, setOpen] = useState(false)
   const [value, setValue] = useState(connection.label)
   const [pending, setPending] = useState(false)
 
   useEffect(() => {
-    if (!editing) {
+    if (!open) {
       setValue(connection.label)
     }
-  }, [connection.label, editing])
+  }, [connection.label, open])
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const trimmed = value.trim()
     if (!trimmed || trimmed === connection.label) {
-      setEditing(false)
+      setOpen(false)
       return
     }
 
     setPending(true)
     try {
       await onRename(connection.id, trimmed)
-      setEditing(false)
+      setOpen(false)
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to rename connection."
@@ -583,65 +790,46 @@ function ConnectionLabelCell({
     }
   }
 
-  if (editing) {
-    return (
-      <form className="flex min-w-60 items-center gap-2" onSubmit={submit}>
-        <Input
-          aria-label="Connection label"
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          maxLength={64}
-          autoFocus
-        />
-        <Button size="sm" type="submit" disabled={pending || !value.trim()}>
-          Save
-        </Button>
-        <Button
-          size="icon-sm"
-          type="button"
-          variant="ghost"
-          disabled={pending}
-          onClick={() => setEditing(false)}
-        >
-          <XIcon />
-          <span className="sr-only">Cancel rename</span>
-        </Button>
-      </form>
-    )
-  }
-
   return (
-    <div className="flex min-w-0 items-center gap-2">
-      <span className="truncate font-medium">{connection.label}</span>
-      <Button
-        size="icon-xs"
-        variant="ghost"
-        type="button"
-        onClick={() => setEditing(true)}
-      >
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button variant="ghost" size="icon-xs" />}>
         <PencilIcon />
         <span className="sr-only">Rename connection</span>
-      </Button>
-    </div>
-  )
-}
-
-function DeviceSummary({ connection }: { connection: ConnectionRow }) {
-  const browser = connection.metadata.browser ?? "Unknown browser"
-  const os = connection.metadata.os
-  const device = connection.metadata.device
-
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="font-medium">
-        {browser}
-        {os ? ` on ${os}` : ""}
-      </div>
-      <div className="flex flex-wrap gap-1 text-xs text-muted-foreground">
-        {device ? <span>{device}</span> : null}
-        {connection.remoteAddr ? <span>{connection.remoteAddr}</span> : null}
-      </div>
-    </div>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Rename connection</DialogTitle>
+          <DialogDescription>
+            Update the label shown for this browser.
+          </DialogDescription>
+        </DialogHeader>
+        <form className="flex flex-col gap-4" onSubmit={submit}>
+          <Field>
+            <FieldLabel htmlFor="renameLabel">Label</FieldLabel>
+            <Input
+              id="renameLabel"
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+              maxLength={64}
+              autoFocus
+              required
+            />
+          </Field>
+          <DialogFooter>
+            <DialogClose
+              render={
+                <Button variant="outline" type="button" disabled={pending} />
+              }
+            >
+              Cancel
+            </DialogClose>
+            <Button type="submit" disabled={pending || !value.trim()}>
+              {pending ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -656,23 +844,16 @@ function RevokeConnectionButton({
 }) {
   if (connection.isCurrent) {
     return (
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        disabled
-        title="Use logout instead"
-      >
-        <Trash2Icon />
-        <span className="sr-only">Use logout instead</span>
+      <Button variant="ghost" size="sm" disabled title="Use logout instead">
+        Revoke
       </Button>
     )
   }
 
   return (
     <AlertDialog>
-      <AlertDialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
-        <Trash2Icon />
-        <span className="sr-only">Revoke connection</span>
+      <AlertDialogTrigger render={<Button variant="destructive" size="sm" />}>
+        Revoke
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -695,6 +876,21 @@ function RevokeConnectionButton({
       </AlertDialogContent>
     </AlertDialog>
   )
+}
+
+function deviceSummary(connection: ConnectionRow) {
+  const browser = connection.metadata.browser ?? "Unknown browser"
+  const os = connection.metadata.os
+  const bits = [
+    os ? `${browser} on ${os}` : browser,
+    connection.metadata.device,
+    connection.remoteAddr,
+    connection.connectedNow
+      ? "Active now"
+      : `Last seen ${formatNullableDate(connection.lastSeenAt)}`,
+  ].filter(Boolean)
+
+  return bits.join(" · ")
 }
 
 function useNow() {
@@ -729,7 +925,7 @@ function formatDateTime(value: string) {
 }
 
 function formatNullableDate(value: string | null) {
-  return value ? formatDateTime(value) : "Never"
+  return value ? formatDateTime(value) : "never"
 }
 
 function formatCountdown(value: string, now: number) {
