@@ -1,13 +1,16 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
+import { accessScopes, scopesIncludeAll } from "@upster/core"
 
 import { requireScopes } from "@/features/auth/scope-middleware"
+import { ScopeDeniedError } from "@/features/auth/scope-error"
 import type { ParsedUserAgent } from "@/features/connections/user-agent"
 
 const labelSchema = z.string().trim().min(1).max(64)
 
 const createPairingLinkSchema = z.object({
   label: labelSchema,
+  scopes: z.array(z.enum(accessScopes)).min(1),
 })
 
 const linkIdSchema = z.object({
@@ -32,6 +35,7 @@ type SerializedPairingLink = {
   consumedAt: string | null
   connectionSessionId: string | null
   revokedAt: string | null
+  scopes: Array<string>
 }
 
 type SerializedConnection = {
@@ -60,6 +64,7 @@ function serializePairingLink(link: SerializedPairingLink) {
     consumedAt: link.consumedAt,
     connectionSessionId: link.connectionSessionId,
     revokedAt: link.revokedAt,
+    scopes: link.scopes,
   }
 }
 
@@ -86,6 +91,15 @@ export const createPairingLinkFn = createServerFn({ method: "POST" })
     const { PAIRING_LINK_TTL_SECONDS, createPairingToken, hashPairingToken } =
       await import("@/features/connections/pairing-token.server")
 
+    const requestedScopes = Array.from(new Set(data.scopes))
+    if (!scopesIncludeAll(context.session.scopes, requestedScopes)) {
+      throw new ScopeDeniedError(
+        requestedScopes.filter(
+          (scope) => !context.session.scopes.includes(scope)
+        )
+      )
+    }
+
     const token = createPairingToken()
     const link = await createPairingLink({
       tokenHash: hashPairingToken(token),
@@ -94,6 +108,7 @@ export const createPairingLinkFn = createServerFn({ method: "POST" })
       expiresAt: new Date(
         Date.now() + PAIRING_LINK_TTL_SECONDS * 1000
       ).toISOString(),
+      scopes: requestedScopes,
     })
 
     return { token, link: serializePairingLink(link) }

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 
 import { and, desc, eq, gt, isNotNull, isNull, sql } from "drizzle-orm"
-import type { AccessScope } from "@upster/core"
+import { adminScopes, isAccessScope, type AccessScope } from "@upster/core"
 
 import { db, ensureDatabase } from "@/db/client.server"
 import { publishEvent } from "@/features/events/event-bus.server"
@@ -848,10 +848,48 @@ export type PairingLink = {
   consumedAt: string | null
   connectionSessionId: string | null
   revokedAt: string | null
+  scopes: Array<AccessScope>
+}
+
+export function parsePairingLinkScopes(
+  scopesJson: string | null | undefined
+): Array<AccessScope> {
+  if (!scopesJson || scopesJson.trim() === "") {
+    return [...adminScopes]
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(scopesJson)
+  } catch {
+    return [...adminScopes]
+  }
+
+  if (!Array.isArray(parsed)) {
+    return [...adminScopes]
+  }
+
+  const scopes = parsed.filter(
+    (scope): scope is AccessScope =>
+      typeof scope === "string" && isAccessScope(scope)
+  )
+
+  return scopes.length ? scopes : [...adminScopes]
 }
 
 function parsePairingLink(row: typeof pairingLinks.$inferSelect): PairingLink {
-  return row
+  return {
+    id: row.id,
+    tokenHash: row.tokenHash,
+    label: row.label,
+    createdBy: row.createdBy,
+    createdAt: row.createdAt,
+    expiresAt: row.expiresAt,
+    consumedAt: row.consumedAt,
+    connectionSessionId: row.connectionSessionId,
+    revokedAt: row.revokedAt,
+    scopes: parsePairingLinkScopes(row.scopesJson),
+  }
 }
 
 export async function createPairingLink(input: {
@@ -859,6 +897,7 @@ export async function createPairingLink(input: {
   label: string
   createdBy: string
   expiresAt: string
+  scopes: Array<AccessScope>
 }) {
   await ensureDatabase()
   const record = {
@@ -871,6 +910,7 @@ export async function createPairingLink(input: {
     consumedAt: null,
     connectionSessionId: null,
     revokedAt: null,
+    scopesJson: JSON.stringify(input.scopes),
   }
 
   await db.insert(pairingLinks).values(record)

@@ -44,6 +44,7 @@ export const redeemPairingTokenFn = createServerFn({ method: "POST" })
       label: link.label,
       userAgent,
       remoteAddr,
+      scopes: link.scopes,
       metadata: parseUserAgent(userAgent),
     })
 

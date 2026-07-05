@@ -199,6 +199,7 @@ export const pairingLinks = sqliteTable("pairing_links", {
   consumedAt: text("consumed_at"),
   connectionSessionId: text("connection_session_id"),
   revokedAt: text("revoked_at"),
+  scopesJson: text("scopes_json").notNull().default("[]"),
 })
 
 export const runtimeInstances = sqliteTable("runtime_instances", {

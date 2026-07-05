@@ -9,6 +9,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { ChevronDownIcon, CopyIcon, PencilIcon, PlusIcon } from "lucide-react"
 import { toast } from "sonner"
+import { connectionScopePresets } from "@upster/core"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
@@ -666,7 +667,10 @@ function CreatePairingLinkDialog({
     setPending(true)
     try {
       const result = await createPairingLink({
-        data: { label: trimmedLabel },
+        data: {
+          label: trimmedLabel,
+          scopes: connectionScopePresets.fullAdmin,
+        },
       })
       setCreated(result)
       setSelectedEndpointId(endpoints[0]?.id ?? "")

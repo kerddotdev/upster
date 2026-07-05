@@ -167,7 +167,8 @@ async function runMigrations() {
         expires_at TEXT NOT NULL,
         consumed_at TEXT,
         connection_session_id TEXT,
-        revoked_at TEXT
+        revoked_at TEXT,
+        scopes_json TEXT NOT NULL DEFAULT '[]'
       )`,
       `CREATE TABLE IF NOT EXISTS runtime_instances (
         id TEXT PRIMARY KEY,
@@ -253,4 +254,10 @@ async function runMigrations() {
     )`
   )
   await recordMigration("0006_connections_pairing_links")
+
+  await addColumnIfMissing(
+    "pairing_links",
+    `scopes_json TEXT NOT NULL DEFAULT '[]'`
+  )
+  await recordMigration("0007_pairing_link_scopes")
 }
