@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start"
 
-import { authMiddleware } from "@/features/auth/auth-middleware"
+import { requireScopes } from "@/features/auth/scope-middleware"
 
 async function assertLocalAdmin() {
   const { isAdminPassphraseAllowedForCurrentRequest } =
@@ -12,7 +12,7 @@ async function assertLocalAdmin() {
 }
 
 export const getTailscaleStatusFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("connections:read")])
   .handler(async () => {
     const { getTailscaleStatus } =
       await import("@/features/tailscale/tailscale-control.server")
@@ -21,7 +21,7 @@ export const getTailscaleStatusFn = createServerFn({ method: "GET" })
   })
 
 export const startTailscaleLoginFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("connections:manage")])
   .handler(async () => {
     await assertLocalAdmin()
     const { startTailscaleLogin } =
@@ -31,7 +31,7 @@ export const startTailscaleLoginFn = createServerFn({ method: "POST" })
   })
 
 export const enableTailscaleServeFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("connections:manage")])
   .handler(async () => {
     await assertLocalAdmin()
     const { enableTailscaleServe } =
@@ -41,7 +41,7 @@ export const enableTailscaleServeFn = createServerFn({ method: "POST" })
   })
 
 export const disableTailscaleServeFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("connections:manage")])
   .handler(async () => {
     const { disableTailscaleServe } =
       await import("@/features/tailscale/tailscale-control.server")

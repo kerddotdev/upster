@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
-import { authMiddleware } from "@/features/auth/auth-middleware"
+import { requireScopes } from "@/features/auth/scope-middleware"
 import { getRunLogs } from "@/db/repositories.server"
 import {
   createPill,
@@ -69,50 +69,50 @@ const stopPillSchema = z.object({
 })
 
 export const listPillsFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("pills:read")])
   .handler(() => getPills())
 
 export const getPillStatusFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("pills:read")])
   .validator((data: unknown) => pillIdSchema.parse(data))
   .handler(({ data }) => getPillStatus(data))
 
 export const getPillDiagnosticsFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("pills:read")])
   .validator((data: unknown) => pillIdSchema.parse(data))
   .handler(({ data }) => getPillDiagnostics(data.pillId))
 
 export const getRunLogsFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("logs:read")])
   .validator((data: unknown) => runIdSchema.parse(data))
   .handler(({ data }) => getRunLogs(data.runId))
 
 export const clearPillDiagnosticsFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("pills:delete")])
   .validator((data: unknown) => pillIdSchema.parse(data))
   .handler(({ data }) => clearPillDiagnostics(data.pillId))
 
 export const createPillFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("pills:write")])
   .validator((data: unknown) => createPillSchema.parse(data))
   .handler(({ data }) => createPill(data))
 
 export const updatePillFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("pills:write")])
   .validator((data: unknown) => updatePillSchema.parse(data))
   .handler(({ data }) => updatePill(data))
 
 export const deletePillFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("pills:delete")])
   .validator((data: unknown) => deletePillSchema.parse(data))
   .handler(({ data }) => deletePill(data))
 
 export const startPillFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("runs:start")])
   .validator((data: unknown) => startPillSchema.parse(data))
   .handler(({ data }) => startPillRuntime(data))
 
 export const stopPillFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("runs:stop")])
   .validator((data: unknown) => stopPillSchema.parse(data))
   .handler(({ data }) => stopPillRun(data))

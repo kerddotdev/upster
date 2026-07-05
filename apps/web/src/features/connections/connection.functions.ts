@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
-import { authMiddleware } from "@/features/auth/auth-middleware"
+import { requireScopes } from "@/features/auth/scope-middleware"
 import type { ParsedUserAgent } from "@/features/connections/user-agent"
 
 const labelSchema = z.string().trim().min(1).max(64)
@@ -79,7 +79,7 @@ function serializeConnectionMetadata(
 }
 
 export const createPairingLinkFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("connections:manage")])
   .validator((data: unknown) => createPairingLinkSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { createPairingLink } = await import("@/db/repositories.server")
@@ -100,7 +100,7 @@ export const createPairingLinkFn = createServerFn({ method: "POST" })
   })
 
 export const listPairingLinksFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("connections:read")])
   .handler(async () => {
     const { listPairingLinks } = await import("@/db/repositories.server")
     const now = new Date().toISOString()
@@ -113,7 +113,7 @@ export const listPairingLinksFn = createServerFn({ method: "GET" })
   })
 
 export const revokePairingLinkFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("connections:manage")])
   .validator((data: unknown) => linkIdSchema.parse(data))
   .handler(async ({ data }) => {
     const { revokePairingLink } = await import("@/db/repositories.server")
@@ -123,7 +123,7 @@ export const revokePairingLinkFn = createServerFn({ method: "POST" })
   })
 
 export const listConnectionsFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("connections:read")])
   .handler(async ({ context }): Promise<Array<SerializedConnection>> => {
     const { listAccessSessions } = await import("@/db/repositories.server")
     const now = Date.now()
@@ -150,7 +150,7 @@ export const listConnectionsFn = createServerFn({ method: "GET" })
   })
 
 export const renameConnectionFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("connections:manage")])
   .validator((data: unknown) => renameConnectionSchema.parse(data))
   .handler(async ({ data }) => {
     const { getAccessSession, updateAccessSessionLabel } =
@@ -166,7 +166,7 @@ export const renameConnectionFn = createServerFn({ method: "POST" })
   })
 
 export const revokeConnectionFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("connections:manage")])
   .validator((data: unknown) => revokeConnectionSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { getAccessSession, revokeAccessSession } =
@@ -189,7 +189,7 @@ export const revokeConnectionFn = createServerFn({ method: "POST" })
   })
 
 export const getConnectionEndpointsFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("connections:read")])
   .handler(async () => {
     const { getRequest } = await import("@tanstack/react-start/server")
     const { getUpsterConfig } = await import("@/config/env.server")

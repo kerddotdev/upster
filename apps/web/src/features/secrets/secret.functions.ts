@@ -1,10 +1,10 @@
 import { createServerFn } from "@tanstack/react-start"
 import { vaultSaveSchema, vaultUnlockSchema } from "@upster/core"
 
-import { authMiddleware } from "@/features/auth/auth-middleware"
+import { requireScopes } from "@/features/auth/scope-middleware"
 
 export const getCloudflareVaultStatusFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("vault:status")])
   .handler(async () => {
     const { getVaultStatus } =
       await import("@/features/secrets/vault-session.server")
@@ -13,7 +13,7 @@ export const getCloudflareVaultStatusFn = createServerFn({ method: "GET" })
   })
 
 export const saveCloudflareVaultFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("vault:write")])
   .validator((data: unknown) => vaultSaveSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { saveCloudflareVaultInteractive } =
@@ -26,7 +26,7 @@ export const saveCloudflareVaultFn = createServerFn({ method: "POST" })
   })
 
 export const unlockCloudflareVaultFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("vault:unlock")])
   .validator((data: unknown) => vaultUnlockSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { unlockCloudflareVault } =
@@ -39,7 +39,7 @@ export const unlockCloudflareVaultFn = createServerFn({ method: "POST" })
   })
 
 export const lockCloudflareVaultFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("vault:unlock")])
   .handler(async () => {
     const { lockCloudflareVault } =
       await import("@/features/secrets/vault-session.server")
@@ -50,7 +50,7 @@ export const lockCloudflareVaultFn = createServerFn({ method: "POST" })
 export const deleteCloudflareVaultFn = createServerFn({
   method: "POST",
 })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("vault:delete")])
   .handler(async () => {
     const { deleteCloudflareVaultInteractive } =
       await import("@/features/secrets/vault-session.server")

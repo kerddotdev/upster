@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
-import { authMiddleware } from "@/features/auth/auth-middleware"
+import { requireScopes } from "@/features/auth/scope-middleware"
 
 const runtimeSettingsSchema = z.object({
   appPortRange: z.string().trim().min(1).optional(),
@@ -15,7 +15,7 @@ const cloudflaredBinSchema = z.object({
 })
 
 export const getRuntimeSettingsFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("settings:read")])
   .handler(async () => {
     const { getUpsterConfig } = await import("@/config/env.server")
     const { getRuntimeSettingsView } = await import("@/config/settings.server")
@@ -35,7 +35,7 @@ export const getRuntimeSettingsFn = createServerFn({ method: "GET" })
   })
 
 export const updateRuntimeSettingsFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("settings:write")])
   .validator((data: unknown) => runtimeSettingsSchema.parse(data))
   .handler(async ({ data }) => {
     const { updateRuntimeSettings } = await import("@/config/settings.server")
@@ -45,7 +45,7 @@ export const updateRuntimeSettingsFn = createServerFn({ method: "POST" })
   })
 
 export const updateCloudflaredBinFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("settings:write")])
   .validator((data: unknown) => cloudflaredBinSchema.parse(data))
   .handler(async ({ data }) => {
     const { isAdminPassphraseAllowedForCurrentRequest } =
