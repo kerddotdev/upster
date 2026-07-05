@@ -1,19 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { readRequestOriginInfoFromHeaders } from "@/features/auth/admin-origin"
-import { verifyRequestSession } from "@/features/auth/session.server"
+import { authorizeApiRequest } from "@/features/auth/api-scope.server"
 import { createCapsuleArchive } from "@/features/capsules/capsule-archive.server"
 
 export const Route = createFileRoute("/api/capsules/$capsuleId/archive")({
   server: {
     handlers: {
       GET: async ({ params, request }) => {
-        const session = await verifyRequestSession(
-          request.headers.get("cookie"),
-          readRequestOriginInfoFromHeaders(request.headers)
-        )
-        if (!session) {
-          return Response.json({ error: "Unauthorized" }, { status: 401 })
+        const auth = await authorizeApiRequest(request, "capsules:read")
+        if (!auth.ok) {
+          return Response.json({ error: auth.message }, { status: auth.status })
         }
 
         const archive = await createCapsuleArchive(params.capsuleId)

@@ -8,7 +8,7 @@ import {
 
 export type ApiAuthResult =
   | { ok: true; session: SessionContext }
-  | { ok: false; response: Response }
+  | { ok: false; status: 401 | 403; message: string }
 
 export async function authorizeApiRequest(
   request: Request,
@@ -20,14 +20,11 @@ export async function authorizeApiRequest(
   )
 
   if (!session) {
-    return {
-      ok: false,
-      response: new Response("Unauthorized", { status: 401 }),
-    }
+    return { ok: false, status: 401, message: "Unauthorized" }
   }
 
   if (!scopesIncludeAll(session.scopes, requiredScopes)) {
-    return { ok: false, response: new Response("Forbidden", { status: 403 }) }
+    return { ok: false, status: 403, message: "Forbidden" }
   }
 
   return { ok: true, session }

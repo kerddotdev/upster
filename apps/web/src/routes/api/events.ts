@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { readRequestOriginInfoFromHeaders } from "@/features/auth/admin-origin"
-import { verifyRequestSession } from "@/features/auth/session.server"
+import { authorizeApiRequest } from "@/features/auth/api-scope.server"
 import { subscribeEvents } from "@/features/events/event-bus.server"
 
 function formatSse(data: unknown) {
@@ -12,12 +11,9 @@ export const Route = createFileRoute("/api/events")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const session = await verifyRequestSession(
-          request.headers.get("cookie"),
-          readRequestOriginInfoFromHeaders(request.headers)
-        )
-        if (!session) {
-          return new Response("Unauthorized", { status: 401 })
+        const auth = await authorizeApiRequest(request)
+        if (!auth.ok) {
+          return new Response(auth.message, { status: auth.status })
         }
 
         const encoder = new TextEncoder()

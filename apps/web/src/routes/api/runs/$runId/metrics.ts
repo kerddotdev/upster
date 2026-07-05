@@ -1,19 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { readRequestOriginInfoFromHeaders } from "@/features/auth/admin-origin"
-import { verifyRequestSession } from "@/features/auth/session.server"
+import { authorizeApiRequest } from "@/features/auth/api-scope.server"
 import { getRunMetrics } from "@/features/metrics/metrics.server"
 
 export const Route = createFileRoute("/api/runs/$runId/metrics")({
   server: {
     handlers: {
       GET: async ({ params, request }) => {
-        const session = await verifyRequestSession(
-          request.headers.get("cookie"),
-          readRequestOriginInfoFromHeaders(request.headers)
-        )
-        if (!session) {
-          return Response.json({ error: "Unauthorized" }, { status: 401 })
+        const auth = await authorizeApiRequest(request, "metrics:read")
+        if (!auth.ok) {
+          return Response.json({ error: auth.message }, { status: auth.status })
         }
 
         try {
