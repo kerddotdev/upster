@@ -18,6 +18,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsRuntimeRouteImport } from './routes/settings/runtime'
 import { Route as SettingsCloudflareRouteImport } from './routes/settings/cloudflare'
 import { Route as PillsPillIdRouteImport } from './routes/pills/$pillId'
+import { Route as ApiEventsRouteImport } from './routes/api/events'
 import { Route as ApiRunsRunIdTerminalRouteImport } from './routes/api/runs/$runId/terminal'
 import { Route as ApiRunsRunIdMetricsRouteImport } from './routes/api/runs/$runId/metrics'
 import { Route as ApiCliV1VaultRouteImport } from './routes/api/cli/v1/vault'
@@ -92,6 +93,11 @@ const SettingsCloudflareRoute = SettingsCloudflareRouteImport.update({
 const PillsPillIdRoute = PillsPillIdRouteImport.update({
   id: '/pills/$pillId',
   path: '/pills/$pillId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEventsRoute = ApiEventsRouteImport.update({
+  id: '/api/events',
+  path: '/api/events',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiRunsRunIdTerminalRoute = ApiRunsRunIdTerminalRouteImport.update({
@@ -263,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/pair': typeof PairRoute
   '/sessions': typeof SessionsRoute
   '/setup': typeof SetupRoute
+  '/api/events': typeof ApiEventsRoute
   '/pills/$pillId': typeof PillsPillIdRoute
   '/settings/cloudflare': typeof SettingsCloudflareRoute
   '/settings/runtime': typeof SettingsRuntimeRoute
@@ -304,6 +311,7 @@ export interface FileRoutesByTo {
   '/pair': typeof PairRoute
   '/sessions': typeof SessionsRoute
   '/setup': typeof SetupRoute
+  '/api/events': typeof ApiEventsRoute
   '/pills/$pillId': typeof PillsPillIdRoute
   '/settings/cloudflare': typeof SettingsCloudflareRoute
   '/settings/runtime': typeof SettingsRuntimeRoute
@@ -346,6 +354,7 @@ export interface FileRoutesById {
   '/pair': typeof PairRoute
   '/sessions': typeof SessionsRoute
   '/setup': typeof SetupRoute
+  '/api/events': typeof ApiEventsRoute
   '/pills/$pillId': typeof PillsPillIdRoute
   '/settings/cloudflare': typeof SettingsCloudflareRoute
   '/settings/runtime': typeof SettingsRuntimeRoute
@@ -389,6 +398,7 @@ export interface FileRouteTypes {
     | '/pair'
     | '/sessions'
     | '/setup'
+    | '/api/events'
     | '/pills/$pillId'
     | '/settings/cloudflare'
     | '/settings/runtime'
@@ -430,6 +440,7 @@ export interface FileRouteTypes {
     | '/pair'
     | '/sessions'
     | '/setup'
+    | '/api/events'
     | '/pills/$pillId'
     | '/settings/cloudflare'
     | '/settings/runtime'
@@ -471,6 +482,7 @@ export interface FileRouteTypes {
     | '/pair'
     | '/sessions'
     | '/setup'
+    | '/api/events'
     | '/pills/$pillId'
     | '/settings/cloudflare'
     | '/settings/runtime'
@@ -513,6 +525,7 @@ export interface RootRouteChildren {
   PairRoute: typeof PairRoute
   SessionsRoute: typeof SessionsRoute
   SetupRoute: typeof SetupRoute
+  ApiEventsRoute: typeof ApiEventsRoute
   PillsPillIdRoute: typeof PillsPillIdRoute
   SettingsCloudflareRoute: typeof SettingsCloudflareRoute
   SettingsRuntimeRoute: typeof SettingsRuntimeRoute
@@ -595,6 +608,13 @@ declare module '@tanstack/react-router' {
       path: '/pills/$pillId'
       fullPath: '/pills/$pillId'
       preLoaderRoute: typeof PillsPillIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/events': {
+      id: '/api/events'
+      path: '/api/events'
+      fullPath: '/api/events'
+      preLoaderRoute: typeof ApiEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/runs/$runId/terminal': {
@@ -934,6 +954,7 @@ const rootRouteChildren: RootRouteChildren = {
   PairRoute: PairRoute,
   SessionsRoute: SessionsRoute,
   SetupRoute: SetupRoute,
+  ApiEventsRoute: ApiEventsRoute,
   PillsPillIdRoute: PillsPillIdRoute,
   SettingsCloudflareRoute: SettingsCloudflareRoute,
   SettingsRuntimeRoute: SettingsRuntimeRoute,
