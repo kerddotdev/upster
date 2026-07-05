@@ -7,7 +7,13 @@ import {
 } from "react"
 import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import { ChevronDownIcon, CopyIcon, PencilIcon, PlusIcon } from "lucide-react"
+import {
+  ChevronDownIcon,
+  CopyIcon,
+  InfoIcon,
+  PencilIcon,
+  PlusIcon,
+} from "lucide-react"
 import { toast } from "sonner"
 import {
   connectionScopePresets,
@@ -945,6 +951,27 @@ function CreatePairingLinkDialog({
                             {presetMeta[name].description}
                           </span>
                         </span>
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <span className="ml-auto inline-flex shrink-0 self-center text-muted-foreground hover:text-foreground" />
+                            }
+                          >
+                            <InfoIcon className="size-4" />
+                            <span className="sr-only">
+                              Show {presetMeta[name].label} scopes
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <div className="flex flex-col gap-0.5">
+                              {connectionScopePresets[name].map((scope) => (
+                                <span key={scope} className="font-mono text-xs">
+                                  {scope}
+                                </span>
+                              ))}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
                       </label>
                     )
                   )}
