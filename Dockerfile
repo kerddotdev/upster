@@ -4,6 +4,8 @@ WORKDIR /app
 ARG TARGETARCH
 ENV DEBIAN_FRONTEND=noninteractive
 
+COPY --from=tailscale/tailscale:latest /usr/local/bin/tailscale /usr/local/bin/tailscale
+
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl git nodejs npm \
   && corepack enable || true \

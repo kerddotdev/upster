@@ -8,9 +8,8 @@ services:
       UPSTER_HOST_WORKSPACE: "${UPSTER_HOST_WORKSPACE:-}"
       UPSTER_WORKSPACE_ROOTS: "${UPSTER_WORKSPACE_ROOTS:-/workspaces}"
       UPSTER_ALLOWED_COMMANDS: "${UPSTER_ALLOWED_COMMANDS:-}"
-      UPSTER_ALLOWED_ORIGINS: "${UPSTER_ALLOWED_ORIGINS:-}"
-      UPSTER_TRUST_PROXY: "${UPSTER_TRUST_PROXY:-}"
-      UPSTER_TAILSCALE_STATUS_FILE: "/tailscale/status.json"
+      UPSTER_TAILSCALE_SOCKET: "/var/run/tailscale/tailscaled.sock"
+      UPSTER_TAILSCALE_TARGET: "http://upster:${UPSTER_PORT:-3377}"
       UPSTER_SESSION_SECRET: "${UPSTER_SESSION_SECRET:-}"
       UPSTER_SECURE_COOKIES: "${UPSTER_SECURE_COOKIES:-}"
       DATABASE_URL: "${DATABASE_URL:-http://db:8080}"
@@ -23,10 +22,22 @@ services:
       - "${UPSTER_BIND_HOST:-127.0.0.1}:${UPSTER_PORT:-3377}:${UPSTER_PORT:-3377}"
     volumes:
       - upster_data:/data
-      - ${UPSTER_TAILSCALE_DIR:-./.tailscale}:/tailscale:ro
+      - tailscale_sock:/var/run/tailscale
       - ${UPSTER_HOST_WORKSPACE:-./workspaces}:/workspaces:rw
     depends_on:
       - db
+      - tailscale
+
+  tailscale:
+    image: tailscale/tailscale:latest
+    hostname: "${UPSTER_TAILSCALE_HOSTNAME:-upster}"
+    environment:
+      TS_USERSPACE: "true"
+      TS_STATE_DIR: "/var/lib/tailscale"
+      TS_AUTHKEY: "${TS_AUTHKEY:-}"
+    volumes:
+      - tailscale_state:/var/lib/tailscale
+      - tailscale_sock:/var/run/tailscale
 
   db:
     image: ghcr.io/tursodatabase/libsql-server:latest
@@ -39,3 +50,5 @@ services:
 volumes:
   upster_data:
   upster_db:
+  tailscale_state:
+  tailscale_sock:
