@@ -14,6 +14,7 @@ const activeStatus: TailscaleStatus = {
   tailscaleIps: ["100.64.1.2", "fd7a:115c:a1e0::1"],
   serveHttpsActive: true,
   serveHttpActive: true,
+  funnelActive: false,
   httpsPort: 443,
   httpPort: 10000,
 }
@@ -26,6 +27,7 @@ const offlineStatus: TailscaleStatus = {
   tailscaleIps: [],
   serveHttpsActive: false,
   serveHttpActive: false,
+  funnelActive: false,
   httpsPort: 443,
   httpPort: 10000,
 }

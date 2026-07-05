@@ -51,6 +51,7 @@ type StatusJson = {
 
 type ServeConfigJson = {
   TCP?: Record<string, { HTTPS?: boolean; HTTP?: boolean }>
+  AllowFunnel?: Record<string, boolean>
 }
 
 export type TailscaleStatus = {
@@ -61,6 +62,7 @@ export type TailscaleStatus = {
   tailscaleIps: Array<string>
   serveHttpsActive: boolean
   serveHttpActive: boolean
+  funnelActive: boolean
   httpsPort: number
   httpPort: number
 }
@@ -78,19 +80,29 @@ function parseJson<T>(raw: string): T | null {
   }
 }
 
-async function readServeConfig() {
-  const result = await runTailscale(["serve", "status", "--json"])
-  if (result.code !== 0 || !result.stdout.trim()) {
-    return { serveHttpsActive: false, serveHttpActive: false }
-  }
-
-  const parsed = parseJson<ServeConfigJson>(result.stdout)
+export function parseServeConfig(raw: string) {
+  const parsed = parseJson<ServeConfigJson>(raw)
   const tcp = parsed?.TCP ?? {}
+  const funnel = parsed?.AllowFunnel ?? {}
 
   return {
     serveHttpsActive: Boolean(tcp[String(SERVE_HTTPS_PORT)]?.HTTPS),
     serveHttpActive: Boolean(tcp[String(SERVE_HTTP_PORT)]?.HTTP),
+    funnelActive: Object.values(funnel).some(Boolean),
   }
+}
+
+async function readServeConfig() {
+  const result = await runTailscale(["serve", "status", "--json"])
+  if (result.code !== 0 || !result.stdout.trim()) {
+    return {
+      serveHttpsActive: false,
+      serveHttpActive: false,
+      funnelActive: false,
+    }
+  }
+
+  return parseServeConfig(result.stdout)
 }
 
 function computeAllowedOrigins(status: TailscaleStatus) {
@@ -121,6 +133,7 @@ export async function getTailscaleStatus(): Promise<TailscaleStatus> {
     tailscaleIps: [],
     serveHttpsActive: false,
     serveHttpActive: false,
+    funnelActive: false,
     httpsPort: SERVE_HTTPS_PORT,
     httpPort: SERVE_HTTP_PORT,
   }
@@ -140,7 +153,7 @@ export async function getTailscaleStatus(): Promise<TailscaleStatus> {
   const loggedIn = backendState === "Running"
   const serve = loggedIn
     ? await readServeConfig()
-    : { serveHttpsActive: false, serveHttpActive: false }
+    : { serveHttpsActive: false, serveHttpActive: false, funnelActive: false }
 
   const resolved: TailscaleStatus = {
     ...base,

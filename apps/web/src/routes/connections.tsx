@@ -324,6 +324,9 @@ function RemoteAccessBadge({ status }: { status: TailscaleStatusRow }) {
   if (!status.available) {
     return <Badge variant="outline">Unavailable</Badge>
   }
+  if (status.funnelActive) {
+    return <Badge variant="destructive">Funnel</Badge>
+  }
   if (!status.loggedIn) {
     return <Badge variant="outline">Not connected</Badge>
   }
@@ -438,6 +441,17 @@ function RemoteAccessCard({
       </CardHeader>
       {status.available ? (
         <CardContent className="flex flex-col gap-4">
+          {status.funnelActive ? (
+            <Alert variant="destructive">
+              <AlertTitle>Funnel is exposing this dashboard</AlertTitle>
+              <AlertDescription>
+                Tailscale Funnel is publishing this node to the public internet.
+                Upster never enables Funnel itself. Turn it off on the host with
+                tailscale funnel off unless you intend the dashboard to be
+                publicly reachable.
+              </AlertDescription>
+            </Alert>
+          ) : null}
           {status.loggedIn ? (
             <>
               {status.magicDnsName ? (
