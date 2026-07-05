@@ -1,5 +1,5 @@
 import { mkdirSync } from "node:fs"
-import { join, resolve } from "node:path"
+import { resolve } from "node:path"
 
 export type PortRange = {
   min: number
@@ -19,8 +19,6 @@ export type UpsterConfig = {
   publicOrigin: string
   cloudflaredBin: string
   capsuleRetention: number
-  tailscaleStatusFile: string
-  trustProxy: boolean
 }
 
 function parseRetention(value: string | undefined) {
@@ -78,9 +76,6 @@ function parseWorkspaceRoots(value: string | undefined) {
 export function getUpsterConfig(): UpsterConfig {
   const dataDir = resolve(process.env.UPSTER_DATA_DIR ?? ".upster")
   const hostWorkspaceRoot = process.env.UPSTER_HOST_WORKSPACE?.trim()
-  const tailscaleStatusFile =
-    process.env.UPSTER_TAILSCALE_STATUS_FILE?.trim() ||
-    join(dataDir, "tailscale", "status.json")
   mkdirSync(dataDir, { recursive: true })
 
   return {
@@ -103,7 +98,5 @@ export function getUpsterConfig(): UpsterConfig {
     publicOrigin: process.env.UPSTER_PUBLIC_ORIGIN ?? "https://localhost:3377",
     cloudflaredBin: process.env.CLOUDFLARED_BIN ?? "cloudflared",
     capsuleRetention: parseRetention(process.env.UPSTER_CAPSULE_RETENTION),
-    tailscaleStatusFile,
-    trustProxy: process.env.UPSTER_TRUST_PROXY === "true",
   }
 }
