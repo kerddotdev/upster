@@ -193,31 +193,25 @@ export const getConnectionEndpointsFn = createServerFn({ method: "GET" })
   .handler(async () => {
     const { getRequest } = await import("@tanstack/react-start/server")
     const { getUpsterConfig } = await import("@/config/env.server")
-    const {
-      addCurrentRequestEndpoint,
-      buildConnectionEndpoints,
-      readTailscaleStatusFile,
-    } = await import("@/features/connections/endpoints.server")
+    const { addCurrentRequestEndpoint, buildConnectionEndpoints } =
+      await import("@/features/connections/endpoints.server")
+    const { getTailscaleStatus } =
+      await import("@/features/tailscale/tailscale-control.server")
 
     const request = getRequest()
     const config = getUpsterConfig()
-    const status = await readTailscaleStatusFile(config.tailscaleStatusFile)
+    const status = await getTailscaleStatus()
     const endpoints = buildConnectionEndpoints(status, config.port)
 
-    return addCurrentRequestEndpoint(
-      endpoints,
-      getCurrentOrigin(request, config.trustProxy)
-    )
+    return addCurrentRequestEndpoint(endpoints, getCurrentOrigin(request))
   })
 
-function getCurrentOrigin(request: Request, trustProxy: boolean) {
+function getCurrentOrigin(request: Request) {
   const url = new URL(request.url)
   const forwardedHost = request.headers.get("x-forwarded-host")
   const forwardedProto = request.headers.get("x-forwarded-proto")
-  const host = trustProxy ? (forwardedHost ?? url.host) : url.host
-  const proto = trustProxy
-    ? (forwardedProto ?? url.protocol.slice(0, -1))
-    : url.protocol.slice(0, -1)
+  const host = forwardedHost ?? url.host
+  const proto = forwardedProto ?? url.protocol.slice(0, -1)
 
   return host ? `${proto}://${host}` : null
 }

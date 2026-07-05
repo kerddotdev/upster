@@ -1,82 +1,64 @@
-import { readFile } from "node:fs/promises"
-
-import { z } from "zod"
-
-const tailscaleStatusSchema = z.object({
-  version: z.literal(1),
-  generatedAt: z.string(),
-  magicDnsName: z.string().min(1),
-  tailscaleIps: z.array(z.string().min(1)),
-  servePort: z.number().int().positive(),
-  appPort: z.number().int().positive(),
-  lanIps: z.array(z.string().min(1)),
-})
-
-export type TailscaleStatus = z.infer<typeof tailscaleStatusSchema>
+import type { TailscaleStatus } from "@/features/tailscale/tailscale-control.server"
 
 export type ConnectionEndpoint = {
   id: string
   label: string
   origin: string | null
-  kind: "loopback" | "tailscale-https" | "current"
+  kind: "loopback" | "tailscale-https" | "tailscale-ip" | "current"
   setupRequired: boolean
-  stale: boolean
   current: boolean
 }
 
-const STALE_AFTER_MS = 24 * 60 * 60 * 1000
-
-export async function readTailscaleStatusFile(path: string) {
-  try {
-    const raw = await readFile(path, "utf-8")
-    return tailscaleStatusSchema.parse(JSON.parse(raw))
-  } catch {
-    return null
-  }
+function originFor(proto: string, host: string, port: number) {
+  const defaultPort = proto === "https" ? 443 : 80
+  return port === defaultPort
+    ? `${proto}://${host}`
+    : `${proto}://${host}:${port}`
 }
 
 export function buildConnectionEndpoints(
-  status: TailscaleStatus | null,
+  status: TailscaleStatus,
   appPort: number
 ): Array<ConnectionEndpoint> {
-  const stale = status
-    ? Date.now() - new Date(status.generatedAt).getTime() > STALE_AFTER_MS
-    : false
-  const effectiveAppPort = status?.appPort ?? appPort
   const endpoints: Array<ConnectionEndpoint> = [
     {
       id: "loopback",
       label: "This machine",
-      origin: `http://127.0.0.1:${effectiveAppPort}`,
+      origin: `http://127.0.0.1:${appPort}`,
       kind: "loopback",
       setupRequired: false,
-      stale,
       current: false,
     },
   ]
 
-  if (!status) {
-    endpoints.push({
-      id: "tailscale-https",
-      label: "Tailscale HTTPS",
-      origin: null,
-      kind: "tailscale-https",
-      setupRequired: true,
-      stale: false,
-      current: false,
-    })
-    return endpoints
-  }
+  const httpsOrigin =
+    status.loggedIn && status.magicDnsName && status.serveHttpsActive
+      ? originFor("https", status.magicDnsName, status.httpsPort)
+      : null
 
   endpoints.push({
     id: "tailscale-https",
     label: "Tailscale HTTPS",
-    origin: `https://${status.magicDnsName}:${status.servePort}`,
+    origin: httpsOrigin,
     kind: "tailscale-https",
-    setupRequired: false,
-    stale,
+    setupRequired: httpsOrigin === null,
     current: false,
   })
+
+  if (status.loggedIn && status.serveHttpActive) {
+    for (const ip of status.tailscaleIps.filter(
+      (value) => !value.includes(":")
+    )) {
+      endpoints.push({
+        id: `tailscale-ip-${ip}`,
+        label: "Tailscale IP",
+        origin: originFor("http", ip, status.httpPort),
+        kind: "tailscale-ip",
+        setupRequired: false,
+        current: false,
+      })
+    }
+  }
 
   return endpoints
 }
@@ -97,7 +79,6 @@ export function addCurrentRequestEndpoint(
       origin,
       kind: "current",
       setupRequired: false,
-      stale: false,
       current: true,
     } satisfies ConnectionEndpoint,
   ]

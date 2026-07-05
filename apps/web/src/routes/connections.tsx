@@ -263,10 +263,7 @@ function EndpointHints({ endpoint }: { endpoint: EndpointRow }) {
   const hints = [
     endpoint.current ? "You are connected via this origin." : null,
     endpoint.setupRequired
-      ? "Tailscale setup required - run bun run tailscale:setup."
-      : null,
-    endpoint.stale
-      ? "Status file is stale - run bun run tailscale:setup on the host."
+      ? "Enable remote access in Settings > Tailscale."
       : null,
   ].filter(Boolean)
 
@@ -308,7 +305,10 @@ function PairingCard({
           Create a short-lived link for the browser you want to pair.
         </CardDescription>
         <CardAction>
-          <CreatePairingLinkDialog endpoints={endpoints} onCreated={onCreated} />
+          <CreatePairingLinkDialog
+            endpoints={endpoints}
+            onCreated={onCreated}
+          />
         </CardAction>
       </CardHeader>
       {links.length ? (
@@ -583,7 +583,9 @@ function CreatePairingLinkDialog({
             </div>
 
             <DialogFooter>
-              <DialogClose render={<Button variant="outline" />}>Done</DialogClose>
+              <DialogClose render={<Button variant="outline" />}>
+                Done
+              </DialogClose>
             </DialogFooter>
           </>
         ) : (
@@ -609,7 +611,9 @@ function CreatePairingLinkDialog({
                 />
               </Field>
               <DialogFooter>
-                <DialogClose render={<Button variant="outline" type="button" />}>
+                <DialogClose
+                  render={<Button variant="outline" type="button" />}
+                >
                   Cancel
                 </DialogClose>
                 <Button type="submit" disabled={pending || !label.trim()}>

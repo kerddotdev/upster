@@ -1,17 +1,11 @@
 import { createCsrfMiddleware, createStart } from "@tanstack/react-start"
 
-function isAllowedOrigin(value: string) {
-  return (process.env.UPSTER_ALLOWED_ORIGINS ?? "")
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean)
-    .includes(value)
-}
+import { isDerivedAllowedOrigin } from "@/features/tailscale/allowed-origins"
 
 const csrfMiddleware = createCsrfMiddleware({
   filter: (ctx) => ctx.handlerType === "serverFn",
   origin: (value, ctx) =>
-    value === new URL(ctx.request.url).origin || isAllowedOrigin(value),
+    value === new URL(ctx.request.url).origin || isDerivedAllowedOrigin(value),
 })
 
 export const startInstance = createStart(() => ({
