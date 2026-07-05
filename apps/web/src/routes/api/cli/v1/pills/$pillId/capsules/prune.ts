@@ -15,14 +15,18 @@ export const Route = createFileRoute(
         const id = requestId()
 
         return handleCliRoute(async () => {
-          await authenticateCliRequest(
+          const actor = await authenticateCliRequest(
             request,
             ["capsules:delete"],
             "prune capsules"
           )
           const data = pruneCapsulesSchema.parse(await readJsonBody(request))
 
-          return runPrune(params.pillId, data.keep)
+          return runPrune(
+            params.pillId,
+            { sessionId: actor.session.id, kind: actor.session.kind },
+            data.keep
+          )
         }, id)
       },
     },

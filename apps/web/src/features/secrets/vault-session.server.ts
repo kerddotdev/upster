@@ -2,6 +2,7 @@ import {
   deleteSecretVault,
   getSecretVault,
   saveSecretVault,
+  type AccessSessionKind,
 } from "@/db/repositories.server"
 import { publishEvent } from "@/features/events/event-bus.server"
 import { CloudflareClient } from "@/features/cloudflare/client.server"
@@ -16,15 +17,27 @@ import { vaultLockedError, vaultMissingError } from "@upster/core"
 const DEFAULT_VAULT_TTL_SECONDS = 60 * 60 * 8
 const MAX_VAULT_TTL_SECONDS = 60 * 60 * 24
 
+const SHARED_VAULT_KEY = "shared"
+
+export type VaultActor = {
+  sessionId: string
+  kind: AccessSessionKind
+}
+
 type CloudflareVaultSession = {
   config: CloudflareConfig
-  unlockedBySessionId: string | null
   unlockedAt: string
   expiresAt: string
   lastUsedAt: string
 }
 
-let cloudflareSession: CloudflareVaultSession | null = null
+const cloudflareSessions = new Map<string, CloudflareVaultSession>()
+
+function vaultKey(actor: VaultActor) {
+  return actor.kind === "connection"
+    ? `connection:${actor.sessionId}`
+    : SHARED_VAULT_KEY
+}
 
 function now() {
   return new Date().toISOString()
@@ -68,17 +81,19 @@ function normalizeConfig(config: CloudflareConfig): CloudflareConfig {
   }
 }
 
-function currentSession() {
-  if (!cloudflareSession) {
+function currentSession(actor: VaultActor) {
+  const key = vaultKey(actor)
+  const session = cloudflareSessions.get(key)
+  if (!session) {
     return null
   }
 
-  if (new Date(cloudflareSession.expiresAt).getTime() <= Date.now()) {
-    cloudflareSession = null
+  if (new Date(session.expiresAt).getTime() <= Date.now()) {
+    cloudflareSessions.delete(key)
     return null
   }
 
-  return cloudflareSession
+  return session
 }
 
 async function savePublicMetadata(config: CloudflareConfig) {
@@ -100,9 +115,9 @@ async function savePublicMetadata(config: CloudflareConfig) {
   })
 }
 
-export async function getVaultStatus() {
+export async function getVaultStatus(actor: VaultActor) {
   const vault = await getSecretVault("cloudflare")
-  const session = currentSession()
+  const session = currentSession(actor)
   const metadata = parsePublicMetadata(vault)
 
   return {
@@ -118,7 +133,7 @@ export async function getVaultStatus() {
 export async function saveCloudflareVaultInteractive(input: {
   config: CloudflareConfig
   passphrase: string
-  actorSessionId?: string | null
+  actor: VaultActor
 }) {
   const config = normalizeConfig(input.config)
 
@@ -132,18 +147,14 @@ export async function saveCloudflareVaultInteractive(input: {
     },
   })
 
-  unlockInMemory(
-    config,
-    input.actorSessionId ?? null,
-    DEFAULT_VAULT_TTL_SECONDS
-  )
-  return getVaultStatus()
+  unlockInMemory(input.actor, config, DEFAULT_VAULT_TTL_SECONDS)
+  return getVaultStatus(input.actor)
 }
 
 export async function unlockCloudflareVault(input: {
   passphrase: string
   ttlSeconds?: number
-  actorSessionId?: string | null
+  actor: VaultActor
 }) {
   const vault = await getSecretVault("cloudflare")
   const encryptedVault = toEncryptedVault(vault)
@@ -159,32 +170,35 @@ export async function unlockCloudflareVault(input: {
   await new CloudflareClient(config).validateToken()
   await savePublicMetadata(config)
   unlockInMemory(
+    input.actor,
     config,
-    input.actorSessionId ?? null,
     Math.min(
       input.ttlSeconds ?? DEFAULT_VAULT_TTL_SECONDS,
       MAX_VAULT_TTL_SECONDS
     )
   )
 
-  return getVaultStatus()
+  return getVaultStatus(input.actor)
 }
 
-export async function lockCloudflareVault() {
-  cloudflareSession = null
+export async function lockCloudflareVault(actor?: VaultActor) {
+  if (actor) {
+    cloudflareSessions.delete(vaultKey(actor))
+  } else {
+    cloudflareSessions.clear()
+  }
   publishEvent({ domain: "vault", type: "locked" })
-  return getVaultStatus()
 }
 
-export async function deleteCloudflareVaultInteractive() {
-  cloudflareSession = null
+export async function deleteCloudflareVaultInteractive(actor: VaultActor) {
+  cloudflareSessions.clear()
   await deleteSecretVault("cloudflare")
   publishEvent({ domain: "vault", type: "deleted" })
-  return getVaultStatus()
+  return getVaultStatus(actor)
 }
 
-export async function getUnlockedCloudflareConfig() {
-  const session = currentSession()
+export async function getUnlockedCloudflareConfig(actor: VaultActor) {
+  const session = currentSession(actor)
   if (!session) {
     return null
   }
@@ -193,13 +207,13 @@ export async function getUnlockedCloudflareConfig() {
   return session.config
 }
 
-export async function requireUnlockedCloudflareConfig() {
-  const status = await getVaultStatus()
+export async function requireUnlockedCloudflareConfig(actor: VaultActor) {
+  const status = await getVaultStatus(actor)
   if (!status.hasVault) {
     throw vaultMissingError()
   }
 
-  const config = await getUnlockedCloudflareConfig()
+  const config = await getUnlockedCloudflareConfig(actor)
   if (!config) {
     throw vaultLockedError()
   }
@@ -208,17 +222,16 @@ export async function requireUnlockedCloudflareConfig() {
 }
 
 function unlockInMemory(
+  actor: VaultActor,
   config: CloudflareConfig,
-  actorSessionId: string | null,
   ttlSeconds: number
 ) {
   const unlockedAt = now()
-  cloudflareSession = {
+  cloudflareSessions.set(vaultKey(actor), {
     config,
-    unlockedBySessionId: actorSessionId,
     unlockedAt,
     expiresAt: new Date(Date.now() + ttlSeconds * 1000).toISOString(),
     lastUsedAt: unlockedAt,
-  }
+  })
   publishEvent({ domain: "vault", type: "unlocked" })
 }

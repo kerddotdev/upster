@@ -90,7 +90,12 @@ export const getRunLogsFn = createServerFn({ method: "GET" })
 export const clearPillDiagnosticsFn = createServerFn({ method: "POST" })
   .middleware([requireScopes("pills:delete")])
   .validator((data: unknown) => pillIdSchema.parse(data))
-  .handler(({ data }) => clearPillDiagnostics(data.pillId))
+  .handler(({ data, context }) =>
+    clearPillDiagnostics(data.pillId, {
+      sessionId: context.session.sid,
+      kind: context.session.kind,
+    })
+  )
 
 export const createPillFn = createServerFn({ method: "POST" })
   .middleware([requireScopes("pills:write")])
@@ -105,12 +110,22 @@ export const updatePillFn = createServerFn({ method: "POST" })
 export const deletePillFn = createServerFn({ method: "POST" })
   .middleware([requireScopes("pills:delete")])
   .validator((data: unknown) => deletePillSchema.parse(data))
-  .handler(({ data }) => deletePill(data))
+  .handler(({ data, context }) =>
+    deletePill(data, {
+      sessionId: context.session.sid,
+      kind: context.session.kind,
+    })
+  )
 
 export const startPillFn = createServerFn({ method: "POST" })
   .middleware([requireScopes("runs:start")])
   .validator((data: unknown) => startPillSchema.parse(data))
-  .handler(({ data }) => startPillRuntime(data))
+  .handler(({ data, context }) =>
+    startPillRuntime(data, {
+      sessionId: context.session.sid,
+      kind: context.session.kind,
+    })
+  )
 
 export const stopPillFn = createServerFn({ method: "POST" })
   .middleware([requireScopes("runs:stop")])

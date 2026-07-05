@@ -26,7 +26,7 @@ export const Route = createFileRoute("/api/cli/v1/vault/save")({
           const data = vaultSaveSchema.parse(await readJsonBody(request))
           return saveCloudflareVaultInteractive({
             ...data,
-            actorSessionId: actor.session.id,
+            actor: { sessionId: actor.session.id, kind: actor.session.kind },
           })
         }, id)
       },

@@ -11,13 +11,16 @@ export const Route = createFileRoute("/api/cli/v1/vault/status")({
         const id = requestId()
 
         return handleCliRoute(async () => {
-          await authenticateCliRequest(
+          const actor = await authenticateCliRequest(
             request,
             ["vault:status"],
             "read vault status"
           )
 
-          return getVaultStatus()
+          return getVaultStatus({
+            sessionId: actor.session.id,
+            kind: actor.session.kind,
+          })
         }, id)
       },
     },

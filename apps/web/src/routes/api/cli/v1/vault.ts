@@ -21,7 +21,10 @@ export const Route = createFileRoute("/api/cli/v1/vault")({
           )
           assertHumanCliActor(actor, "upster vault delete")
 
-          return deleteCloudflareVaultInteractive()
+          return deleteCloudflareVaultInteractive({
+            sessionId: actor.session.id,
+            kind: actor.session.kind,
+          })
         }, id)
       },
     },

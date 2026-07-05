@@ -15,7 +15,10 @@ import type {
   CreatePillInput,
   UpdatePillInput,
 } from "@/features/pills/types"
-import { getUnlockedCloudflareConfig } from "@/features/secrets/vault-session.server"
+import {
+  getUnlockedCloudflareConfig,
+  type VaultActor,
+} from "@/features/secrets/vault-session.server"
 import {
   assertAllowedCommand,
   assertValidHostnameLabel,
@@ -148,19 +151,19 @@ export async function updatePill(input: UpdatePillInput) {
 
 type CloudflareCleanup = "ok" | "failed" | "skipped"
 
-export async function deletePill(input: { pillId: string }) {
+export async function deletePill(input: { pillId: string }, actor: VaultActor) {
   const activeRun = await getActiveRun(input.pillId)
 
   if (activeRun) {
     throw new Error("Stop the pill before deleting it.")
   }
 
-  const cloudflareConfig = await getUnlockedCloudflareConfig()
+  const cloudflareConfig = await getUnlockedCloudflareConfig(actor)
   const cloudflareCleanup: CloudflareCleanup = cloudflareConfig
     ? await cleanupCloudflareResources(input.pillId, cloudflareConfig)
     : "skipped"
 
-  await removeAllCapsules(input.pillId)
+  await removeAllCapsules(input.pillId, actor)
   await deletePillRecord(input.pillId)
   publishEvent({ domain: "pills", type: "deleted", id: input.pillId })
 

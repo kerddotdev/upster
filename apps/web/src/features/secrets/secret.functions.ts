@@ -5,11 +5,14 @@ import { requireScopes } from "@/features/auth/scope-middleware"
 
 export const getCloudflareVaultStatusFn = createServerFn({ method: "GET" })
   .middleware([requireScopes("vault:status")])
-  .handler(async () => {
+  .handler(async ({ context }) => {
     const { getVaultStatus } =
       await import("@/features/secrets/vault-session.server")
 
-    return getVaultStatus()
+    return getVaultStatus({
+      sessionId: context.session.sid,
+      kind: context.session.kind,
+    })
   })
 
 export const saveCloudflareVaultFn = createServerFn({ method: "POST" })
@@ -21,7 +24,7 @@ export const saveCloudflareVaultFn = createServerFn({ method: "POST" })
 
     return saveCloudflareVaultInteractive({
       ...data,
-      actorSessionId: context.session.sid,
+      actor: { sessionId: context.session.sid, kind: context.session.kind },
     })
   })
 
@@ -34,26 +37,34 @@ export const unlockCloudflareVaultFn = createServerFn({ method: "POST" })
 
     return unlockCloudflareVault({
       ...data,
-      actorSessionId: context.session.sid,
+      actor: { sessionId: context.session.sid, kind: context.session.kind },
     })
   })
 
 export const lockCloudflareVaultFn = createServerFn({ method: "POST" })
   .middleware([requireScopes("vault:unlock")])
-  .handler(async () => {
-    const { lockCloudflareVault } =
+  .handler(async ({ context }) => {
+    const { lockCloudflareVault, getVaultStatus } =
       await import("@/features/secrets/vault-session.server")
 
-    return lockCloudflareVault()
+    const actor = {
+      sessionId: context.session.sid,
+      kind: context.session.kind,
+    }
+    await lockCloudflareVault(actor)
+    return getVaultStatus(actor)
   })
 
 export const deleteCloudflareVaultFn = createServerFn({
   method: "POST",
 })
   .middleware([requireScopes("vault:delete")])
-  .handler(async () => {
+  .handler(async ({ context }) => {
     const { deleteCloudflareVaultInteractive } =
       await import("@/features/secrets/vault-session.server")
 
-    return deleteCloudflareVaultInteractive()
+    return deleteCloudflareVaultInteractive({
+      sessionId: context.session.sid,
+      kind: context.session.kind,
+    })
   })

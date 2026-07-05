@@ -217,7 +217,7 @@ export const revokeConnectionFn = createServerFn({ method: "POST" })
     }
 
     await revokeAccessSession(session.id)
-    await lockCloudflareVault()
+    await lockCloudflareVault({ sessionId: session.id, kind: "connection" })
 
     const { recordSecurityEvent } =
       await import("@/features/auth/security-audit.server")

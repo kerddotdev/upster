@@ -62,8 +62,14 @@ export async function startSession() {
 export async function endSession() {
   const { lockCloudflareVault } =
     await import("@/features/secrets/vault-session.server")
+  const session = await getSession()
+  if (session) {
+    await lockCloudflareVault({
+      sessionId: session.sid,
+      kind: session.kind,
+    })
+  }
   await endCurrentSession()
-  await lockCloudflareVault()
 }
 
 export async function getSession() {

@@ -31,20 +31,26 @@ export const getCapsuleInfoFn = createServerFn({ method: "GET" })
 export const buildCapsuleFn = createServerFn({ method: "POST" })
   .middleware([requireScopes("capsules:write")])
   .validator((data: unknown) => buildCapsuleSchema.parse(data))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { buildCapsule } = await import("@/features/capsules/capsule.server")
 
-    return buildCapsule(data)
+    return buildCapsule(data, {
+      sessionId: context.session.sid,
+      kind: context.session.kind,
+    })
   })
 
 export const deleteCapsuleFn = createServerFn({ method: "POST" })
   .middleware([requireScopes("capsules:delete")])
   .validator((data: unknown) => capsuleIdSchema.parse(data))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { deleteCapsuleVersion } =
       await import("@/features/capsules/capsule.server")
 
-    return deleteCapsuleVersion(data.capsuleId)
+    return deleteCapsuleVersion(data.capsuleId, {
+      sessionId: context.session.sid,
+      kind: context.session.kind,
+    })
   })
 
 const relabelCapsuleSchema = z.object({
@@ -85,10 +91,14 @@ const prunePillSchema = z.object({
 export const prunePillCapsulesFn = createServerFn({ method: "POST" })
   .middleware([requireScopes("capsules:delete")])
   .validator((data: unknown) => prunePillSchema.parse(data))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { runPrune } = await import("@/features/capsules/capsule.server")
 
-    return runPrune(data.pillId, data.keep)
+    return runPrune(
+      data.pillId,
+      { sessionId: context.session.sid, kind: context.session.kind },
+      data.keep
+    )
   })
 
 const capsuleDirSchema = z.object({

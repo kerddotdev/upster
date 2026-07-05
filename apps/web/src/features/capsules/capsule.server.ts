@@ -24,7 +24,10 @@ import {
   resolveCapsuleCwd,
 } from "@/features/capsules/detect"
 import { captureGitMetadata } from "@/features/capsules/git.server"
-import { getUnlockedCloudflareConfig } from "@/features/secrets/vault-session.server"
+import {
+  getUnlockedCloudflareConfig,
+  type VaultActor,
+} from "@/features/secrets/vault-session.server"
 import { buildInheritedEnv } from "@/features/processes/process-env"
 import {
   assertAllowedCommand,
@@ -153,7 +156,10 @@ function describeInstallFailure(
   return `Dependency install with "${manager}" failed (exit ${result.code ?? "unknown"}). See the build log for details.`
 }
 
-export async function buildCapsule(input: BuildCapsuleInput): Promise<Capsule> {
+export async function buildCapsule(
+  input: BuildCapsuleInput,
+  actor: VaultActor
+): Promise<Capsule> {
   const config = getUpsterConfig()
   const pill = await getPillDetail(input.pillId)
   const command = await getPillCommand(input.pillId, pill.defaultEnv)
@@ -250,7 +256,7 @@ export async function buildCapsule(input: BuildCapsuleInput): Promise<Capsule> {
       },
     })
 
-    await pruneCapsules(input.pillId, config.capsuleRetention).catch(
+    await pruneCapsules(input.pillId, config.capsuleRetention, actor).catch(
       () => undefined
     )
 
@@ -275,12 +281,15 @@ export async function buildCapsule(input: BuildCapsuleInput): Promise<Capsule> {
   }
 }
 
-async function cleanupPreviewTunnel(capsule: Capsule): Promise<boolean> {
+async function cleanupPreviewTunnel(
+  capsule: Capsule,
+  actor: VaultActor
+): Promise<boolean> {
   if (!capsule.previewTunnelId && !capsule.previewDnsRecordId) {
     return true
   }
 
-  const config = await getUnlockedCloudflareConfig()
+  const config = await getUnlockedCloudflareConfig(actor)
 
   if (!config) {
     return false
@@ -314,7 +323,10 @@ function describeError(error: unknown) {
   return error instanceof Error ? error.message : String(error)
 }
 
-export async function deleteCapsuleVersion(capsuleId: string) {
+export async function deleteCapsuleVersion(
+  capsuleId: string,
+  actor: VaultActor
+) {
   const capsule = await getCapsuleById(capsuleId)
 
   if (!capsule) {
@@ -332,7 +344,7 @@ export async function deleteCapsuleVersion(capsuleId: string) {
   // Refuse to drop the record while preview Cloudflare resources still exist, so
   // deleting a snapshot can never orphan a tunnel or leave a dangling DNS record
   // (a subdomain-takeover risk). The stored preview ids are kept for a retry.
-  const cleaned = await cleanupPreviewTunnel(capsule)
+  const cleaned = await cleanupPreviewTunnel(capsule, actor)
 
   if (!cleaned) {
     throw new Error(
@@ -353,17 +365,21 @@ export async function deleteCapsuleVersion(capsuleId: string) {
   })
 }
 
-export async function removeAllCapsules(pillId: string) {
+export async function removeAllCapsules(pillId: string, actor: VaultActor) {
   const capsules = await listCapsules(pillId)
   for (const capsule of capsules) {
-    await cleanupPreviewTunnel(capsule)
+    await cleanupPreviewTunnel(capsule, actor)
   }
 
   await rm(pillCapsulesRoot(pillId), { recursive: true, force: true })
   await deleteCapsulesByPill(pillId)
 }
 
-export async function pruneCapsules(pillId: string, keep: number) {
+export async function pruneCapsules(
+  pillId: string,
+  keep: number,
+  actor: VaultActor
+) {
   if (!keep || keep <= 0) {
     return
   }
@@ -378,13 +394,17 @@ export async function pruneCapsules(pillId: string, keep: number) {
   )
 
   for (const capsule of deletable.slice(keep)) {
-    await deleteCapsuleVersion(capsule.id).catch(() => undefined)
+    await deleteCapsuleVersion(capsule.id, actor).catch(() => undefined)
   }
 }
 
-export async function runPrune(pillId: string, keep?: number) {
+export async function runPrune(
+  pillId: string,
+  actor: VaultActor,
+  keep?: number
+) {
   const limit = keep ?? (await getCapsuleRetention())
-  await pruneCapsules(pillId, limit)
+  await pruneCapsules(pillId, limit, actor)
   return getCapsuleInfo(pillId)
 }
 

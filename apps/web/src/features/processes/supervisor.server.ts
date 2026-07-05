@@ -38,7 +38,10 @@ import {
   getRuntimeInstanceId,
   reconcileRuntimeRuns,
 } from "@/features/runtime/instance.server"
-import { requireUnlockedCloudflareConfig } from "@/features/secrets/vault-session.server"
+import {
+  requireUnlockedCloudflareConfig,
+  type VaultActor,
+} from "@/features/secrets/vault-session.server"
 
 type ManagedRun = {
   runId: string
@@ -259,7 +262,10 @@ function scheduleExpiry(run: PillRun, managed: ManagedRun) {
   }, delay)
 }
 
-export async function startPillRuntime(input: StartPillInput) {
+export async function startPillRuntime(
+  input: StartPillInput,
+  actor: VaultActor
+) {
   await reconcileRuntimeRuns()
   const activeRun = await getActiveRun(input.pillId)
 
@@ -299,7 +305,7 @@ export async function startPillRuntime(input: StartPillInput) {
     throw new Error("Preview deploys require a capsule.")
   }
 
-  const cloudflareConfig = await requireUnlockedCloudflareConfig()
+  const cloudflareConfig = await requireUnlockedCloudflareConfig(actor)
 
   const preview = deployTarget === "preview"
   const shortId = capsule ? capsule.id.slice(0, 8) : ""
