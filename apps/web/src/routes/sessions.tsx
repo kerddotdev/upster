@@ -52,9 +52,11 @@ import {
   listSessionsFn,
   revokeSessionFn,
 } from "@/features/sessions/session.functions"
+import { AccessDenied } from "@/components/access-denied"
 
 export const Route = createFileRoute("/sessions")({
   loader: () => listSessionsFn(),
+  errorComponent: AccessDenied,
   component: SessionsPage,
 })
 

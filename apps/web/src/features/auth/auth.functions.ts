@@ -29,6 +29,7 @@ export const getAuthStatusFn = createServerFn({ method: "GET" }).handler(
       hasAdmin: admin,
       authenticated: Boolean(session),
       pairingRequired: !isAdminPassphraseAllowedForCurrentRequest(),
+      scopes: session?.scopes ?? null,
     }
   }
 )

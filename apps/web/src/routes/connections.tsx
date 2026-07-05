@@ -78,9 +78,11 @@ import {
   getTailscaleStatusFn,
   startTailscaleLoginFn,
 } from "@/features/tailscale/tailscale.functions"
+import { AccessDenied } from "@/components/access-denied"
 
 export const Route = createFileRoute("/connections")({
   loader: loadConnectionsPage,
+  errorComponent: AccessDenied,
   component: ConnectionsPage,
 })
 

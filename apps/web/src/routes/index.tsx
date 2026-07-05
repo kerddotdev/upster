@@ -38,10 +38,12 @@ import { PillActions } from "@/features/pills/components/pill-actions"
 import { StatusBadge } from "@/features/pills/components/status-badge"
 import { listPillsFn } from "@/features/pills/pill.functions"
 import type { PillListItem } from "@/features/pills/types"
+import { AccessDenied } from "@/components/access-denied"
 import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/")({
   loader: () => listPillsFn(),
+  errorComponent: AccessDenied,
   component: App,
 })
 

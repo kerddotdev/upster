@@ -19,9 +19,11 @@ import {
   updateCloudflaredBinFn,
   updateRuntimeSettingsFn,
 } from "@/features/config/settings.functions"
+import { AccessDenied } from "@/components/access-denied"
 
 export const Route = createFileRoute("/settings/runtime")({
   loader: () => getRuntimeSettingsFn(),
+  errorComponent: AccessDenied,
   component: RuntimeSettingsPage,
 })
 
