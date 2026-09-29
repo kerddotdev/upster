@@ -54,6 +54,8 @@ type ManagedRun = {
 
 const managedRuns = new Map<string, ManagedRun>()
 
+registerShutdownHandlers()
+
 function now() {
   return new Date().toISOString()
 }
@@ -174,6 +176,7 @@ function spawnLoggedProcess(input: {
     cwd: input.cwd,
     env: input.env,
     stdio: "pipe",
+    detached: process.platform !== "win32",
   })
 
   const diag: ProcessDiagnostics = { spawnError: null }
@@ -196,17 +199,81 @@ function spawnLoggedProcess(input: {
   return { child, diag }
 }
 
+function isRunning(child: ChildProcessWithoutNullStreams) {
+  return child.exitCode === null && child.signalCode === null
+}
+
+function signalProcessGroup(
+  child: ChildProcessWithoutNullStreams,
+  signal: NodeJS.Signals
+) {
+  try {
+    if (process.platform !== "win32" && child.pid) {
+      process.kill(-child.pid, signal)
+    } else {
+      child.kill(signal)
+    }
+  } catch {
+    child.kill(signal)
+  }
+}
+
 function killProcess(child: ChildProcessWithoutNullStreams | null) {
-  if (!child || child.killed) {
+  if (!child || !isRunning(child)) {
     return
   }
 
-  child.kill("SIGTERM")
+  signalProcessGroup(child, "SIGTERM")
   setTimeout(() => {
-    if (!child.killed) {
-      child.kill("SIGKILL")
+    if (isRunning(child)) {
+      signalProcessGroup(child, "SIGKILL")
     }
   }, 3000).unref()
+}
+
+function registerShutdownHandlers() {
+  const state = globalThis as { __upsterShutdownRegistered?: boolean }
+  if (state.__upsterShutdownRegistered) {
+    return
+  }
+  state.__upsterShutdownRegistered = true
+
+  let shuttingDown = false
+  const shutdown = () => {
+    if (shuttingDown) {
+      return
+    }
+    shuttingDown = true
+
+    const running = [...managedRuns.values()]
+      .flatMap((managed) => [managed.appProcess, managed.tunnelProcess])
+      .filter(
+        (child): child is ChildProcessWithoutNullStreams =>
+          child !== null && isRunning(child)
+      )
+    for (const child of running) {
+      signalProcessGroup(child, "SIGTERM")
+    }
+
+    const forceTimer = setTimeout(() => {
+      for (const child of running) {
+        if (isRunning(child)) {
+          signalProcessGroup(child, "SIGKILL")
+        }
+      }
+      process.exit(0)
+    }, 3000)
+    const pollTimer = setInterval(() => {
+      if (running.every((child) => !isRunning(child))) {
+        clearTimeout(forceTimer)
+        process.exit(0)
+      }
+    }, 100)
+    void pollTimer
+  }
+
+  process.on("SIGTERM", shutdown)
+  process.on("SIGINT", shutdown)
 }
 
 function waitForEarlyExit(

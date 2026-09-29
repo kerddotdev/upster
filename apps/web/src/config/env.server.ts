@@ -1,5 +1,6 @@
 import { mkdirSync } from "node:fs"
-import { resolve } from "node:path"
+import { homedir } from "node:os"
+import { join, resolve } from "node:path"
 
 export type PortRange = {
   min: number
@@ -73,10 +74,20 @@ function parseWorkspaceRoots(value: string | undefined) {
   return roots.length ? roots : [process.cwd()]
 }
 
+function defaultDataDir() {
+  if (process.platform === "darwin") {
+    return join(homedir(), "Library", "Application Support", "Upster")
+  }
+
+  const dataHome =
+    process.env.XDG_DATA_HOME || join(homedir(), ".local", "share")
+  return join(dataHome, "upster")
+}
+
 export function getUpsterConfig(): UpsterConfig {
-  const dataDir = resolve(process.env.UPSTER_DATA_DIR ?? ".upster")
+  const dataDir = resolve(process.env.UPSTER_DATA_DIR || defaultDataDir())
   const hostWorkspaceRoot = process.env.UPSTER_HOST_WORKSPACE?.trim()
-  mkdirSync(dataDir, { recursive: true })
+  mkdirSync(dataDir, { recursive: true, mode: 0o700 })
 
   return {
     dataDir,

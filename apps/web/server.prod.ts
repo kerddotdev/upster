@@ -10,5 +10,5 @@ serve({
   fetch: handler.fetch,
   middleware: [serveStatic({ dir: clientDir })],
   port: process.env.UPSTER_PORT ?? 3377,
-  hostname: "0.0.0.0",
+  hostname: process.env.UPSTER_LISTEN_HOST ?? "127.0.0.1",
 })
