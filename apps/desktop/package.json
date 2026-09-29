@@ -5,6 +5,7 @@
   "version": "0.1.0",
   "description": "Upster desktop app",
   "author": "kerdofficial",
+  "homepage": "https://github.com/kerdofficial/upster",
   "main": "dist/main.cjs",
   "scripts": {
     "build": "bun run build.ts",
