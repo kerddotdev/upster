@@ -21,6 +21,7 @@ mac:
   entitlementsInherit: build/entitlements.mac.plist
   notarize: true
 linux:
+  executableName: upster
   category: Development
   target: [AppImage, deb]
   maintainer: kerdofficial

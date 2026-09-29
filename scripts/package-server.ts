@@ -191,6 +191,8 @@ run(
   appDir
 )
 
+spawnSync("find", [join(appDir, "node_modules"), "-name", "*.map", "-delete"])
+
 writeFileSync(
   join(outDir, "manifest.json"),
   JSON.stringify(
