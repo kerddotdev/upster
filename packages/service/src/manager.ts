@@ -99,6 +99,7 @@ export function buildServiceDefinition(
       UPSTER_PORT: String(input.port),
       UPSTER_WORKSPACE_ROOTS: input.workspaceRoots.join(","),
       NODE_ENV: "production",
+      UPSTER_TRUST_PROXY: "true",
       ...input.extraEnv,
     },
   }
