@@ -491,6 +491,16 @@ Start the daemon:
 upster daemon start
 ```
 
+Manage the native background service (macOS LaunchAgent, Linux systemd user unit). The CLI finds a running native service through `runtime.json` in the Upster data directory, so `--dashboard-url` is not needed:
+
+```sh
+upster service install --bundle <server-bundle-dir> [--port 3377] [--workspace-root ~/code]
+upster service status
+upster service start|stop|restart
+upster service logs
+upster service uninstall
+```
+
 In agent mode, the CLI does not automatically start the control plane. If the dashboard is unavailable, JSON mode returns `CONTROL_PLANE_UNAVAILABLE`.
 
 ## Config

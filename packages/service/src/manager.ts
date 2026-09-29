@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process"
-import { mkdirSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { promisify } from "node:util"
@@ -197,4 +197,40 @@ export async function serviceStatus(
     installed: exists(unit),
     running: readRuntimeState(dataDir),
   }
+}
+
+export type BundleInstallInput = {
+  bundleDir: string
+  dataDir: string
+  port: number
+  workspaceRoots: Array<string>
+}
+
+export function installFromBundle(
+  input: BundleInstallInput,
+  run: RunCommand = defaultRun
+) {
+  const nodePath = join(input.bundleDir, "runtime", "node")
+  const entryPath = join(input.bundleDir, "app", "server.mjs")
+  const cloudflaredPath = join(input.bundleDir, "runtime", "cloudflared")
+
+  for (const path of [nodePath, entryPath]) {
+    if (!existsSync(path)) {
+      throw new Error(`Not an Upster server bundle, missing ${path}`)
+    }
+  }
+
+  return installService(
+    {
+      nodePath,
+      entryPath,
+      dataDir: input.dataDir,
+      port: input.port,
+      workspaceRoots: input.workspaceRoots,
+      extraEnv: existsSync(cloudflaredPath)
+        ? { CLOUDFLARED_BIN: cloudflaredPath }
+        : undefined,
+    },
+    run
+  )
 }

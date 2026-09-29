@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@upster/core": "workspace:*"
+    "@upster/core": "workspace:*",
+    "@upster/service": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22",
