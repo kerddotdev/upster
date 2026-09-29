@@ -163,6 +163,11 @@ changes.
   could use to bypass the forwarding-header check. Binding the container to a
   non-loopback address with `UPSTER_BIND_HOST=0.0.0.0` remains unsupported; in
   that mode no request is trusted as local and the password path is disabled.
+- The server process itself listens on `UPSTER_LISTEN_HOST`, which defaults to
+  `127.0.0.1`. Only the Docker image sets it to `0.0.0.0` (the container network
+  needs it, and the published host port stays loopback-only). Outside Docker the
+  server is never reachable from the LAN, so a forged `Host: localhost` cannot
+  reach the local-only paths.
 - Tailscale HTTPS terminates TLS in the sidecar and forwards
   `x-forwarded-proto: https`, which makes the dashboard cookie Secure for that
   origin. The Tailscale IP mode is plain HTTP over the encrypted WireGuard
