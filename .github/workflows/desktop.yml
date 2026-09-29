@@ -62,6 +62,7 @@ jobs:
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          ulimit -n 65536
           export APPLE_API_KEY="$RUNNER_TEMP/AuthKey.p8"
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             bun run package:desktop --publish
