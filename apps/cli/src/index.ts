@@ -13,6 +13,17 @@ import { dirname, join, resolve } from "node:path"
 import readline from "node:readline/promises"
 
 import {
+  defaultDataDir,
+  readRuntimeState,
+  serviceLogPath,
+} from "@upster/core/node"
+import {
+  controlService,
+  installFromBundle,
+  serviceStatus,
+  uninstallService,
+} from "@upster/service"
+import {
   createFailure,
   createSuccess,
   agentForbiddenError,
@@ -132,6 +143,7 @@ function parseArgv(argv: Array<string>) {
       (config.dashboardPort
         ? `http://127.0.0.1:${config.dashboardPort}`
         : undefined) ??
+      readRuntimeState(nativeDataDir())?.origin ??
       DEFAULT_DASHBOARD_URL,
     human: false,
     noColor: false,
@@ -207,6 +219,10 @@ async function dispatch(command: Array<string>, options: CliOptions, io: Io) {
 
   if (root === "daemon" && sub === "start") {
     return startDaemon(options)
+  }
+
+  if (root === "service") {
+    return runServiceCommand(sub, command.slice(2), options, io)
   }
 
   if (root === "config" && sub === "get") {
@@ -983,6 +999,80 @@ function resolveCreateAgentScopes(flags: Record<string, string>) {
   return parseScopes(flags.scopes)
 }
 
+function nativeDataDir() {
+  return resolve(process.env.UPSTER_DATA_DIR || defaultDataDir())
+}
+
+function flagValue(args: Array<string>, name: string) {
+  const index = args.indexOf(name)
+  return index === -1 ? undefined : args[index + 1]
+}
+
+async function runServiceCommand(
+  sub: string | undefined,
+  args: Array<string>,
+  options: CliOptions,
+  io: Io
+) {
+  const dataDir = nativeDataDir()
+
+  if (sub === "install") {
+    const bundleDir =
+      flagValue(args, "--bundle") ?? process.env.UPSTER_SERVER_BUNDLE
+    if (!bundleDir) {
+      throw new Error(
+        "Pass --bundle <dir> (or set UPSTER_SERVER_BUNDLE) pointing at an Upster server bundle."
+      )
+    }
+    const port = Number(flagValue(args, "--port") ?? 3377)
+    const workspaceRoots = (flagValue(args, "--workspace-root") ?? homedir())
+      .split(",")
+      .map((root) => resolve(root.trim()))
+    await installFromBundle({
+      bundleDir: resolve(bundleDir),
+      dataDir,
+      port,
+      workspaceRoots,
+    })
+    return createSuccess(
+      { installed: true, dataDir, port, workspaceRoots },
+      LOCAL_REQUEST_ID
+    )
+  }
+
+  if (sub === "uninstall") {
+    await uninstallService()
+    return createSuccess({ installed: false }, LOCAL_REQUEST_ID)
+  }
+
+  if (sub === "start" || sub === "stop" || sub === "restart") {
+    await controlService(sub)
+    return createSuccess({ action: sub }, LOCAL_REQUEST_ID)
+  }
+
+  if (sub === "status") {
+    return createSuccess(
+      await serviceStatus(dataDir, existsSync),
+      LOCAL_REQUEST_ID
+    )
+  }
+
+  if (sub === "logs") {
+    const logPath = serviceLogPath(dataDir)
+    const lines = existsSync(logPath)
+      ? readFileSync(logPath, "utf-8").split("\n").slice(-200)
+      : []
+    if (!options.json) {
+      io.stdout.write(`${lines.join("\n")}\n`)
+    }
+    return createSuccess({ logPath, lines }, LOCAL_REQUEST_ID)
+  }
+
+  throw new Error(
+    "Usage: upster service install|uninstall|start|stop|restart|status|logs"
+  )
+}
+
 function startDaemon(options: CliOptions) {
   if (options.json) {
     throw controlPlaneUnavailableError({ dashboardUrl: options.dashboardUrl })
@@ -990,7 +1080,7 @@ function startDaemon(options: CliOptions) {
 
   if (!existsSync(join(process.cwd(), "apps", "web", "package.json"))) {
     throw new Error(
-      "The Upster control plane runs with Docker, not from the CLI. Start it with `docker compose up -d` in a directory that has the Upster docker-compose.yaml. See https://github.com/kerdofficial/upster."
+      "Start the control plane with `upster service start` (native install) or `docker compose up -d` in a directory that has the Upster docker-compose.yaml. See https://github.com/kerdofficial/upster."
     )
   }
 

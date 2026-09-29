@@ -270,6 +270,40 @@ changes.
 - Deleting a pill with the vault unlocked also removes its tunnel and DNS
   record, and the UI warns if that cleanup could not be confirmed.
 
+### Native (non-Docker) installs
+
+The desktop app and `upster service install` run the same server as a per-user
+background service (LaunchAgent on macOS, systemd user unit on Linux) using a
+staged, pinned Node runtime and cloudflared binary.
+
+What stays the same: the server listens on `127.0.0.1` only, the auth model,
+scopes, pairing and vault rules are identical, and remote access still goes
+through `tailscale serve` (never `funnel`), now using the host `tailscale` CLI.
+The service refuses to install as root, the data directory is created `0700`,
+and `runtime.json` and `service.lock` are `0600`. Pill commands still get the
+minimal explicit environment; the service `PATH` is captured from the login
+shell at install time so pills find their toolchain.
+
+What is weaker than the Docker deployment, and is not mitigated by the app:
+
+- There is no `cap_drop` or container boundary. Pills run as the same OS user
+  as the service and can read the whole data directory, including the `file:`
+  database and the persisted session secret. Treat every pill as fully trusted
+  with your user account. Use Docker when that is not acceptable.
+- libSQL is a local file rather than a network service, so database
+  authentication does not apply.
+- The bundled Node binary needs the JIT and unsigned-executable-memory
+  entitlements on macOS.
+- The desktop window only exposes a small allowlisted bridge
+  (`window.upsterDesktop`) and only to the local service origin; the window is
+  sandboxed with context isolation and denies permission requests.
+- `UPSTER_TRUST_PROXY=true` is set for the native service because the only
+  proxy that can reach the loopback listener is the local Tailscale serve.
+
+Run `tests/pentest/run.sh` against the native service with
+`UPSTER_PENTEST_URL` and, from the same machine, `UPSTER_PENTEST_LAN_URL` set
+to the machine's LAN address to confirm it is not reachable from the network.
+
 ## What an operator still needs to watch for
 
 - **Do not run untrusted repositories.** Pills run as a non-root-capable but
