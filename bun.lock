@@ -93,6 +93,18 @@
         "vitest": "^4",
       },
     },
+    "packages/service": {
+      "name": "@upster/service",
+      "version": "0.1.0",
+      "dependencies": {
+        "@upster/core": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^22",
+        "typescript": "^6",
+        "vitest": "^4",
+      },
+    },
   },
   "packages": {
     "@acemir/cssom": ["@acemir/cssom@0.9.31", "", {}, "sha512-ZnR3GSaH+/vJ0YlHau21FjfLYjMpYVIzTD8M8vIEQvIGxeOXyXdzCI140rrCY862p/C/BbzWsjc1dgnM9mkoTA=="],
@@ -638,6 +650,8 @@
     "@upster/cli": ["@upster/cli@workspace:apps/cli"],
 
     "@upster/core": ["@upster/core@workspace:packages/core"],
+
+    "@upster/service": ["@upster/service@workspace:packages/service"],
 
     "@upster/web": ["@upster/web@workspace:apps/web"],
 

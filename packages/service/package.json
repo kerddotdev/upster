@@ -1,20 +1,20 @@
 {
-  "name": "@upster/core",
+  "name": "@upster/service",
   "private": true,
   "type": "module",
   "version": "0.1.0",
   "exports": {
-    ".": "./src/index.ts",
-    "./node": "./src/node/index.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "zod": "^4.4.3"
+    "@upster/core": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "^22",
     "typescript": "^6",
     "vitest": "^4"
   }
