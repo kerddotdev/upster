@@ -1,0 +1,28 @@
+{
+  "name": "@upster/desktop",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Upster desktop app",
+  "author": "kerdofficial",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "build": "bun run build.ts",
+    "start": "bun run build.ts && electron .",
+    "dist": "bun run build.ts && electron-builder",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@upster/core": "workspace:*",
+    "@upster/service": "workspace:*",
+    "electron-updater": "^6.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12",
+    "typescript": "^6",
+    "vitest": "^4"
+  }
+}
