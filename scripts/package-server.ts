@@ -22,6 +22,7 @@ const CLOUDFLARED_VERSION = "2025.8.1"
 const root = resolve(import.meta.dirname, "..")
 const lockPath = join(root, "scripts", "server-bundle.lock.json")
 const updateLock = process.argv.includes("--update-lock")
+const lockOnly = process.argv.includes("--lock-only")
 
 const target: Target = {
   platform: (process.env.UPSTER_TARGET_PLATFORM ??
@@ -110,6 +111,12 @@ chmodSync(join(outDir, "runtime", "cloudflared"), 0o755)
 
 if (updateLock) {
   writeFileSync(lockPath, `${JSON.stringify(lock, null, 2)}\n`)
+}
+
+if (lockOnly) {
+  rmSync(scratch, { recursive: true, force: true })
+  rmSync(outDir, { recursive: true, force: true })
+  process.exit(0)
 }
 
 const appDir = join(outDir, "app")

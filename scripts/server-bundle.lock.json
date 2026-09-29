@@ -6,5 +6,29 @@
   "cloudflared-darwin-arm64": {
     "url": "https://github.com/cloudflare/cloudflared/releases/download/2025.8.1/cloudflared-darwin-arm64.tgz",
     "sha256": "2802da687e731e35bbf0edc86645ae6618135f0334c488dd7e0366c7f59ab1ed"
+  },
+  "node-darwin-x64": {
+    "url": "https://nodejs.org/dist/v22.16.0/node-v22.16.0-darwin-x64.tar.gz",
+    "sha256": "838d400f7e66c804e5d11e2ecb61d6e9e878611146baff69d6a2def3cc23f4ac"
+  },
+  "cloudflared-darwin-x64": {
+    "url": "https://github.com/cloudflare/cloudflared/releases/download/2025.8.1/cloudflared-darwin-amd64.tgz",
+    "sha256": "f64ad6bddc99053e2c69ff8ec40232bed7826ed495ecbd93be20632b7894b0a1"
+  },
+  "node-linux-arm64": {
+    "url": "https://nodejs.org/dist/v22.16.0/node-v22.16.0-linux-arm64.tar.gz",
+    "sha256": "1725602e9fb150eb8b8220a899085190e1c04d1a5f3862b01c3dc1dfce0157f9"
+  },
+  "cloudflared-linux-arm64": {
+    "url": "https://github.com/cloudflare/cloudflared/releases/download/2025.8.1/cloudflared-linux-arm64",
+    "sha256": "9e2088063c8b8f71ce4b15d65e6f4b1ef345f90c9c15e762cfd2bc8fc63cf22a"
+  },
+  "node-linux-x64": {
+    "url": "https://nodejs.org/dist/v22.16.0/node-v22.16.0-linux-x64.tar.gz",
+    "sha256": "fb870226119d47378fa9c92c4535389c72dae14fcc7b47e6fdcc82c43de5a547"
+  },
+  "cloudflared-linux-x64": {
+    "url": "https://github.com/cloudflare/cloudflared/releases/download/2025.8.1/cloudflared-linux-amd64",
+    "sha256": "a66353004197ee4c1fcb68549203824882bba62378ad4d00d234bdb8251f1114"
   }
 }
