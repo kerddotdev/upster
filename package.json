@@ -16,6 +16,7 @@
     "check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx}\" \"packages/**/*.{ts,tsx,js,jsx}\" \"scripts/**/*.ts\"",
     "typecheck": "bun run --cwd packages/core typecheck && bun run --cwd packages/service typecheck && bun run --cwd apps/web typecheck && bun run --cwd apps/cli typecheck && tsc --noEmit -p tsconfig.json",
     "validate": "bun run format && bun run lint && bun run typecheck && bun run test",
+    "package:server": "bun run scripts/package-server.ts",
     "db:generate": "bun run --cwd apps/web db:generate",
     "db:migrate": "DATABASE_URL=${DATABASE_URL:-file:$PWD/.upster/upster.db} bun run --cwd apps/web db:migrate",
     "db:credentials": "bun run scripts/generate-db-credentials.ts"
