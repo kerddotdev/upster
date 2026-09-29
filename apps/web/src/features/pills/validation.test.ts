@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs"
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
@@ -59,6 +59,22 @@ describe("pill validation", () => {
 
     try {
       expect(() => ensureWorkspacePath(outside, [root])).toThrow(
+        /outside the configured/
+      )
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+      rmSync(outside, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects symlinks that escape the workspace roots", () => {
+    const root = mkdtempSync(join(tmpdir(), "upster-root-"))
+    const outside = mkdtempSync(join(tmpdir(), "upster-outside-"))
+    const link = join(root, "escape")
+
+    try {
+      symlinkSync(outside, link)
+      expect(() => ensureWorkspacePath(link, [root])).toThrow(
         /outside the configured/
       )
     } finally {

@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs"
+import { existsSync, realpathSync } from "node:fs"
 import { isAbsolute, relative, resolve } from "node:path"
 
 export function slugify(value: string) {
@@ -28,9 +28,12 @@ export function ensureWorkspacePath(
     workspaceRoots,
     hostWorkspaceRoot
   )
+  const realPath = existsSync(resolvedPath)
+    ? realpathSync(resolvedPath)
+    : resolvedPath
   const allowed = workspaceRoots.some((root) => {
-    const resolvedRoot = resolve(root)
-    const distance = relative(resolvedRoot, resolvedPath)
+    const resolvedRoot = existsSync(root) ? realpathSync(root) : resolve(root)
+    const distance = relative(resolvedRoot, realPath)
 
     return (
       distance === "" || (!distance.startsWith("..") && !isAbsolute(distance))

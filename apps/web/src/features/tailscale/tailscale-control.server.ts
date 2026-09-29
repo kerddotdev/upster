@@ -3,12 +3,10 @@ import { execFile } from "node:child_process"
 import { setAllowedOrigins } from "@/features/tailscale/allowed-origins"
 
 const BIN = process.env.TAILSCALE_BIN?.trim() || "tailscale"
-const SOCKET =
-  process.env.UPSTER_TAILSCALE_SOCKET?.trim() ||
-  "/var/run/tailscale/tailscaled.sock"
+const SOCKET = process.env.UPSTER_TAILSCALE_SOCKET?.trim() || null
 const TARGET =
   process.env.UPSTER_TAILSCALE_TARGET?.trim() ||
-  `http://upster-app:${process.env.UPSTER_PORT?.trim() || "3377"}`
+  `http://127.0.0.1:${process.env.UPSTER_PORT?.trim() || "3377"}`
 
 export const SERVE_HTTPS_PORT = 443
 export const SERVE_HTTP_PORT = 10000
@@ -21,7 +19,7 @@ function runTailscale(args: Array<string>): Promise<CommandResult> {
   return new Promise((resolve) => {
     execFile(
       BIN,
-      ["--socket", SOCKET, ...args],
+      [...(SOCKET ? ["--socket", SOCKET] : []), ...args],
       { timeout: COMMAND_TIMEOUT_MS, encoding: "utf-8" },
       (error, stdout, stderr) => {
         if (error && typeof error.code !== "number") {

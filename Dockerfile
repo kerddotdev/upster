@@ -26,6 +26,8 @@ RUN bun run build
 
 ENV NODE_ENV=production
 ENV UPSTER_PORT=3377
+ENV UPSTER_LISTEN_HOST=0.0.0.0
+ENV UPSTER_TAILSCALE_SOCKET=/var/run/tailscale/tailscaled.sock
 ENV UPSTER_DATA_DIR=/data
 ENV UPSTER_WORKSPACE_ROOTS=/workspaces
 ENV DATABASE_URL=http://db:8080
