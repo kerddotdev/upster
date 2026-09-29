@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import type { DesktopBridge } from "@upster/core"
 import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { toast } from "sonner"
@@ -13,12 +14,19 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { getDesktopBridge } from "@/lib/desktop"
 import { createPillFn } from "@/features/pills/pill.functions"
 
 export function CreatePillForm({ onCreated }: { onCreated?: () => void }) {
   const router = useRouter()
   const createPill = useServerFn(createPillFn)
   const [pending, setPending] = useState(false)
+  const [desktop, setDesktop] = useState<DesktopBridge>()
+  const repoPathRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setDesktop(getDesktopBridge())
+  }, [])
 
   return (
     <form
@@ -70,12 +78,29 @@ export function CreatePillForm({ onCreated }: { onCreated?: () => void }) {
         </Field>
         <Field>
           <FieldLabel htmlFor="repoPath">Repository path</FieldLabel>
-          <Input
-            id="repoPath"
-            name="repoPath"
-            placeholder="/workspaces/apps/example-app"
-            required
-          />
+          <div className="flex gap-2">
+            <Input
+              ref={repoPathRef}
+              id="repoPath"
+              name="repoPath"
+              placeholder="/workspaces/apps/example-app"
+              required
+            />
+            {desktop ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={async () => {
+                  const picked = await desktop.pickFolder()
+                  if (picked && repoPathRef.current) {
+                    repoPathRef.current.value = picked
+                  }
+                }}
+              >
+                Browse
+              </Button>
+            ) : null}
+          </div>
         </Field>
         <Field>
           <FieldLabel htmlFor="cwd">Command cwd</FieldLabel>
