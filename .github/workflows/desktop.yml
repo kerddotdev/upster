@@ -10,7 +10,8 @@ permissions:
 
 jobs:
   macos:
-    runs-on: vectis-macos-26-arm64
+    # The Vectis macOS image has no Xcode, so notarytool is unavailable there.
+    runs-on: macos-latest
     environment: release
     permissions:
       contents: write
