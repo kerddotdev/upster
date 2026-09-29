@@ -1,11 +1,13 @@
 # Upster
 
-Upster is a local Dockerized dashboard for publishing short-lived mini apps through Cloudflare Tunnel.
+Upster is a local dashboard (Docker, or a native desktop app and background service) for publishing short-lived mini apps through Cloudflare Tunnel.
 
 ## Repository layout
 
 Upster uses a Bun workspace layout. The dashboard app lives in `apps/web`, while
-the CLI app lives in `apps/cli`, shared CLI/API contracts live in
+the CLI app lives in `apps/cli`, the Electron desktop app lives in
+`apps/desktop`, the native background service manager lives in
+`packages/service`, shared CLI/API contracts live in
 `packages/core`, and the root `package.json` keeps the common commands for local
 development, validation, database tasks, and Docker builds.
 
@@ -56,6 +58,21 @@ upster vault unlock
 
 Cloudflare credentials are never placed in `.env`; you provide them once through
 `upster vault save`, which stores them as encrypted vault ciphertext.
+
+### Desktop app and native service (macOS, Linux)
+
+The desktop app runs Upster without Docker. It installs a per-user background
+service (LaunchAgent or systemd user unit) that owns your pills, database and
+tunnels, so remote browser access keeps working when the app is closed. The
+app, the CLI and the browser are all clients of that one service.
+
+```sh
+bun run package:desktop   # builds the app for the current platform
+upster service install --bundle <server-bundle-dir>   # headless, no app
+```
+
+Native installs give up the container boundary; read the "Native (non-Docker)
+installs" section in `SECURITY.md` first. Windows keeps using Docker.
 
 ### Remote Access Over Tailscale
 
