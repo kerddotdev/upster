@@ -134,9 +134,21 @@ run(
 const webPackage = JSON.parse(
   readFileSync(join(webDir, "package.json"), "utf-8")
 ) as { dependencies: Record<string, string> }
+const BUILD_ONLY_DEPENDENCIES = new Set([
+  "shadcn",
+  "@tailwindcss/vite",
+  "@tanstack/router-plugin",
+  "@tanstack/react-devtools",
+  "@tanstack/react-router-devtools",
+  "tailwindcss",
+  "tw-animate-css",
+  "@fontsource-variable/geist",
+  "@xterm/xterm",
+])
 const dependencies = Object.fromEntries(
   Object.entries(webPackage.dependencies).filter(
-    ([, version]) => !version.startsWith("workspace:")
+    ([name, version]) =>
+      !version.startsWith("workspace:") && !BUILD_ONLY_DEPENDENCIES.has(name)
   )
 )
 const rootPackage = JSON.parse(

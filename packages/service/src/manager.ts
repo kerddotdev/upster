@@ -1,5 +1,12 @@
 import { execFile } from "node:child_process"
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { promisify } from "node:util"
@@ -206,31 +213,82 @@ export type BundleInstallInput = {
   workspaceRoots: Array<string>
 }
 
-export function installFromBundle(
+export function stagedBundleDir(dataDir: string) {
+  return join(dataDir, "bundle")
+}
+
+export function readBundleVersion(bundleDir: string) {
+  try {
+    const manifest = JSON.parse(
+      readFileSync(join(bundleDir, "manifest.json"), "utf-8")
+    ) as { version?: string }
+    return manifest.version ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function installFromBundle(
   input: BundleInstallInput,
   run: RunCommand = defaultRun
 ) {
-  const nodePath = join(input.bundleDir, "runtime", "node")
-  const entryPath = join(input.bundleDir, "app", "server.mjs")
-  const cloudflaredPath = join(input.bundleDir, "runtime", "cloudflared")
-
-  for (const path of [nodePath, entryPath]) {
+  for (const path of [
+    join(input.bundleDir, "runtime", "node"),
+    join(input.bundleDir, "app", "server.mjs"),
+  ]) {
     if (!existsSync(path)) {
       throw new Error(`Not an Upster server bundle, missing ${path}`)
     }
   }
 
-  return installService(
+  const staged = stagedBundleDir(input.dataDir)
+  if (staged !== input.bundleDir) {
+    await controlService("stop", run).catch(() => undefined)
+    mkdirSync(input.dataDir, { recursive: true, mode: 0o700 })
+    rmSync(staged, { recursive: true, force: true })
+    cpSync(input.bundleDir, staged, { recursive: true, verbatimSymlinks: true })
+  }
+
+  writeFileSync(
+    join(input.dataDir, "service.json"),
+    JSON.stringify({ port: input.port, workspaceRoots: input.workspaceRoots }),
+    { mode: 0o600 }
+  )
+
+  const cloudflaredPath = join(staged, "runtime", "cloudflared")
+  const version = readBundleVersion(staged)
+
+  await installService(
     {
-      nodePath,
-      entryPath,
+      nodePath: join(staged, "runtime", "node"),
+      entryPath: join(staged, "app", "server.mjs"),
       dataDir: input.dataDir,
       port: input.port,
       workspaceRoots: input.workspaceRoots,
-      extraEnv: existsSync(cloudflaredPath)
-        ? { CLOUDFLARED_BIN: cloudflaredPath }
-        : undefined,
+      extraEnv: {
+        ...(existsSync(cloudflaredPath)
+          ? { CLOUDFLARED_BIN: cloudflaredPath }
+          : {}),
+        ...(version ? { UPSTER_VERSION: version } : {}),
+      },
     },
     run
   )
+}
+
+export function readInstalledConfig(dataDir: string) {
+  try {
+    const config = JSON.parse(
+      readFileSync(join(dataDir, "service.json"), "utf-8")
+    ) as Partial<Pick<BundleInstallInput, "port" | "workspaceRoots">>
+    if (
+      typeof config.port === "number" &&
+      Array.isArray(config.workspaceRoots)
+    ) {
+      return { port: config.port, workspaceRoots: config.workspaceRoots }
+    }
+  } catch {
+    return null
+  }
+  return null
 }
