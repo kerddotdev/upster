@@ -26,7 +26,7 @@ export const Route = createFileRoute("/api/cli/v1/vault/unlock")({
           const data = vaultUnlockSchema.parse(await readJsonBody(request))
           return unlockCloudflareVault({
             ...data,
-            actorSessionId: actor.session.id,
+            actor: { sessionId: actor.session.id, kind: actor.session.kind },
           })
         }, id)
       },

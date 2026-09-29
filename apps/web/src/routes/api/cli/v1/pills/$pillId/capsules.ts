@@ -28,14 +28,17 @@ export const Route = createFileRoute("/api/cli/v1/pills/$pillId/capsules")({
         const id = requestId()
 
         return handleCliRoute(async () => {
-          await authenticateCliRequest(
+          const actor = await authenticateCliRequest(
             request,
             ["capsules:write"],
             "build capsules"
           )
           const data = buildCapsuleSchema.parse(await readJsonBody(request))
 
-          return buildCapsule({ pillId: params.pillId, ...data })
+          return buildCapsule(
+            { pillId: params.pillId, ...data },
+            { sessionId: actor.session.id, kind: actor.session.kind }
+          )
         }, id)
       },
     },

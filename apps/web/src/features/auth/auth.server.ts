@@ -1,10 +1,15 @@
 import { redirect } from "@tanstack/react-router"
+import { getRequestHeader } from "@tanstack/react-start/server"
 
 import { createAdminUser, getAdminUser } from "@/db/repositories.server"
 import {
   hashPassphrase,
   verifyPassphrase,
 } from "@/features/auth/passwords.server"
+import {
+  isPrivilegedLocalRequest,
+  readRequestOriginInfo,
+} from "@/features/auth/admin-origin"
 import {
   endCurrentSession,
   issueSessionCookie,
@@ -18,6 +23,8 @@ export async function hasAdmin() {
 }
 
 export async function createAdmin(passphrase: string) {
+  assertAdminPassphraseAllowed()
+
   if (await hasAdmin()) {
     throw new Error("An admin user already exists.")
   }
@@ -27,6 +34,8 @@ export async function createAdmin(passphrase: string) {
 }
 
 export async function verifyAdmin(passphrase: string) {
+  assertAdminPassphraseAllowed()
+
   const user = await getAdminUser(ADMIN_ID)
   if (!user) {
     return false
@@ -36,10 +45,30 @@ export async function verifyAdmin(passphrase: string) {
 }
 
 export async function startSession() {
-  await issueSessionCookie(ADMIN_ID)
+  assertAdminPassphraseAllowed()
+  const session = await issueSessionCookie(ADMIN_ID)
+
+  const { recordSecurityEvent } =
+    await import("@/features/auth/security-audit.server")
+  await recordSecurityEvent({
+    type: "security.login",
+    message: "Local admin signed in.",
+    actorSessionId: session.id,
+    actorKind: "dashboard",
+    source: "login",
+  })
 }
 
 export async function endSession() {
+  const { lockCloudflareVault } =
+    await import("@/features/secrets/vault-session.server")
+  const session = await getSession()
+  if (session) {
+    await lockCloudflareVault({
+      sessionId: session.sid,
+      kind: session.kind,
+    })
+  }
   await endCurrentSession()
 }
 
@@ -53,5 +82,32 @@ export async function requireSession() {
     return session
   }
 
-  throw redirect({ to: (await hasAdmin()) ? "/login" : "/setup" })
+  throw redirect({
+    to: isAdminPassphraseAllowedForCurrentRequest()
+      ? (await hasAdmin())
+        ? "/login"
+        : "/setup"
+      : "/pair",
+  })
+}
+
+export function isAdminPassphraseAllowedForCurrentRequest() {
+  return isPrivilegedLocalRequest(
+    readRequestOriginInfo(safeRequestHeader),
+    process.env.UPSTER_BIND_HOST
+  )
+}
+
+export function assertAdminPassphraseAllowed() {
+  if (!isAdminPassphraseAllowedForCurrentRequest()) {
+    throw new Error("Pairing is required from this origin.")
+  }
+}
+
+function safeRequestHeader(name: string) {
+  try {
+    return getRequestHeader(name) ?? null
+  } catch {
+    return null
+  }
 }

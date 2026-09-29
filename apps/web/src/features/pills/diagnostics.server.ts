@@ -4,6 +4,7 @@ import {
   listRuns,
 } from "@/db/repositories.server"
 import { deleteCapsuleVersion } from "@/features/capsules/capsule.server"
+import type { VaultActor } from "@/features/secrets/vault-session.server"
 import type { Capsule } from "@/features/capsules/types"
 import type { PillRun } from "@/features/pills/types"
 
@@ -26,14 +27,14 @@ export async function getPillDiagnostics(
   }
 }
 
-export async function clearPillDiagnostics(pillId: string) {
+export async function clearPillDiagnostics(pillId: string, actor: VaultActor) {
   await deleteInactiveRuns(pillId)
 
   const capsules = await listCapsules(pillId)
   const failures: Array<string> = []
   for (const capsule of capsules.filter((entry) => entry.status === "error")) {
     try {
-      await deleteCapsuleVersion(capsule.id)
+      await deleteCapsuleVersion(capsule.id, actor)
     } catch {
       failures.push(capsule.id)
     }

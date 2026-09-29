@@ -41,6 +41,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useCloudflareVault } from "@/features/secrets/cloudflare-vault-provider"
+import { useHasScopes } from "@/features/auth/use-scopes"
 import { CapsuleFileBrowser } from "@/features/capsules/components/capsule-file-browser"
 import { DeployCapsuleDialog } from "@/features/capsules/components/deploy-capsule-dialog"
 import {
@@ -101,6 +102,9 @@ export function CapsuleManager({
   const [renameValue, setRenameValue] = useState("")
   const [errorCapsule, setErrorCapsule] = useState<Capsule | null>(null)
   const [deployCapsule, setDeployCapsule] = useState<Capsule | null>(null)
+  const canWriteCapsules = useHasScopes("capsules:write")
+  const canDeleteCapsules = useHasScopes("capsules:delete")
+  const canStartRuns = useHasScopes("runs:start")
 
   const load = useCallback(async () => {
     try {
@@ -236,7 +240,7 @@ export function CapsuleManager({
                             <CheckIcon />
                           </Button>
                         </span>
-                      ) : (
+                      ) : canWriteCapsules ? (
                         <button
                           type="button"
                           className="flex items-center gap-2 text-xs font-medium hover:underline"
@@ -248,6 +252,10 @@ export function CapsuleManager({
                           {capsule.label ?? capsule.id.slice(0, 8)}
                           <PencilIcon className="size-3 text-muted-foreground" />
                         </button>
+                      ) : (
+                        <span className="text-xs font-medium">
+                          {capsule.label ?? capsule.id.slice(0, 8)}
+                        </span>
                       )}
                       {deployed ? (
                         <Tooltip>
@@ -311,7 +319,12 @@ export function CapsuleManager({
                     <Button
                       variant={deployed ? "secondary" : "default"}
                       onClick={() => startVersion(capsule)}
-                      disabled={isBusy || running || capsule.status !== "ready"}
+                      disabled={
+                        isBusy ||
+                        running ||
+                        capsule.status !== "ready" ||
+                        !canStartRuns
+                      }
                     >
                       <PlayIcon data-icon="inline-start" />
                       {deployed ? "Deployed" : "Start"}
@@ -344,6 +357,7 @@ export function CapsuleManager({
                           </DropdownMenuItem>
                         ) : null}
                         <DropdownMenuItem
+                          disabled={!canWriteCapsules}
                           onClick={() => void togglePin(capsule)}
                         >
                           <PinIcon />
@@ -376,7 +390,10 @@ export function CapsuleManager({
                         <DropdownMenuItem
                           variant="destructive"
                           disabled={
-                            isBusy || deployed || capsule.status === "building"
+                            isBusy ||
+                            deployed ||
+                            capsule.status === "building" ||
+                            !canDeleteCapsules
                           }
                           onClick={() => void removeVersion(capsule)}
                         >

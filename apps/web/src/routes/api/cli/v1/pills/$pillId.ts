@@ -39,13 +39,16 @@ export const Route = createFileRoute("/api/cli/v1/pills/$pillId")({
         const id = requestId()
 
         return handleCliRoute(async () => {
-          await authenticateCliRequest(
+          const actor = await authenticateCliRequest(
             request,
             ["pills:delete"],
             "delete pills"
           )
 
-          return deletePill({ pillId: params.pillId })
+          return deletePill(
+            { pillId: params.pillId },
+            { sessionId: actor.session.id, kind: actor.session.kind }
+          )
         }, id)
       },
     },

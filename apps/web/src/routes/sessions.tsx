@@ -49,14 +49,47 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
+  listSecurityEventsFn,
   listSessionsFn,
   revokeSessionFn,
 } from "@/features/sessions/session.functions"
+import { AccessDenied } from "@/components/access-denied"
+import { GatedButton } from "@/features/auth/gated-button"
 
 export const Route = createFileRoute("/sessions")({
-  loader: () => listSessionsFn(),
+  loader: loadSessionsPage,
+  errorComponent: AccessDenied,
   component: SessionsPage,
 })
+
+async function loadSessionsPage() {
+  const [sessions, auditEvents] = await Promise.all([
+    listSessionsFn(),
+    listSecurityEventsFn(),
+  ])
+
+  return { sessions, auditEvents }
+}
+
+type AuditEventRow = Awaited<
+  ReturnType<typeof loadSessionsPage>
+>["auditEvents"][number]
+
+const auditTypeLabels: Record<string, string> = {
+  "security.scope_denied": "Scope denied",
+  "security.escalation_denied": "Escalation denied",
+  "security.paired": "Connection paired",
+  "security.connection_revoked": "Connection revoked",
+  "security.connection_scopes_updated": "Scopes updated",
+  "security.login": "Admin login",
+  "security.panic": "Emergency lockdown",
+}
+
+const auditDestructiveTypes = new Set([
+  "security.scope_denied",
+  "security.escalation_denied",
+  "security.panic",
+])
 
 type SessionKind = "dashboard" | "cli" | "agent"
 type SessionStatus = "active" | "expired" | "revoked"
@@ -109,7 +142,7 @@ const statusSortOrder: Record<SessionStatus, number> = {
 }
 
 function SessionsPage() {
-  const sessions = Route.useLoaderData()
+  const { sessions, auditEvents } = Route.useLoaderData()
   const revokeSession = useServerFn(revokeSessionFn)
   const router = useRouter()
   const [pendingId, setPendingId] = useState<string | null>(null)
@@ -164,7 +197,66 @@ function SessionsPage() {
           />
         </CardContent>
       </Card>
+
+      <SecurityAuditCard events={auditEvents} />
     </div>
+  )
+}
+
+function SecurityAuditCard({ events }: { events: Array<AuditEventRow> }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Security audit</CardTitle>
+        <CardDescription>
+          Denied access attempts, pairings, revocations, logins and lockdowns.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {events.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No security events recorded yet.
+          </p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Time</TableHead>
+                <TableHead>Event</TableHead>
+                <TableHead>Actor</TableHead>
+                <TableHead>Details</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {events.map((event) => (
+                <TableRow key={event.id}>
+                  <TableCell className="whitespace-nowrap">
+                    {formatDate(event.createdAt)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        auditDestructiveTypes.has(event.type)
+                          ? "destructive"
+                          : "secondary"
+                      }
+                    >
+                      {auditTypeLabels[event.type] ?? event.type}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {event.actorKind ?? "-"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {event.message}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -517,7 +609,8 @@ function createSessionColumns({
       header: "",
       enableSorting: false,
       cell: ({ row }) => (
-        <Button
+        <GatedButton
+          scopes={["sessions:revoke"]}
           variant="outline"
           size="sm"
           disabled={
@@ -527,7 +620,7 @@ function createSessionColumns({
         >
           <BanIcon data-icon="inline-start" />
           Revoke
-        </Button>
+        </GatedButton>
       ),
     },
   ]

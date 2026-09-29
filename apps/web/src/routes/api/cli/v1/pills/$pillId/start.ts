@@ -14,7 +14,7 @@ export const Route = createFileRoute("/api/cli/v1/pills/$pillId/start")({
         const id = requestId()
 
         return handleCliRoute(async () => {
-          await authenticateCliRequest(
+          const actor = await authenticateCliRequest(
             request,
             ["runs:start"],
             "start pill runs"
@@ -22,15 +22,18 @@ export const Route = createFileRoute("/api/cli/v1/pills/$pillId/start")({
           const data = startPillSchema.parse(await readJsonBody(request))
           const pill = await getPillStatus({ pillId: params.pillId })
 
-          return startPillRuntime({
-            pillId: params.pillId,
-            commandName: data.commandName ?? pill.defaultEnv,
-            expiresAt: data.expiresAt,
-            rotatePorts: data.rotatePorts,
-            useCapsule: data.useCapsule,
-            capsuleId: data.capsuleId,
-            deployTarget: data.deployTarget,
-          })
+          return startPillRuntime(
+            {
+              pillId: params.pillId,
+              commandName: data.commandName ?? pill.defaultEnv,
+              expiresAt: data.expiresAt,
+              rotatePorts: data.rotatePorts,
+              useCapsule: data.useCapsule,
+              capsuleId: data.capsuleId,
+              deployTarget: data.deployTarget,
+            },
+            { sessionId: actor.session.id, kind: actor.session.kind }
+          )
         }, id)
       },
     },

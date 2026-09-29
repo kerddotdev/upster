@@ -8,13 +8,17 @@ import {
   updatePillRecord,
 } from "@/db/repositories.server"
 import { removeAllCapsules } from "@/features/capsules/capsule.server"
+import { publishEvent } from "@/features/events/event-bus.server"
 import { createCloudflareClient } from "@/features/cloudflare/client.server"
 import type {
   CloudflareConfig,
   CreatePillInput,
   UpdatePillInput,
 } from "@/features/pills/types"
-import { getUnlockedCloudflareConfig } from "@/features/secrets/vault-session.server"
+import {
+  getUnlockedCloudflareConfig,
+  type VaultActor,
+} from "@/features/secrets/vault-session.server"
 import {
   assertAllowedCommand,
   assertValidHostnameLabel,
@@ -44,7 +48,7 @@ export async function createPill(input: CreatePillInput) {
 
   assertAllowedCommand(argv, config.allowedCommands)
 
-  return createPillRecord({
+  const pill = await createPillRecord({
     ...input,
     name,
     slug,
@@ -52,6 +56,8 @@ export async function createPill(input: CreatePillInput) {
     cwd,
     argv,
   })
+  publishEvent({ domain: "pills", type: "created" })
+  return pill
 }
 
 export async function updatePill(input: UpdatePillInput) {
@@ -133,30 +139,33 @@ export async function updatePill(input: UpdatePillInput) {
     pill.defaultEnv
   ).trim()
 
-  return updatePillRecord({
+  const updated = await updatePillRecord({
     pillId: input.pillId,
     name,
     defaultEnv,
     command,
   })
+  publishEvent({ domain: "pills", type: "updated", id: input.pillId })
+  return updated
 }
 
 type CloudflareCleanup = "ok" | "failed" | "skipped"
 
-export async function deletePill(input: { pillId: string }) {
+export async function deletePill(input: { pillId: string }, actor: VaultActor) {
   const activeRun = await getActiveRun(input.pillId)
 
   if (activeRun) {
     throw new Error("Stop the pill before deleting it.")
   }
 
-  const cloudflareConfig = await getUnlockedCloudflareConfig()
+  const cloudflareConfig = await getUnlockedCloudflareConfig(actor)
   const cloudflareCleanup: CloudflareCleanup = cloudflareConfig
     ? await cleanupCloudflareResources(input.pillId, cloudflareConfig)
     : "skipped"
 
-  await removeAllCapsules(input.pillId)
+  await removeAllCapsules(input.pillId, actor)
   await deletePillRecord(input.pillId)
+  publishEvent({ domain: "pills", type: "deleted", id: input.pillId })
 
   return { cloudflareCleanup }
 }
@@ -199,18 +208,4 @@ export async function getPills() {
 
 export async function getPillStatus(input: { pillId: string }) {
   return getPillDetail(input.pillId)
-}
-
-export function getRuntimeSettings() {
-  const config = getUpsterConfig()
-
-  return {
-    workspaceRoots: config.workspaceRoots,
-    hostWorkspaceRoot: config.hostWorkspaceRoot,
-    allowedCommands: config.allowedCommands,
-    appPortRange: config.appPortRange,
-    metricsPortRange: config.metricsPortRange,
-    publicOrigin: config.publicOrigin,
-    cloudflaredBin: config.cloudflaredBin,
-  }
 }

@@ -3,6 +3,7 @@ import {
   CloudIcon,
   FolderKanbanIcon,
   KeyRoundIcon,
+  RadioTowerIcon,
   SettingsIcon,
 } from "lucide-react"
 
@@ -21,30 +22,68 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { scopesIncludeAll, type AccessScope } from "@upster/core"
+
 import { Badge } from "@/components/ui/badge"
 import { LogoutButton } from "@/features/auth/logout-button"
 import { CloudflareLockButton } from "@/features/secrets/cloudflare-lock-button"
+import { EventsListener } from "@/features/events/events-listener"
+import { useScopes } from "@/features/auth/use-scopes"
+import { useIsRemoteEnvironment } from "@/lib/environment"
 
-const UNAUTHENTICATED_PATHS = ["/login", "/setup"]
+const UNAUTHENTICATED_PATHS = ["/login", "/setup", "/pair"]
 
 const navItems = [
-  { to: "/", label: "Pills", icon: FolderKanbanIcon },
-  { to: "/settings/cloudflare", label: "Cloudflare", icon: CloudIcon },
-  { to: "/settings/runtime", label: "Runtime", icon: SettingsIcon },
-  { to: "/sessions", label: "Sessions", icon: KeyRoundIcon },
-] as const
+  { to: "/", label: "Pills", icon: FolderKanbanIcon, scope: "pills:read" },
+  {
+    to: "/settings/cloudflare",
+    label: "Cloudflare",
+    icon: CloudIcon,
+    scope: "vault:status",
+  },
+  {
+    to: "/settings/runtime",
+    label: "Runtime",
+    icon: SettingsIcon,
+    scope: "settings:read",
+  },
+  {
+    to: "/sessions",
+    label: "Sessions",
+    icon: KeyRoundIcon,
+    scope: "sessions:read",
+  },
+  {
+    to: "/connections",
+    label: "Remote Access",
+    icon: RadioTowerIcon,
+    scope: "connections:read",
+  },
+] as const satisfies ReadonlyArray<{
+  to: string
+  label: string
+  icon: typeof FolderKanbanIcon
+  scope: AccessScope
+}>
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
+  const scopes = useScopes()
+  const remote = useIsRemoteEnvironment()
 
   if (UNAUTHENTICATED_PATHS.includes(pathname)) {
     return <>{children}</>
   }
 
+  const visibleNavItems = navItems.filter(
+    (item) => scopes === null || scopesIncludeAll(scopes, [item.scope])
+  )
+
   return (
     <SidebarProvider>
+      <EventsListener />
       <Sidebar variant="inset">
         <SidebarHeader>
           <div className="flex items-center gap-2 px-2 py-1">
@@ -62,12 +101,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </SidebarHeader>
+        {remote ? (
+          <div className="px-2 pt-1">
+            <Badge
+              variant="outline"
+              className="w-full justify-center gap-1.5 py-1"
+            >
+              <RadioTowerIcon className="size-3" />
+              Remote environment
+            </Badge>
+          </div>
+        ) : null}
         <SidebarContent>
           <SidebarGroup>
             <SidebarGroupLabel>Workspace</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {navItems.map((item) => {
+                {visibleNavItems.map((item) => {
                   const Icon = item.icon
                   const isActive = pathname === item.to
 

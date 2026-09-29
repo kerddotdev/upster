@@ -7,9 +7,11 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { AppShell } from "@/components/app-shell"
 import { ErrorReportProvider } from "@/components/error-report"
 import { CloudflareVaultProvider } from "@/features/secrets/cloudflare-vault-provider"
+import { getAuthStatusFn } from "@/features/auth/auth.functions"
 import appCss from "../styles.css?url"
 
 export const Route = createRootRoute({
+  loader: () => getAuthStatusFn(),
   head: () => ({
     meta: [
       {

@@ -8,6 +8,7 @@ export type PortRange = {
 
 export type UpsterConfig = {
   dataDir: string
+  port: number
   databaseUrl: string
   databaseAuthToken: string | null
   hostWorkspaceRoot: string | null
@@ -27,6 +28,11 @@ function parseRetention(value: string | undefined) {
 
   const parsed = Number(value)
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : 10
+}
+
+function parsePort(value: string | undefined, fallback: number) {
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback
 }
 
 function parseAllowedCommands(value: string | undefined) {
@@ -74,6 +80,7 @@ export function getUpsterConfig(): UpsterConfig {
 
   return {
     dataDir,
+    port: parsePort(process.env.UPSTER_PORT, 3377),
     databaseUrl:
       process.env.DATABASE_URL ?? `file:${resolve(dataDir, "upster.db")}`,
     databaseAuthToken: process.env.DATABASE_AUTH_TOKEN?.trim() || null,

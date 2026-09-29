@@ -22,7 +22,12 @@ export const Route = createFileRoute("/api/cli/v1/status")({
 
           return {
             controlPlane: await getRuntimeControlPlaneStatus(),
-            vault: canReadVault ? await getVaultStatus() : null,
+            vault: canReadVault
+              ? await getVaultStatus({
+                  sessionId: actor.session.id,
+                  kind: actor.session.kind,
+                })
+              : null,
             session: {
               id: actor.session.id,
               kind: actor.session.kind,

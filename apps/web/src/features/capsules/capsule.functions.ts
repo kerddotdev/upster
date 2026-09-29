@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 
-import { authMiddleware } from "@/features/auth/auth-middleware"
+import { requireScopes } from "@/features/auth/scope-middleware"
 
 const capsuleInfoSchema = z.object({
   pillId: z.string().min(1),
@@ -19,7 +19,7 @@ const capsuleIdSchema = z.object({
 })
 
 export const getCapsuleInfoFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("capsules:read")])
   .validator((data: unknown) => capsuleInfoSchema.parse(data))
   .handler(async ({ data }) => {
     const { getCapsuleInfo } =
@@ -29,22 +29,28 @@ export const getCapsuleInfoFn = createServerFn({ method: "GET" })
   })
 
 export const buildCapsuleFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("capsules:write")])
   .validator((data: unknown) => buildCapsuleSchema.parse(data))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { buildCapsule } = await import("@/features/capsules/capsule.server")
 
-    return buildCapsule(data)
+    return buildCapsule(data, {
+      sessionId: context.session.sid,
+      kind: context.session.kind,
+    })
   })
 
 export const deleteCapsuleFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("capsules:delete")])
   .validator((data: unknown) => capsuleIdSchema.parse(data))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { deleteCapsuleVersion } =
       await import("@/features/capsules/capsule.server")
 
-    return deleteCapsuleVersion(data.capsuleId)
+    return deleteCapsuleVersion(data.capsuleId, {
+      sessionId: context.session.sid,
+      kind: context.session.kind,
+    })
   })
 
 const relabelCapsuleSchema = z.object({
@@ -53,7 +59,7 @@ const relabelCapsuleSchema = z.object({
 })
 
 export const relabelCapsuleFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("capsules:write")])
   .validator((data: unknown) => relabelCapsuleSchema.parse(data))
   .handler(async ({ data }) => {
     const { relabelCapsule } =
@@ -68,7 +74,7 @@ const pinCapsuleSchema = z.object({
 })
 
 export const pinCapsuleFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("capsules:write")])
   .validator((data: unknown) => pinCapsuleSchema.parse(data))
   .handler(async ({ data }) => {
     const { setCapsulePinned } =
@@ -83,12 +89,16 @@ const prunePillSchema = z.object({
 })
 
 export const prunePillCapsulesFn = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("capsules:delete")])
   .validator((data: unknown) => prunePillSchema.parse(data))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { runPrune } = await import("@/features/capsules/capsule.server")
 
-    return runPrune(data.pillId, data.keep)
+    return runPrune(
+      data.pillId,
+      { sessionId: context.session.sid, kind: context.session.kind },
+      data.keep
+    )
   })
 
 const capsuleDirSchema = z.object({
@@ -97,7 +107,7 @@ const capsuleDirSchema = z.object({
 })
 
 export const capsuleDirFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("capsules:read")])
   .validator((data: unknown) => capsuleDirSchema.parse(data))
   .handler(async ({ data }) => {
     const { listCapsuleDir } =
@@ -112,7 +122,7 @@ const capsuleFileSchema = z.object({
 })
 
 export const capsuleFileFn = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([requireScopes("capsules:read")])
   .validator((data: unknown) => capsuleFileSchema.parse(data))
   .handler(async ({ data }) => {
     const { readCapsuleFile } =

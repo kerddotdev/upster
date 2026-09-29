@@ -27,11 +27,14 @@ import { PillDiagnostics } from "@/features/pills/components/pill-diagnostics"
 import { StatusBadge } from "@/features/pills/components/status-badge"
 import { getPillStatusFn } from "@/features/pills/pill.functions"
 import { TerminalOutput } from "@/features/terminal/terminal-output"
+import { AccessDenied } from "@/components/access-denied"
+import { useHasScopes } from "@/features/auth/use-scopes"
 
 export const Route = createFileRoute("/pills/$pillId")({
   validateSearch: (search: Record<string, unknown>): { tab?: string } =>
     typeof search.tab === "string" ? { tab: search.tab } : {},
   loader: ({ params }) => getPillStatusFn({ data: { pillId: params.pillId } }),
+  errorComponent: AccessDenied,
   component: PillDetailPage,
 })
 
@@ -44,7 +47,9 @@ function PillDetailPage() {
   const [diagnosticsKey, setDiagnosticsKey] = useState(0)
   const runId = pill.activeRun?.id ?? null
   const expiresAt = pill.activeRun?.expiresAt ?? null
-  const metrics = useTunnelMetrics(runId)
+  const canReadLogs = useHasScopes("logs:read")
+  const canReadMetrics = useHasScopes("metrics:read")
+  const metrics = useTunnelMetrics(runId, canReadMetrics)
 
   return (
     <div className="flex flex-col gap-6">
@@ -90,7 +95,7 @@ function PillDetailPage() {
         />
       </div>
 
-      <MetricsSummary metrics={metrics} />
+      {canReadMetrics ? <MetricsSummary metrics={metrics} /> : null}
 
       <Tabs
         value={tab ?? "overview"}
@@ -100,8 +105,12 @@ function PillDetailPage() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="capsules">Capsules</TabsTrigger>
           <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>
-          <TabsTrigger value="terminal">Terminal</TabsTrigger>
-          <TabsTrigger value="metrics">Metrics</TabsTrigger>
+          {canReadLogs ? (
+            <TabsTrigger value="terminal">Terminal</TabsTrigger>
+          ) : null}
+          {canReadMetrics ? (
+            <TabsTrigger value="metrics">Metrics</TabsTrigger>
+          ) : null}
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
@@ -225,33 +234,37 @@ function PillDetailPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="terminal" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Terminal</CardTitle>
-              <CardDescription>
-                Live output from the app process and cloudflared.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="h-[28rem]">
-              <TerminalOutput runId={runId} initialLogs={pill.recentLogs} />
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {canReadLogs ? (
+          <TabsContent value="terminal" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Terminal</CardTitle>
+                <CardDescription>
+                  Live output from the app process and cloudflared.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="h-[28rem]">
+                <TerminalOutput runId={runId} initialLogs={pill.recentLogs} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ) : null}
 
-        <TabsContent value="metrics" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Tunnel metrics</CardTitle>
-              <CardDescription>
-                Prometheus output from the local metrics server.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <MetricsRaw runId={runId} metrics={metrics} />
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {canReadMetrics ? (
+          <TabsContent value="metrics" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Tunnel metrics</CardTitle>
+                <CardDescription>
+                  Prometheus output from the local metrics server.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <MetricsRaw runId={runId} metrics={metrics} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ) : null}
       </Tabs>
     </div>
   )

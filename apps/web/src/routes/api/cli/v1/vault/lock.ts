@@ -5,7 +5,10 @@ import {
   authenticateCliRequest,
 } from "@/features/cli-api/auth.server"
 import { handleCliRoute, requestId } from "@/features/cli-api/responses.server"
-import { lockCloudflareVault } from "@/features/secrets/vault-session.server"
+import {
+  getVaultStatus,
+  lockCloudflareVault,
+} from "@/features/secrets/vault-session.server"
 
 export const Route = createFileRoute("/api/cli/v1/vault/lock")({
   server: {
@@ -21,7 +24,12 @@ export const Route = createFileRoute("/api/cli/v1/vault/lock")({
           )
           assertHumanCliActor(actor, "upster vault lock")
 
-          return lockCloudflareVault()
+          const vaultActor = {
+            sessionId: actor.session.id,
+            kind: actor.session.kind,
+          }
+          await lockCloudflareVault(vaultActor)
+          return getVaultStatus(vaultActor)
         }, id)
       },
     },

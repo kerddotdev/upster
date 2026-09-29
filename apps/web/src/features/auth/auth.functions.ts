@@ -6,6 +6,7 @@ import {
   endSession,
   getSession,
   hasAdmin,
+  isAdminPassphraseAllowedForCurrentRequest,
   startSession,
   verifyAdmin,
 } from "@/features/auth/auth.server"
@@ -24,7 +25,12 @@ const loginSchema = z.object({
 export const getAuthStatusFn = createServerFn({ method: "GET" }).handler(
   async () => {
     const [admin, session] = await Promise.all([hasAdmin(), getSession()])
-    return { hasAdmin: admin, authenticated: Boolean(session) }
+    return {
+      hasAdmin: admin,
+      authenticated: Boolean(session),
+      pairingRequired: !isAdminPassphraseAllowedForCurrentRequest(),
+      scopes: session?.scopes ?? null,
+    }
   }
 )
 

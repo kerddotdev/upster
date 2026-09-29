@@ -21,6 +21,9 @@ export const Route = createFileRoute("/login")({
     if (status.authenticated) {
       throw redirect({ to: "/" })
     }
+    if (status.pairingRequired) {
+      throw redirect({ to: "/pair" })
+    }
     if (!status.hasAdmin) {
       throw redirect({ to: "/setup" })
     }

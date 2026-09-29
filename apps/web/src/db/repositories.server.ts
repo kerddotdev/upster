@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto"
 
-import { and, desc, eq, isNotNull, isNull, sql } from "drizzle-orm"
-import type { AccessScope } from "@upster/core"
+import { and, desc, eq, gt, isNotNull, isNull, like, sql } from "drizzle-orm"
+import { adminScopes, isAccessScope, type AccessScope } from "@upster/core"
 
 import { db, ensureDatabase } from "@/db/client.server"
+import { publishEvent } from "@/features/events/event-bus.server"
 import {
   accessSessions,
   adminUsers,
@@ -11,6 +12,7 @@ import {
   capsules,
   cloudflareTunnels,
   events,
+  pairingLinks,
   pillCommands,
   pillPorts,
   pillRuns,
@@ -282,6 +284,7 @@ export async function updatePillStatus(pillId: string, status: PillStatus) {
     .update(pills)
     .set({ status, updatedAt: now() })
     .where(eq(pills.id, pillId))
+  publishEvent({ domain: "runs", type: status, id: pillId })
 }
 
 export async function getPillCommand(pillId: string, commandName: string) {
@@ -382,6 +385,7 @@ export async function createCapsule(input: {
     updatedAt: ts,
   })
 
+  publishEvent({ domain: "capsules", type: "created", id: input.id })
   return getCapsuleById(input.id)
 }
 
@@ -447,6 +451,7 @@ export async function updateCapsule(
     })
     .where(eq(capsules.id, id))
 
+  publishEvent({ domain: "capsules", type: "updated", id })
   return getCapsuleById(id)
 }
 
@@ -482,11 +487,13 @@ export async function getLatestReadyCapsule(pillId: string) {
 export async function deleteCapsuleById(id: string) {
   await ensureDatabase()
   await db.delete(capsules).where(eq(capsules.id, id))
+  publishEvent({ domain: "capsules", type: "deleted", id })
 }
 
 export async function deleteCapsulesByPill(pillId: string) {
   await ensureDatabase()
   await db.delete(capsules).where(eq(capsules.pillId, pillId))
+  publishEvent({ domain: "capsules", type: "deleted", id: pillId })
 }
 
 export async function getRun(runId: string) {
@@ -704,7 +711,39 @@ export async function appendEvent(input: {
   })
 }
 
-export type AccessSessionKind = "dashboard" | "cli" | "agent"
+export type SecurityEventRow = {
+  id: string
+  type: string
+  actorSessionId: string | null
+  actorKind: string | null
+  source: string | null
+  message: string
+  createdAt: string
+}
+
+export async function listSecurityEvents(
+  limit = 200
+): Promise<Array<SecurityEventRow>> {
+  await ensureDatabase()
+  const rows = await db
+    .select()
+    .from(events)
+    .where(like(events.type, "security.%"))
+    .orderBy(desc(events.createdAt))
+    .limit(limit)
+
+  return rows.map((row) => ({
+    id: row.id,
+    type: row.type,
+    actorSessionId: row.actorSessionId,
+    actorKind: row.actorKind,
+    source: row.source,
+    message: row.message,
+    createdAt: row.createdAt,
+  }))
+}
+
+export type AccessSessionKind = "dashboard" | "cli" | "agent" | "connection"
 
 export type AccessSession = {
   id: string
@@ -811,6 +850,21 @@ export async function revokeAccessSession(id: string) {
     .update(accessSessions)
     .set({ revokedAt: now() })
     .where(eq(accessSessions.id, id))
+  publishEvent({ domain: "sessions", type: "revoked", id })
+}
+
+export async function revokeAllConnectionSessions() {
+  await ensureDatabase()
+  const sessions = await listAccessSessions()
+  const active = sessions.filter(
+    (session) => session.kind === "connection" && !session.revokedAt
+  )
+
+  for (const session of active) {
+    await revokeAccessSession(session.id)
+  }
+
+  return active.length
 }
 
 export async function touchAccessSession(id: string) {
@@ -819,6 +873,163 @@ export async function touchAccessSession(id: string) {
     .update(accessSessions)
     .set({ lastSeenAt: now() })
     .where(eq(accessSessions.id, id))
+}
+
+export async function updateAccessSessionLabel(id: string, label: string) {
+  await ensureDatabase()
+  await db
+    .update(accessSessions)
+    .set({ label })
+    .where(eq(accessSessions.id, id))
+  publishEvent({ domain: "sessions", type: "updated", id })
+}
+
+export async function updateAccessSessionScopes(
+  id: string,
+  scopes: Array<AccessScope>
+) {
+  await ensureDatabase()
+  await db
+    .update(accessSessions)
+    .set({ scopesJson: JSON.stringify(scopes) })
+    .where(eq(accessSessions.id, id))
+  publishEvent({ domain: "sessions", type: "updated", id })
+}
+
+export type PairingLink = {
+  id: string
+  tokenHash: string
+  label: string
+  createdBy: string
+  createdAt: string
+  expiresAt: string
+  consumedAt: string | null
+  connectionSessionId: string | null
+  revokedAt: string | null
+  scopes: Array<AccessScope>
+}
+
+export function parsePairingLinkScopes(
+  scopesJson: string | null | undefined
+): Array<AccessScope> {
+  if (!scopesJson || scopesJson.trim() === "") {
+    return [...adminScopes]
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(scopesJson)
+  } catch {
+    return [...adminScopes]
+  }
+
+  if (!Array.isArray(parsed)) {
+    return [...adminScopes]
+  }
+
+  const scopes = parsed.filter(
+    (scope): scope is AccessScope =>
+      typeof scope === "string" && isAccessScope(scope)
+  )
+
+  return scopes.length ? scopes : [...adminScopes]
+}
+
+function parsePairingLink(row: typeof pairingLinks.$inferSelect): PairingLink {
+  return {
+    id: row.id,
+    tokenHash: row.tokenHash,
+    label: row.label,
+    createdBy: row.createdBy,
+    createdAt: row.createdAt,
+    expiresAt: row.expiresAt,
+    consumedAt: row.consumedAt,
+    connectionSessionId: row.connectionSessionId,
+    revokedAt: row.revokedAt,
+    scopes: parsePairingLinkScopes(row.scopesJson),
+  }
+}
+
+export async function createPairingLink(input: {
+  tokenHash: string
+  label: string
+  createdBy: string
+  expiresAt: string
+  scopes: Array<AccessScope>
+}) {
+  await ensureDatabase()
+  const record = {
+    id: randomUUID(),
+    tokenHash: input.tokenHash,
+    label: input.label,
+    createdBy: input.createdBy,
+    createdAt: now(),
+    expiresAt: input.expiresAt,
+    consumedAt: null,
+    connectionSessionId: null,
+    revokedAt: null,
+    scopesJson: JSON.stringify(input.scopes),
+  }
+
+  await db.insert(pairingLinks).values(record)
+  publishEvent({ domain: "connections", type: "link-created" })
+  return parsePairingLink(record)
+}
+
+export async function listPairingLinks() {
+  await ensureDatabase()
+  const rows = await db
+    .select()
+    .from(pairingLinks)
+    .orderBy(desc(pairingLinks.createdAt))
+
+  return rows.map(parsePairingLink)
+}
+
+export async function revokePairingLink(id: string) {
+  await ensureDatabase()
+  await db
+    .update(pairingLinks)
+    .set({ revokedAt: now() })
+    .where(eq(pairingLinks.id, id))
+  publishEvent({ domain: "connections", type: "link-revoked", id })
+}
+
+export async function consumePairingLink(
+  tokenHash: string,
+  connectionSessionId: string | null = null
+): Promise<PairingLink | null> {
+  await ensureDatabase()
+  const ts = now()
+  const [row] = await db
+    .update(pairingLinks)
+    .set({ consumedAt: ts, connectionSessionId })
+    .where(
+      and(
+        eq(pairingLinks.tokenHash, tokenHash),
+        isNull(pairingLinks.consumedAt),
+        isNull(pairingLinks.revokedAt),
+        gt(pairingLinks.expiresAt, ts)
+      )
+    )
+    .returning()
+
+  if (row) {
+    publishEvent({ domain: "connections", type: "paired", id: row.id })
+  }
+
+  return row ? parsePairingLink(row) : null
+}
+
+export async function setPairingLinkConnectionSessionId(
+  id: string,
+  connectionSessionId: string
+) {
+  await ensureDatabase()
+  await db
+    .update(pairingLinks)
+    .set({ connectionSessionId })
+    .where(eq(pairingLinks.id, id))
 }
 
 export async function upsertRuntimeInstance(input: {

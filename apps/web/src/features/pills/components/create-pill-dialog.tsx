@@ -13,9 +13,21 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { CreatePillForm } from "@/features/pills/components/create-pill-form"
+import { GatedButton } from "@/features/auth/gated-button"
+import { useHasScopes } from "@/features/auth/use-scopes"
 
 export function CreatePillDialog() {
   const [open, setOpen] = useState(false)
+  const canCreate = useHasScopes("pills:write")
+
+  if (!canCreate) {
+    return (
+      <GatedButton scopes={["pills:write"]}>
+        <PlusIcon data-icon="inline-start" />
+        Add pill
+      </GatedButton>
+    )
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
