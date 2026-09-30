@@ -34,7 +34,7 @@ README for the control plane install and first-time setup.
 
 ## Control Plane Model
 
-The CLI does not own a separate runtime. It is an authenticated client for the local Upster control plane behind the dashboard. The dashboard, CLI, and agents all use the same `/api/cli/v1` API for pills, runs, logs, metrics, vault status, and sessions.
+The CLI does not own a separate runtime. It is an authenticated client for the local Upster control plane behind the dashboard. The dashboard, CLI, and agents all use the same `/api/cli/v1` API for pills, runs, logs, metrics, Vault status, and sessions.
 
 Default control plane URL:
 
@@ -181,7 +181,7 @@ Failure JSON response:
 }
 ```
 
-The CLI must not print secrets, vault ciphertext, passphrases, Cloudflare API tokens, decrypted configs, or command environment values.
+The CLI must not print secrets, Vault ciphertext, passphrases, Cloudflare API tokens, decrypted configs, or command environment values.
 
 ## Authentication
 
@@ -243,7 +243,7 @@ upster agents revoke <id>
 upster vault lock
 ```
 
-Agents cannot save, unlock, delete, export, or decrypt the vault.
+Agents cannot save, unlock, delete, export, or decrypt the Vault.
 
 ## Sessions
 
@@ -285,14 +285,14 @@ Current scope list:
 | `logs:read`        | yes           | Read and stream run logs              |
 | `metrics:read`     | yes           | Read tunnel metrics                   |
 | `runtime:read`     | yes           | Read runtime and control plane status |
-| `vault:status`     | yes           | Read vault status without secrets     |
+| `vault:status`     | yes           | Read Vault status without secrets     |
 | `sessions:read`    | no            | List sessions as a human admin        |
 | `sessions:revoke`  | no            | Revoke sessions as a human admin      |
-| `vault:write`      | no            | Save the vault as a human admin       |
-| `vault:unlock`     | no            | Unlock the vault as a human admin     |
-| `vault:delete`     | no            | Delete the vault as a human admin     |
+| `vault:write`      | no            | Save the Vault as a human admin       |
+| `vault:unlock`     | no            | Unlock the Vault as a human admin     |
+| `vault:delete`     | no            | Delete the Vault as a human admin     |
 
-There is no `all` scope. This is intentional: `all` would be ambiguous because agents must never receive vault unlock, vault write, vault delete, or session admin scopes.
+There is no `all` scope. This is intentional: `all` would be ambiguous because agents must never receive Vault unlock, Vault write, Vault delete, or session admin scopes.
 
 Capsule scopes are separate from pill scopes. An agent token needs `capsules:read`, `capsules:write`, or `capsules:delete` to use the `capsules` commands, not the matching `pills:*` scope. Agent tokens created before capsule scopes existed do not include them, so recreate the token (for example with `--preset agent-full-runtime`) to gain capsule access.
 
@@ -540,7 +540,7 @@ upster vault status --json
 
 Vault status only returns public state:
 
-- whether a vault is saved
+- whether a Vault is saved
 - whether it is unlocked
 - root domain
 - unlock timestamp
@@ -576,16 +576,16 @@ Default unlock TTL: 8 hours.
 
 Maximum unlock TTL: 24 hours.
 
-Agent vault rules:
+Agent Vault rules:
 
-- agents may read vault status with `vault:status`
-- agents cannot unlock the vault
-- agents cannot save the vault
-- agents cannot delete the vault
-- agents cannot read vault ciphertext
+- agents may read Vault status with `vault:status`
+- agents cannot unlock the Vault
+- agents cannot save the Vault
+- agents cannot delete the Vault
+- agents cannot read Vault ciphertext
 - agents cannot receive Cloudflare secrets
 
-If a run fails because the vault is missing or locked, the agent should ask the human to run:
+If a run fails because the Vault is missing or locked, the agent should ask the human to run:
 
 ```sh
 upster vault save
@@ -730,8 +730,8 @@ upster pills stop <pillId> --runId <runId>
 Starting a run requires:
 
 - `runs:start` scope
-- saved Cloudflare vault
-- human-unlocked vault session
+- saved Cloudflare Vault
+- human-unlocked Vault session
 - reachable control plane
 - valid pill config
 - allowed command when `UPSTER_ALLOWED_COMMANDS` is configured
@@ -857,7 +857,7 @@ Sensitive human-only commands do not accept JSON input:
 upster vault save --input vault.json
 ```
 
-That command is rejected because vault passphrases and Cloudflare credentials must be entered through interactive prompts.
+That command is rejected because Vault passphrases and Cloudflare credentials must be entered through interactive prompts.
 
 ## Common Errors
 
@@ -926,7 +926,7 @@ Fix for humans: run the admin command from an interactive terminal, or use an ex
 
 ### `VAULT_MISSING`
 
-No Cloudflare vault has been saved.
+No Cloudflare Vault has been saved.
 
 Human fix:
 
@@ -937,7 +937,7 @@ upster vault unlock
 
 ### `VAULT_LOCKED`
 
-A vault exists, but there is no active unlocked session in control plane memory.
+A Vault exists, but there is no active unlocked session in control plane memory.
 
 Human fix:
 
@@ -1046,13 +1046,13 @@ upster agents revoke <sessionId>
 ## Security Rules
 
 - Do not give a human admin token to an agent.
-- Do not give a vault passphrase to an agent.
+- Do not give a Vault passphrase to an agent.
 - Do not give a Cloudflare API token to an agent.
-- Do not give vault ciphertext to an agent.
+- Do not give Vault ciphertext to an agent.
 - Give agents only scoped bearer tokens.
 - Use short TTLs for agent tokens.
 - After revoke, verify that the agent receives `AUTH_TOKEN_REVOKED`.
-- If an agent gets a vault error, it should not ask for secrets. It should ask the human to run `vault save` or `vault unlock`.
+- If an agent gets a Vault error, it should not ask for secrets. It should ask the human to run `vault save` or `vault unlock`.
 
 ## Command Reference
 

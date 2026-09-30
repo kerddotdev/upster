@@ -324,7 +324,7 @@ export function PillActions({
               <AlertDialogTitle>Delete {pill.name}?</AlertDialogTitle>
               <AlertDialogDescription>
                 This removes the pill, command profile, ports, runs, capsule
-                copy, and local log records. When the Cloudflare vault is
+                copy, and local log records. When the Cloudflare Vault is
                 unlocked, its tunnel and DNS record are removed too; otherwise
                 they are left in Cloudflare.
               </AlertDialogDescription>

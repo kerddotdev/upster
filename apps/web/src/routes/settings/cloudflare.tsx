@@ -17,7 +17,7 @@ function CloudflareSettingsPage() {
   return (
     <Page
       title="Cloudflare"
-      description="Save an encrypted local vault and unlock it only in control plane memory."
+      description="Save an encrypted local Vault and unlock it only in control plane memory."
     >
       <CloudflareSettingsForm status={status} />
     </Page>

@@ -179,7 +179,7 @@ function AccountMenu() {
             }}
           >
             {isUnlocked ? <LockIcon /> : <LockOpenIcon />}
-            {isUnlocked ? "Lock Cloudflare vault" : "Unlock Cloudflare vault"}
+            {isUnlocked ? "Lock Cloudflare Vault" : "Unlock Cloudflare Vault"}
           </DropdownMenuItem>
         ) : null}
         <DropdownMenuItem

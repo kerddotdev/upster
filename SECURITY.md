@@ -68,15 +68,15 @@ changes.
   `UPSTER_TRUST_PROXY=true`; otherwise redeem attempts share the direct bucket
   and the global limiter remains the backstop.
 - Agents should receive only scoped capability tokens. Agent tokens can read and
-  operate pills only within their scopes, and cannot receive vault write, vault
-  unlock, vault delete, or admin-only scopes.
+  operate pills only within their scopes, and cannot receive Vault write, Vault
+  unlock, Vault delete, or admin-only scopes.
 - Capsule management is gated by dedicated `capsules:read`, `capsules:write`, and
   `capsules:delete` scopes, separate from the `pills:*` scopes. They are
   agent-allowed like the pill runtime scopes and are included in the
   `agent-full-runtime` preset. Capsule operations never expose Cloudflare
   secrets: a preview deploy manages its tunnel and DNS through the same
-  already-unlocked vault session as a production deploy, so an agent still cannot
-  read the vault or decrypted config.
+  already-unlocked Vault session as a production deploy, so an agent still cannot
+  read the Vault or decrypted config.
 - The CLI stores local agent tokens separately from the human CLI credential.
   Non-interactive commands do not automatically use the saved human credential,
   so agent and automation processes must use scoped tokens through `--agent`,
@@ -176,38 +176,38 @@ changes.
 
 ### Secret handling
 
-- Cloudflare credentials are encrypted in the browser with the vault passphrase
-  or CLI with the vault passphrase (Argon2id key derivation,
+- Cloudflare credentials are encrypted in the browser with the Vault passphrase
+  or CLI with the Vault passphrase (Argon2id key derivation,
   XChaCha20-Poly1305) and stored only as ciphertext.
 - The plaintext config exists only in control plane memory during an explicit
-  vault unlock or runtime action (validating the token or starting a tunnel) and
+  Vault unlock or runtime action (validating the token or starting a tunnel) and
   is never persisted or logged.
-- Agents cannot unlock the vault, save the vault, delete the vault, read vault
-  ciphertext, read the vault passphrase, or read decrypted Cloudflare config.
-  They can only read vault status fields such as whether a vault exists, whether
+- Agents cannot unlock the Vault, save the Vault, delete the Vault, read Vault
+  ciphertext, read the Vault passphrase, or read decrypted Cloudflare config.
+  They can only read Vault status fields such as whether a Vault exists, whether
   it is unlocked, and the root domain.
 - Vault operations are individually scoped: `vault:status`, `vault:write`,
   `vault:unlock`, and `vault:delete` are enforced per function. A remote paired
-  connection can unlock the vault only if its scope set includes `vault:unlock`,
+  connection can unlock the Vault only if its scope set includes `vault:unlock`,
   which stays a human-only scope that agents can never receive.
 - Vault unlocks are isolated per acting session, with one shared slot for the
   trusted host side. A `connection`-kind (remote paired) session unlocks the
-  vault only for itself, keyed by its session id, so a remote unlock never
-  unlocks the vault for the host or for another connection. Dashboard, CLI, and
+  Vault only for itself, keyed by its session id, so a remote unlock never
+  unlocks the Vault for the host or for another connection. Dashboard, CLI, and
   agent sessions share a single host slot, so a local unlock still lets host-side
   automation and CLI/agent deploys use the token (agents cannot unlock, only
   consume an already-unlocked host slot). Each unlock has its own TTL. The
   plaintext token is never returned to any client; only status fields and the
   root domain are.
-- The vault is locked automatically on security events. Revoking a connection
+- The Vault is locked automatically on security events. Revoking a connection
   drops that connection's unlocked slot, logging out drops the current session's
   slot, and the emergency lockdown clears every slot.
 - The emergency lockdown ("panic") is a local-admin action that revokes all
-  paired connections, clears every unlocked vault slot, and disables Tailscale
+  paired connections, clears every unlocked Vault slot, and disables Tailscale
   serve in one step. It requires `connections:manage` and a genuine local
   session, so a remote connection cannot trigger it. Already-running pills and
   tunnels keep serving because a running tunnel uses its own tunnel token, not
-  the vault.
+  the Vault.
 
 ### Database isolation
 
@@ -258,8 +258,8 @@ changes.
   (`slug.rootDomain`) or to a per-snapshot preview hostname
   (`slug-<first 8 chars of capsuleId>.rootDomain`) backed by its own Cloudflare tunnel and DNS
   record, stored on the capsule. Deleting or pruning a snapshot removes its
-  preview tunnel and DNS record when the vault is unlocked, mirroring pill
-  deletion; if the vault is locked the cleanup is skipped and the resources are
+  preview tunnel and DNS record when the Vault is unlocked, mirroring pill
+  deletion; if the Vault is locked the cleanup is skipped and the resources are
   left in Cloudflare, exactly like pill tunnels.
 
 ### Cloudflare resource ownership
@@ -267,7 +267,7 @@ changes.
 - DNS records created by Upster are tagged with a `managed-by-upster` comment.
 - Upster refuses to overwrite a DNS record it does not own, including records
   referenced by a stale stored record id.
-- Deleting a pill with the vault unlocked also removes its tunnel and DNS
+- Deleting a pill with the Vault unlocked also removes its tunnel and DNS
   record, and the UI warns if that cleanup could not be confirmed.
 
 ### Native (non-Docker) installs
@@ -277,7 +277,7 @@ background service (LaunchAgent on macOS, systemd user unit on Linux) using a
 staged, pinned Node runtime and cloudflared binary.
 
 What stays the same: the server listens on `127.0.0.1` only, the auth model,
-scopes, pairing and vault rules are identical, and remote access still goes
+scopes, pairing and Vault rules are identical, and remote access still goes
 through `tailscale serve` (never `funnel`), now using the host `tailscale` CLI.
 The service refuses to install as root, the data directory is created `0700`,
 and `runtime.json` and `service.lock` are `0600`. Pill commands still get the
@@ -336,7 +336,7 @@ to the machine's LAN address to confirm it is not reachable from the network.
   privileged-local requests, so with the default loopback bind only the local
   machine can run it; remote tailnet peers are sent to pairing and cannot create
   the admin.
-- **Choose a strong vault passphrase.** Vault passphrase strength is enforced
+- **Choose a strong Vault passphrase.** Vault passphrase strength is enforced
   only in the browser (minimum 12 characters). A weak passphrase weakens offline
   resistance if the ciphertext is ever exposed.
 - **Keep the Cloudflare token least-privilege.** Scope it to the specific
@@ -349,16 +349,16 @@ to the machine's LAN address to confirm it is not reachable from the network.
 
 Read `AGENTS.md` first. These rules are mandatory:
 
-- Cloudflare credentials may exist only as encrypted vault ciphertext at rest.
+- Cloudflare credentials may exist only as encrypted Vault ciphertext at rest.
 - Plaintext secrets may live only in memory during an explicit runtime action.
 - Pill commands must never receive Cloudflare secrets in their environment.
 - Pill paths must stay inside the configured workspace roots.
 - Prefer argv arrays over shell strings for process execution.
-- Never log secrets, tokens, vault payloads, command env values, or decrypted
+- Never log secrets, tokens, Vault payloads, command env values, or decrypted
   config.
 - CLI API errors must use the agent-friendly error envelope with `reason`,
   `cause`, `remediation`, and `humanActionRequired`, especially for auth, scope,
-  vault, and runtime failures.
+  Vault, and runtime failures.
 - A human admin token must not be given to an AI agent. On the same operating
   system user account there is no perfect cryptographic human-vs-agent boundary,
   so scoped capability tokens, short TTLs, and revocation are the intended

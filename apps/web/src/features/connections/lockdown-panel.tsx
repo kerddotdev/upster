@@ -47,7 +47,7 @@ export function LockdownPanel({ remote }: { remote: boolean }) {
       <List>
         <Row
           title="Lock down remote access"
-          detail="Revoke every connection, lock the Cloudflare vault, and turn off remote access in one step. Running pills keep serving."
+          detail="Revoke every connection, lock the Cloudflare Vault, and turn off remote access in one step. Running pills keep serving."
           trailing={
             <AlertDialog>
               <AlertDialogTrigger
@@ -60,7 +60,7 @@ export function LockdownPanel({ remote }: { remote: boolean }) {
                   <AlertDialogTitle>Lock down remote access?</AlertDialogTitle>
                   <AlertDialogDescription>
                     This immediately revokes all paired connections, locks the
-                    Cloudflare vault, and disables Tailscale serve. Already
+                    Cloudflare Vault, and disables Tailscale serve. Already
                     running pills and tunnels are not affected. You can
                     re-enable remote access afterwards from this host.
                   </AlertDialogDescription>

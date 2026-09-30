@@ -17,7 +17,7 @@ export const Route = createFileRoute("/api/cli/v1/vault")({
           const actor = await authenticateCliRequest(
             request,
             ["vault:delete"],
-            "delete the Cloudflare vault"
+            "delete the Cloudflare Vault"
           )
           assertHumanCliActor(actor, "upster vault delete")
 

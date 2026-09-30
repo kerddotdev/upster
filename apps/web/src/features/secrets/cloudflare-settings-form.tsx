@@ -60,7 +60,7 @@ function VaultManager() {
           />
           <Row
             title="Session"
-            detail="Unlock the vault to start tunnels."
+            detail="Unlock the Vault to start tunnels."
             trailing={
               <StatusText
                 tone={isUnlocked ? "success" : "idle"}
@@ -80,7 +80,7 @@ function VaultManager() {
       <Section title="Manage">
         <List>
           <Row
-            title={isUnlocked ? "Lock session" : "Unlock vault"}
+            title={isUnlocked ? "Lock session" : "Unlock Vault"}
             detail="The passphrase decrypts the config into control plane memory only."
             trailing={
               !canUnlock ? (
@@ -90,7 +90,7 @@ function VaultManager() {
                   size="sm"
                 >
                   <LockOpenIcon data-icon="inline-start" />
-                  {isUnlocked ? "Lock session" : "Unlock vault"}
+                  {isUnlocked ? "Lock session" : "Unlock Vault"}
                 </GatedButton>
               ) : isUnlocked ? (
                 <Button
@@ -112,13 +112,13 @@ function VaultManager() {
               ) : (
                 <Button size="sm" onClick={() => requestUnlock()}>
                   <LockOpenIcon data-icon="inline-start" />
-                  Unlock vault
+                  Unlock Vault
                 </Button>
               )
             }
           />
           <Row
-            title="Delete vault"
+            title="Delete Vault"
             detail="Removes the encrypted config from local storage and locks the session."
             trailing={
               !canDelete ? (
@@ -128,7 +128,7 @@ function VaultManager() {
                   size="sm"
                 >
                   <Trash2Icon data-icon="inline-start" />
-                  Delete vault
+                  Delete Vault
                 </GatedButton>
               ) : (
                 <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
@@ -136,16 +136,16 @@ function VaultManager() {
                     render={<Button variant="secondary" size="sm" />}
                   >
                     <Trash2Icon data-icon="inline-start" />
-                    Delete vault
+                    Delete Vault
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>
-                        Delete Cloudflare vault?
+                        Delete Cloudflare Vault?
                       </AlertDialogTitle>
                       <AlertDialogDescription>
                         This removes the encrypted config from local storage and
-                        locks the current session. You can save a new vault
+                        locks the current session. You can save a new Vault
                         afterwards.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -161,21 +161,21 @@ function VaultManager() {
                           try {
                             await deleteVault()
                             await refreshVault()
-                            toast.success("Cloudflare vault deleted.")
+                            toast.success("Cloudflare Vault deleted.")
                             setDeleteOpen(false)
                             await router.invalidate()
                           } catch (err) {
                             toast.error(
                               err instanceof Error
                                 ? err.message
-                                : "Failed to delete vault."
+                                : "Failed to delete Vault."
                             )
                           } finally {
                             setDeleting(false)
                           }
                         }}
                       >
-                        Delete vault
+                        Delete Vault
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -221,11 +221,11 @@ function VaultSetup() {
       })
       await refreshVault()
       toast.success(
-        "Cloudflare vault saved and unlocked for this Upster session."
+        "Cloudflare Vault saved and unlocked for this Upster session."
       )
       await router.invalidate()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save vault.")
+      toast.error(err instanceof Error ? err.message : "Failed to save Vault.")
     } finally {
       setPending(false)
     }
@@ -236,8 +236,8 @@ function VaultSetup() {
       <CloudflareSetupGuide />
       <form className="flex flex-col gap-10" onSubmit={handleSave}>
         <Section
-          title="Save vault"
-          description="Paste your Cloudflare details to create an encrypted local vault."
+          title="Save Vault"
+          description="Paste your Cloudflare details to create an encrypted local Vault."
         >
           <List>
             <Row
@@ -289,7 +289,7 @@ function VaultSetup() {
             />
             <Row
               title="Vault passphrase"
-              detail="At least 12 characters. Decrypts the vault in control plane memory only during explicit runtime actions."
+              detail="At least 12 characters. Decrypts the Vault in control plane memory only during explicit runtime actions."
               trailing={
                 <Input
                   name="passphrase"
@@ -315,7 +315,7 @@ function VaultSetup() {
             type="submit"
             disabled={pending || !canSave}
           >
-            {pending ? "Saving..." : "Validate and save vault"}
+            {pending ? "Saving..." : "Validate and save Vault"}
           </GatedButton>
         </div>
       </form>

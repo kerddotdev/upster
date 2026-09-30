@@ -57,7 +57,7 @@ upster vault unlock
 ```
 
 Cloudflare credentials are never placed in `.env`; you provide them once through
-`upster vault save`, which stores them as encrypted vault ciphertext.
+`upster vault save`, which stores them as encrypted Vault ciphertext.
 
 ### Desktop app and native service (macOS, Linux)
 
@@ -104,16 +104,16 @@ See [SECURITY.md](SECURITY.md) for the full security model, operator caveats, an
 
 - The dashboard requires an admin passphrase. On first run, open the app and set it on the setup screen. The passphrase is stored only as an Argon2id verifier and access is gated by a signed, HttpOnly session cookie.
 - The dashboard port is published on `127.0.0.1` by default. For remote access, keep the loopback bind and enable Tailscale in Settings > Tailscale (served by the sidecar container). Binding directly to the network with `UPSTER_BIND_HOST=0.0.0.0` is discouraged and disables the local password path (every client must pair).
-- Cloudflare credentials are stored only as encrypted vault ciphertext and are decrypted in the browser, never persisted in plaintext.
+- Cloudflare credentials are stored only as encrypted Vault ciphertext and are decrypted in the browser, never persisted in plaintext.
 - Pill processes run with a minimal environment and never inherit the dashboard environment or its secrets.
 - The libSQL database can require an auth token so pill processes cannot read it directly. Generate credentials with `bun run db:credentials` and set `SQLD_AUTH_JWT_KEY` (db) and `DATABASE_AUTH_TOKEN` (dashboard).
 - Restrict which executables pills may run with `UPSTER_ALLOWED_COMMANDS` (comma-separated, by exact name or full path). Leave empty to allow any executable.
-- Cloudflare DNS records created by Upster are tagged as `managed-by-upster`, and Upster refuses to overwrite a record it does not own. Deleting a pill with the vault unlocked also removes its tunnel and DNS record.
+- Cloudflare DNS records created by Upster are tagged as `managed-by-upster`, and Upster refuses to overwrite a record it does not own. Deleting a pill with the Vault unlocked also removes its tunnel and DNS record.
 - Override the session signing secret with `UPSTER_SESSION_SECRET`; otherwise one is generated and persisted locally.
 - The CLI talks to the local dashboard control plane over `/api/cli/v1`. Human
   users can sign in with the admin passphrase, while AI agents should use
   short-lived scoped bearer tokens created by a human operator. Agents cannot
-  unlock, save, delete, export, or decrypt the Cloudflare vault.
+  unlock, save, delete, export, or decrypt the Cloudflare Vault.
 
 ## Development
 

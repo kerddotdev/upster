@@ -150,7 +150,7 @@ export function agentForbiddenError(input: {
     reason:
       "This operation is intentionally restricted to an interactive human session.",
     cause:
-      "The operation can change authentication state, vault state, or administrative access.",
+      "The operation can change authentication state, Vault state, or administrative access.",
     remediation: `Ask the human operator to run ${input.command} interactively.`,
     humanActionRequired: true,
     docsCommand: "upster agent guide",
@@ -161,13 +161,13 @@ export function vaultLockedError() {
   return new UpsterApiError({
     status: 423,
     code: "VAULT_LOCKED",
-    message: "Cloudflare vault is locked.",
+    message: "Cloudflare Vault is locked.",
     reason:
       "Starting tunnels requires the Cloudflare config to be decrypted in the Upster control plane memory.",
     cause:
-      "No active vault unlock session exists, or the previous unlock session expired.",
+      "No active Vault unlock session exists, or the previous unlock session expired.",
     remediation:
-      "Ask the human operator to run upster vault unlock. Agents cannot unlock the vault or read Cloudflare secrets.",
+      "Ask the human operator to run upster vault unlock. Agents cannot unlock the Vault or read Cloudflare secrets.",
     humanActionRequired: true,
     requiredScopes: ["vault:unlock"],
     docsCommand: "upster agent guide",
@@ -178,11 +178,11 @@ export function vaultMissingError() {
   return new UpsterApiError({
     status: 404,
     code: "VAULT_MISSING",
-    message: "No Cloudflare vault has been saved.",
+    message: "No Cloudflare Vault has been saved.",
     reason:
-      "The Upster control plane has no encrypted Cloudflare vault record.",
+      "The Upster control plane has no encrypted Cloudflare Vault record.",
     cause:
-      "Cloudflare credentials have not been configured yet, or the vault was deleted.",
+      "Cloudflare credentials have not been configured yet, or the Vault was deleted.",
     remediation:
       "Ask the human operator to run upster vault save interactively, then upster vault unlock.",
     humanActionRequired: true,
