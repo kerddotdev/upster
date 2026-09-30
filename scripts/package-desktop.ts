@@ -9,6 +9,7 @@ const platform = (process.env.UPSTER_TARGET_PLATFORM ?? process.platform) as
   | "darwin"
   | "linux"
 const arch = (process.env.UPSTER_TARGET_ARCH ?? process.arch) as "arm64" | "x64"
+const version = process.env.UPSTER_VERSION
 const dirOnly = process.argv.includes("--dir")
 const publish = process.argv.includes("--publish")
 
@@ -54,6 +55,7 @@ run(
     "electron-builder",
     platform === "darwin" ? "--mac" : "--linux",
     `--${arch}`,
+    ...(version ? [`-c.extraMetadata.version=${version}`] : []),
     ...(dirOnly ? ["--dir"] : []),
     "--publish",
     publish ? "always" : "never",

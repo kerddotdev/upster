@@ -75,6 +75,10 @@ The desktop onboarding can migrate an existing Docker install (admin, pills,
 logs, vault, capsules); the Docker data is left untouched. `Reset Upster...` in
 the app menu starts over.
 
+Headless machines (no desktop) can use the server bundle from the release
+assets (`upster-server-<os>-<arch>.tar.gz`): extract it and run
+`upster service install --bundle <extracted-dir>`.
+
 Native installs give up the container boundary; read the "Native (non-Docker)
 installs" section in `SECURITY.md` first. Windows keeps using Docker.
 
