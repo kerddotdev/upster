@@ -296,7 +296,11 @@ What is weaker than the Docker deployment, and is not mitigated by the app:
   entitlements on macOS.
 - The desktop window only exposes a small allowlisted bridge
   (`window.upsterDesktop`) and only to the local service origin; the window is
-  sandboxed with context isolation and denies permission requests.
+  sandboxed with context isolation and denies permission requests. Developer
+  tools are disabled in packaged builds, new windows are denied, and only
+  `https:` links open in the external browser. The bridge additionally exposes
+  the platform name and window events (sidebar toggle, fullscreen, navigation
+  from the app menu), which carry no secrets.
 - `UPSTER_TRUST_PROXY=true` is set for the native service because the only
   proxy that can reach the loopback listener is the local Tailscale serve.
 
