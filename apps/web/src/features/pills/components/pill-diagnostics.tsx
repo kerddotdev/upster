@@ -6,7 +6,8 @@ import { ChevronRightIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { LogOutput } from "@/components/log-output"
-import { Badge } from "@/components/ui/badge"
+import { List } from "@/components/layout"
+import { StatusBadge } from "@/components/status"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -50,16 +51,20 @@ function RunRow({ run }: { run: PillRun }) {
   const failed = run.status === "error"
 
   return (
-    <div className="rounded-md border border-border p-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant={failed ? "destructive" : "outline"}>{run.status}</Badge>
+    <div className="px-4 py-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <StatusBadge
+          tone={failed ? "danger" : "idle"}
+          label={run.status}
+          className="capitalize"
+        />
+        <span className="font-medium">{run.commandName}</span>
         {run.source ? (
-          <Badge variant="outline" className="capitalize">
+          <span className="text-xs text-muted-foreground capitalize">
             {run.source}
-          </Badge>
+          </span>
         ) : null}
-        <span className="text-xs font-medium">{run.commandName}</span>
-        <span className="text-[0.65rem] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           {new Date(run.startedAt).toLocaleString()}
           {run.exitCode !== null ? ` - exit ${run.exitCode}` : ""}
         </span>
@@ -76,7 +81,7 @@ function RunRow({ run }: { run: PillRun }) {
         </Button>
       </div>
       {run.error && !open ? (
-        <p className="mt-1 text-xs text-destructive">{run.error}</p>
+        <p className="mt-1 text-xs text-danger">{run.error}</p>
       ) : null}
       {open ? (
         loading ? (
@@ -99,13 +104,13 @@ function CapsuleErrorRow({ capsule }: { capsule: Capsule }) {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="rounded-md border border-border p-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="destructive">build failed</Badge>
-        <span className="text-xs font-medium">
+    <div className="px-4 py-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <StatusBadge tone="danger" label="Build failed" />
+        <span className="font-medium">
           {capsule.label ?? capsule.id.slice(0, 8)}
         </span>
-        <span className="text-[0.65rem] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           {new Date(capsule.createdAt).toLocaleString()}
         </span>
         {capsule.buildLog ? (
@@ -123,7 +128,7 @@ function CapsuleErrorRow({ capsule }: { capsule: Capsule }) {
         ) : null}
       </div>
       {capsule.error && !open ? (
-        <p className="mt-1 text-xs text-destructive">{capsule.error}</p>
+        <p className="mt-1 text-xs text-danger">{capsule.error}</p>
       ) : null}
       {open && capsule.buildLog ? (
         <LogOutput className="mt-3" text={capsule.buildLog} />
@@ -153,15 +158,17 @@ export function PillDiagnostics({ pillId }: { pillId: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       {data.capsuleErrors.length ? (
         <div className="flex flex-col gap-2">
           <h3 className="text-xs font-medium text-muted-foreground">
             Capsule build failures
           </h3>
-          {data.capsuleErrors.map((capsule) => (
-            <CapsuleErrorRow key={capsule.id} capsule={capsule} />
-          ))}
+          <List>
+            {data.capsuleErrors.map((capsule) => (
+              <CapsuleErrorRow key={capsule.id} capsule={capsule} />
+            ))}
+          </List>
         </div>
       ) : null}
 
@@ -170,7 +177,11 @@ export function PillDiagnostics({ pillId }: { pillId: string }) {
           Recent runs
         </h3>
         {data.runs.length ? (
-          data.runs.map((run) => <RunRow key={run.id} run={run} />)
+          <List>
+            {data.runs.map((run) => (
+              <RunRow key={run.id} run={run} />
+            ))}
+          </List>
         ) : (
           <p className="text-xs text-muted-foreground">No runs yet.</p>
         )}

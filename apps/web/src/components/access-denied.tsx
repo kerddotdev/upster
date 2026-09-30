@@ -4,32 +4,30 @@ import {
 } from "@tanstack/react-router"
 import { ShieldXIcon } from "lucide-react"
 
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty"
+import { Page } from "@/components/layout"
 import { isScopeDeniedMessage } from "@/features/auth/scope-error"
 
 export function AccessDenied({ error }: ErrorComponentProps) {
   if (isScopeDeniedMessage(error.message)) {
     return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <ShieldXIcon />
-          </EmptyMedia>
-          <EmptyTitle>You do not have access to this page</EmptyTitle>
-          <EmptyDescription>
+      <Page title="Access denied">
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
+          <ShieldXIcon className="size-8 text-muted-foreground" aria-hidden />
+          <h2 className="font-heading text-lg font-medium">
+            You do not have access to this page
+          </h2>
+          <p className="max-w-[46ch] text-muted-foreground">
             This connection was granted a limited set of permissions. Ask the
             operator who paired this device for broader access.
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
+          </p>
+        </div>
+      </Page>
     )
   }
 
-  return <ErrorComponent error={error} />
+  return (
+    <Page title="Something went wrong">
+      <ErrorComponent error={error} />
+    </Page>
+  )
 }

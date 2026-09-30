@@ -198,7 +198,7 @@ export function PillActions({
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
+    <div className="flex flex-wrap items-center justify-end gap-1.5">
       {isRunning && pill.activeRun?.source ? (
         <Badge variant="outline" className="capitalize">
           {pill.activeRun.source}
@@ -209,6 +209,7 @@ export function PillActions({
           <GatedButton
             scopes={["runs:stop"]}
             variant="destructive"
+            size="sm"
             className="rounded-r-none"
             onClick={async () => {
               setPending(true)
@@ -239,7 +240,7 @@ export function PillActions({
               render={
                 <Button
                   variant="destructive"
-                  size="icon"
+                  size="icon-sm"
                   className="rounded-l-none border-l border-destructive/20"
                   disabled={pending || !canStop}
                   aria-label="More run options"
@@ -261,6 +262,7 @@ export function PillActions({
         <div className="inline-flex">
           <GatedButton
             scopes={["runs:start"]}
+            size="sm"
             className="rounded-r-none"
             onClick={() => ensureUnlocked(() => void runStart(false))}
             disabled={pending}
@@ -272,7 +274,7 @@ export function PillActions({
             <DropdownMenuTrigger
               render={
                 <Button
-                  size="icon"
+                  size="icon-sm"
                   className="rounded-l-none border-l border-primary-foreground/20 ring-0 outline-none focus:outline-none"
                   disabled={pending || !canStart}
                   aria-label="More start options"
@@ -297,7 +299,8 @@ export function PillActions({
       {showEdit && editPill ? <EditPillDialog pill={editPill} /> : null}
       {showDetails ? (
         <Button
-          variant="outline"
+          variant="ghost"
+          size="sm"
           render={<Link to="/pills/$pillId" params={{ pillId: pill.id }} />}
         >
           <ExternalLinkIcon data-icon="inline-start" />
@@ -305,14 +308,14 @@ export function PillActions({
         </Button>
       ) : null}
       {showDelete && !canDelete ? (
-        <GatedButton scopes={["pills:delete"]} variant="outline">
+        <GatedButton scopes={["pills:delete"]} variant="ghost" size="sm">
           <Trash2Icon data-icon="inline-start" />
           Delete
         </GatedButton>
       ) : null}
       {showDelete && canDelete && (
         <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-          <AlertDialogTrigger render={<Button variant="outline" />}>
+          <AlertDialogTrigger render={<Button variant="ghost" size="sm" />}>
             <Trash2Icon data-icon="inline-start" />
             Delete
           </AlertDialogTrigger>

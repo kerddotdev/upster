@@ -77,7 +77,7 @@ export function EditPillDialog({ pill }: { pill: PillDetail }) {
 
   if (!canEdit) {
     return (
-      <GatedButton scopes={["pills:write"]} variant="outline">
+      <GatedButton scopes={["pills:write"]} variant="ghost" size="sm">
         <PencilIcon data-icon="inline-start" />
         Edit
       </GatedButton>
@@ -86,11 +86,11 @@ export function EditPillDialog({ pill }: { pill: PillDetail }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="outline" />}>
+      <DialogTrigger render={<Button variant="ghost" size="sm" />}>
         <PencilIcon data-icon="inline-start" />
         Edit
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Edit {pill.name}</DialogTitle>
           <DialogDescription>
@@ -142,12 +142,23 @@ export function EditPillDialog({ pill }: { pill: PillDetail }) {
                 required
               />
             </Field>
-            <div className="grid gap-2">
-              <FieldLabel>Repository path (fixed)</FieldLabel>
-              <Input value={pill.repoPath} readOnly disabled />
-              <FieldLabel>Subdomain slug (fixed)</FieldLabel>
-              <Input value={pill.slug} readOnly disabled />
-            </div>
+            <Field>
+              <FieldLabel htmlFor="edit-repo-path">
+                Repository path (fixed)
+              </FieldLabel>
+              <Input
+                id="edit-repo-path"
+                value={pill.repoPath}
+                readOnly
+                disabled
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="edit-slug">
+                Subdomain slug (fixed)
+              </FieldLabel>
+              <Input id="edit-slug" value={pill.slug} readOnly disabled />
+            </Field>
             <Field>
               <FieldLabel htmlFor="edit-commandName">
                 Command profile

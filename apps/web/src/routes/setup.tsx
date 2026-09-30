@@ -4,15 +4,9 @@ import { useServerFn } from "@tanstack/react-start"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { AuthPanel } from "@/features/auth/auth-panel"
 import { getAuthStatusFn, setupAdminFn } from "@/features/auth/auth.functions"
 
 export const Route = createFileRoute("/setup")({
@@ -63,46 +57,39 @@ function SetupPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-sm items-center justify-center p-4">
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Set up Upster</CardTitle>
-          <CardDescription>
-            Create the admin passphrase that protects this dashboard.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-            <Field>
-              <FieldLabel htmlFor="passphrase">Admin passphrase</FieldLabel>
-              <Input
-                id="passphrase"
-                name="passphrase"
-                type="password"
-                minLength={12}
-                autoFocus
-                required
-              />
-              <FieldDescription>
-                Use at least 12 characters. This cannot be recovered.
-              </FieldDescription>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="confirm">Confirm passphrase</FieldLabel>
-              <Input
-                id="confirm"
-                name="confirm"
-                type="password"
-                minLength={12}
-                required
-              />
-            </Field>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Creating..." : "Create admin and continue"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+    <AuthPanel
+      title="Set up Upster"
+      description="Create the admin passphrase that protects this dashboard."
+    >
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <Field>
+          <FieldLabel htmlFor="passphrase">Admin passphrase</FieldLabel>
+          <Input
+            id="passphrase"
+            name="passphrase"
+            type="password"
+            minLength={12}
+            autoFocus
+            required
+          />
+          <FieldDescription>
+            Use at least 12 characters. This cannot be recovered.
+          </FieldDescription>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="confirm">Confirm passphrase</FieldLabel>
+          <Input
+            id="confirm"
+            name="confirm"
+            type="password"
+            minLength={12}
+            required
+          />
+        </Field>
+        <Button type="submit" size="lg" disabled={pending}>
+          {pending ? "Creating..." : "Create admin and continue"}
+        </Button>
+      </form>
+    </AuthPanel>
   )
 }

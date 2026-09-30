@@ -3,6 +3,7 @@
 import { CopyIcon } from "lucide-react"
 import { toast } from "sonner"
 
+import { Mono } from "@/components/layout"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -27,17 +28,17 @@ export function LogOutput({
   return (
     <div className={cn("relative", className)}>
       <Button
-        size="icon-sm"
+        size="icon-xs"
         variant="ghost"
-        className="absolute top-1 right-1 z-10"
+        className="absolute top-1.5 right-1.5 z-10 text-muted-foreground"
         onClick={() => void copy()}
         aria-label="Copy output"
       >
         <CopyIcon />
       </Button>
-      <div className="max-h-72 overflow-auto rounded-md border border-border bg-muted/30">
-        <pre className="p-2 pr-9 text-xs break-all whitespace-pre-wrap">
-          {content}
+      <div className="max-h-72 overflow-auto rounded-2xl bg-muted ring-1 ring-border">
+        <pre className="p-3 pr-10 whitespace-pre-wrap" data-selectable>
+          <Mono className="text-foreground">{content}</Mono>
         </pre>
       </div>
     </div>

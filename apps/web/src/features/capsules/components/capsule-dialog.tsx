@@ -115,7 +115,7 @@ export function CapsuleDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            <PackageIcon data-icon="inline-start" className="mb-2" />
+            <PackageIcon data-icon="inline-start" className="mb-2 text-brand" />
             Capsule
           </DialogTitle>
           <DialogDescription>
@@ -131,15 +131,15 @@ export function CapsuleDialog({
             <Skeleton className="h-8 w-full" />
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4">
             <p className="text-xs text-muted-foreground">
               {readyCount > 0
                 ? `${readyCount} snapshot${readyCount === 1 ? "" : "s"} stored.`
                 : "No snapshots yet."}
             </p>
 
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium">Label (optional)</span>
+            <label className="flex flex-col gap-1.5">
+              <span className="font-medium">Label (optional)</span>
               <Input
                 value={label}
                 onChange={(event) => setLabel(event.target.value)}
@@ -149,7 +149,7 @@ export function CapsuleDialog({
 
             <label className="flex items-center justify-between gap-4">
               <span className="flex flex-col gap-0.5">
-                <span className="text-xs font-medium">
+                <span className="font-medium">
                   Copy node_modules from source
                 </span>
                 <span className="text-xs text-muted-foreground">
@@ -166,9 +166,7 @@ export function CapsuleDialog({
 
             <label className="flex items-center justify-between gap-4">
               <span className="flex flex-col gap-0.5">
-                <span className="text-xs font-medium">
-                  Install dependencies
-                </span>
+                <span className="font-medium">Install dependencies</span>
                 <span className="text-xs text-muted-foreground">
                   {supportsInstall
                     ? `Detected: ${detectedManager}`

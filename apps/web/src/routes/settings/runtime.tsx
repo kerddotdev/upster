@@ -3,15 +3,8 @@ import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
 import { toast } from "sonner"
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { List, Mono, Notice, Page, Row, Section } from "@/components/layout"
 import { Badge } from "@/components/ui/badge"
-import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
   getRuntimeSettingsFn,
@@ -81,79 +74,64 @@ function RuntimeSettingsPage() {
   }
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-medium">Runtime settings</h1>
-        <p className="text-sm text-muted-foreground">
-          Operational values are stored in the database and editable here.
-          Fields set through the environment take precedence and are read-only.
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Ports and capsules</CardTitle>
-          <CardDescription>
-            Pill app and metrics ports are checked and rotated on start.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form
-            className="grid gap-4 md:grid-cols-2"
-            onSubmit={handleSaveRuntime}
-          >
-            <EditableField
+    <Page
+      title="Runtime settings"
+      description="Operational values are stored in the database and editable here. Fields set through the environment take precedence and are read-only."
+    >
+      <form className="flex flex-col gap-4" onSubmit={handleSaveRuntime}>
+        <Section
+          title="Ports and capsules"
+          description="Pill app and metrics ports are checked and rotated on start."
+        >
+          <List>
+            <EditableRow
               label="App port range"
               value={appPortRange}
               onChange={setAppPortRange}
               envManaged={settings.envManaged.appPortRange}
               placeholder="41000-49151"
             />
-            <EditableField
+            <EditableRow
               label="Metrics port range"
               value={metricsPortRange}
               onChange={setMetricsPortRange}
               envManaged={settings.envManaged.metricsPortRange}
               placeholder="52000-60999"
             />
-            <EditableField
+            <EditableRow
               label="Dashboard origin"
               value={publicOrigin}
               onChange={setPublicOrigin}
               envManaged={settings.envManaged.publicOrigin}
               placeholder="https://localhost:3377"
             />
-            <EditableField
+            <EditableRow
               label="Capsule retention"
               value={capsuleRetention}
               onChange={setCapsuleRetention}
               envManaged={settings.envManaged.capsuleRetention}
               placeholder="10"
             />
-            <div className="md:col-span-2">
-              <GatedButton
-                scopes={["settings:write"]}
-                type="submit"
-                disabled={savingRuntime}
-              >
-                {savingRuntime ? "Saving..." : "Save"}
-              </GatedButton>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          </List>
+        </Section>
+        <div>
+          <GatedButton
+            scopes={["settings:write"]}
+            type="submit"
+            disabled={savingRuntime}
+          >
+            {savingRuntime ? "Saving..." : "Save"}
+          </GatedButton>
+        </div>
+      </form>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>cloudflared binary</CardTitle>
-          <CardDescription>
-            The executable used to run tunnels. Editable only from a local
-            session because it names a program Upster spawns.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="flex flex-col gap-3" onSubmit={handleSaveBin}>
-            <EditableField
+      <form className="flex flex-col gap-4" onSubmit={handleSaveBin}>
+        <Section
+          title="cloudflared binary"
+          description="The executable used to run tunnels. Editable only from a local session because it names a program Upster spawns."
+        >
+          <List>
+            <EditableRow
               label="cloudflared binary"
               value={cloudflaredBin}
               onChange={setCloudflaredBin}
@@ -161,65 +139,67 @@ function RuntimeSettingsPage() {
               placeholder="cloudflared"
               disabled={!settings.localAdmin}
             />
-            {!settings.localAdmin && !settings.envManaged.cloudflaredBin ? (
-              <p className="text-xs text-muted-foreground">
-                Connect from this machine to change the cloudflared binary.
-              </p>
-            ) : null}
-            <div>
-              <GatedButton
-                scopes={["settings:write"]}
-                type="submit"
-                disabled={
-                  savingBin ||
-                  !settings.localAdmin ||
-                  settings.envManaged.cloudflaredBin
-                }
-              >
-                {savingBin ? "Saving..." : "Save"}
-              </GatedButton>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          </List>
+          {!settings.localAdmin && !settings.envManaged.cloudflaredBin ? (
+            <Notice>
+              Connect from this machine to change the cloudflared binary.
+            </Notice>
+          ) : null}
+        </Section>
+        <div>
+          <GatedButton
+            scopes={["settings:write"]}
+            type="submit"
+            disabled={
+              savingBin ||
+              !settings.localAdmin ||
+              settings.envManaged.cloudflaredBin
+            }
+          >
+            {savingBin ? "Saving..." : "Save"}
+          </GatedButton>
+        </div>
+      </form>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Workspace mount</CardTitle>
-          <CardDescription>
-            Host paths are translated to container paths before validation.
-            These are set through the environment.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <ReadOnlySetting
-            label="Allowed commands"
-            value={
-              settings.allowedCommands.length
-                ? settings.allowedCommands.join(", ")
-                : "any (unrestricted)"
+      <Section
+        title="Workspace mount"
+        description="Host paths are translated to container paths before validation. These are set through the environment."
+      >
+        <List>
+          <Row
+            title="Allowed commands"
+            trailing={
+              <Mono className="text-foreground">
+                {settings.allowedCommands.length
+                  ? settings.allowedCommands.join(", ")
+                  : "any (unrestricted)"}
+              </Mono>
             }
           />
           {settings.hostWorkspaceRoot && (
-            <ReadOnlySetting
-              label="Host workspace root"
-              value={settings.hostWorkspaceRoot}
+            <Row
+              title="Host workspace root"
+              trailing={
+                <Mono className="text-foreground">
+                  {settings.hostWorkspaceRoot}
+                </Mono>
+              }
             />
           )}
           {settings.workspaceRoots.map((root) => (
-            <ReadOnlySetting
+            <Row
               key={root}
-              label="Container workspace root"
-              value={root}
+              title="Container workspace root"
+              trailing={<Mono className="text-foreground">{root}</Mono>}
             />
           ))}
-        </CardContent>
-      </Card>
-    </div>
+        </List>
+      </Section>
+    </Page>
   )
 }
 
-function EditableField({
+function EditableRow({
   label,
   value,
   onChange,
@@ -235,30 +215,23 @@ function EditableField({
   disabled?: boolean
 }) {
   return (
-    <Field>
-      <FieldLabel className="flex items-center gap-2">
-        {label}
-        {envManaged ? (
-          <Badge variant="outline" className="text-[10px]">
-            env
-          </Badge>
-        ) : null}
-      </FieldLabel>
-      <Input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        disabled={envManaged || disabled}
-      />
-    </Field>
-  )
-}
-
-function ReadOnlySetting({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border p-3">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 text-sm font-medium break-all">{value}</div>
-    </div>
+    <Row
+      title={
+        <span className="flex items-center gap-2">
+          {label}
+          {envManaged ? <Badge variant="outline">env</Badge> : null}
+        </span>
+      }
+      trailing={
+        <Input
+          aria-label={label}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          disabled={envManaged || disabled}
+          className="w-64"
+        />
+      }
+    />
   )
 }
