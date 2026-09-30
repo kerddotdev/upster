@@ -13,6 +13,9 @@ extraResources:
   - from: stage/upster
     to: upster
 mac:
+  icon: build/Upster.icon
+  minimumSystemVersion: "15.0"
+  electronLanguages: [en]
   category: public.app-category.developer-tools
   target: [dmg, zip]
   hardenedRuntime: true
@@ -20,7 +23,14 @@ mac:
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
   notarize: true
+dmg:
+  title: Upster
 linux:
+  icon: build/icons
+  desktop:
+    entry:
+      Name: Upster
+      StartupWMClass: upster
   executableName: upster
   artifactName: Upster-${version}-${arch}.${ext}
   category: Development

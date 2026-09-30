@@ -24,6 +24,13 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Select Xcode 26 for the app icon
+        run: |
+          xcode=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          test -n "$xcode" || { echo "Xcode 26 or later is required to compile the .icon"; exit 1; }
+          sudo xcode-select -s "$xcode"
+          xcrun actool --version
+
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.13
