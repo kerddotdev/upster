@@ -18,7 +18,7 @@ import type { IpcMainInvokeEvent } from "electron"
 import { readRuntimeState } from "@upster/core/node"
 
 import { installCliShim } from "./cli-shim"
-import { dataDir, resourcePath } from "./paths"
+import { dataDir, desktopAssetPath, resourcePath } from "./paths"
 import {
   ensureServiceRunning,
   getServiceState,
@@ -27,12 +27,15 @@ import {
   stopService,
 } from "./service-control"
 
-const repoRoot = join(__dirname, "..", "..", "..")
+const appPath = app.getAppPath()
+const repoRoot = join(appPath, "..", "..")
 const bundlePath = () =>
   resourcePath(app.isPackaged, process.resourcesPath, repoRoot, "server-bundle")
 const cliPath = () =>
   resourcePath(app.isPackaged, process.resourcesPath, repoRoot, "cli")
-const onboardingUrl = pathToFileURL(join(__dirname, "onboarding.html")).href
+const onboardingUrl = pathToFileURL(
+  desktopAssetPath(appPath, "onboarding.html")
+).href
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -81,7 +84,7 @@ function createWindow() {
     show: false,
     title: "Upster",
     webPreferences: {
-      preload: join(__dirname, "preload.cjs"),
+      preload: desktopAssetPath(appPath, "preload.cjs"),
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
@@ -189,7 +192,7 @@ async function refreshTray() {
 }
 
 function createTray() {
-  const icon = nativeImage.createFromPath(join(__dirname, "tray.png"))
+  const icon = nativeImage.createFromPath(desktopAssetPath(appPath, "tray.png"))
   icon.setTemplateImage(true)
   tray = new Tray(icon)
   tray.on("click", showWindow)

@@ -4,6 +4,13 @@ import { defaultDataDir } from "@upster/core/node"
 
 export const DEFAULT_PORT = 3377
 
+export function desktopAssetPath(
+  appPath: string,
+  asset: "preload.cjs" | "onboarding.html" | "tray.png"
+) {
+  return join(appPath, "dist", asset)
+}
+
 export function dataDir() {
   return resolve(process.env.UPSTER_DATA_DIR || defaultDataDir())
 }

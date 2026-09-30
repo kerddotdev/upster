@@ -12,7 +12,8 @@
     "start": "bun run build.ts && electron .",
     "dist": "bun run build.ts && electron-builder",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:smoke": "bun run build.ts && electron tests/smoke.cjs"
   },
   "dependencies": {
     "@upster/core": "workspace:*",
