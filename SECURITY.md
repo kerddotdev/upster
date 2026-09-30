@@ -304,6 +304,19 @@ What is weaker than the Docker deployment, and is not mitigated by the app:
 - `UPSTER_TRUST_PROXY=true` is set for the native service because the only
   proxy that can reach the loopback listener is the local Tailscale serve.
 
+Migrating from Docker (optional, from the desktop onboarding) reads the Docker
+volumes read-only through a helper container that is created from the existing
+libSQL image and never started against the original volume. The database is
+read through a temporary libSQL server bound to `127.0.0.1` on a random port,
+without authentication, for the few seconds the copy takes, on a copy of the
+data. The Docker `UPSTER_SESSION_SECRET`, if set, is read from the container
+configuration and stored in the native database like a generated secret. The
+Docker data is never modified or deleted; stop the Docker stack before using
+the native install, since both would use the same Cloudflare tunnels.
+
+"Reset Upster" deletes the data directory after a native confirmation dialog,
+and refuses paths that are shallow or equal to the home directory.
+
 Run `tests/pentest/run.sh` against the native service with
 `UPSTER_PENTEST_URL` and, from the same machine, `UPSTER_PENTEST_LAN_URL` set
 to the machine's LAN address to confirm it is not reachable from the network.

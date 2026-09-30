@@ -71,6 +71,10 @@ bun run package:desktop   # builds the app for the current platform
 upster service install --bundle <server-bundle-dir>   # headless, no app
 ```
 
+The desktop onboarding can migrate an existing Docker install (admin, pills,
+logs, vault, capsules); the Docker data is left untouched. `Reset Upster...` in
+the app menu starts over.
+
 Native installs give up the container boundary; read the "Native (non-Docker)
 installs" section in `SECURITY.md` first. Windows keeps using Docker.
 
