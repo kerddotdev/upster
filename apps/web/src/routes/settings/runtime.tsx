@@ -219,7 +219,9 @@ function EditableRow({
       title={
         <span className="flex items-center gap-2">
           {label}
-          {envManaged ? <Badge variant="outline">env</Badge> : null}
+          {envManaged ? (
+            <Badge variant="outline">Environment managed</Badge>
+          ) : null}
         </span>
       }
       trailing={
