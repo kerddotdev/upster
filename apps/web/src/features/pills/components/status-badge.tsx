@@ -1,36 +1,24 @@
-import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+import { StatusBadge as ToneBadge, type Tone } from "@/components/status"
 import type { PillStatus } from "@/features/pills/types"
 
-const statusMeta: Record<
-  PillStatus,
-  { label: string; dot: string; pulse?: boolean }
-> = {
-  idle: { label: "Idle", dot: "bg-muted-foreground" },
-  starting: { label: "Starting", dot: "bg-amber-500", pulse: true },
-  running: { label: "Running", dot: "bg-emerald-500", pulse: true },
-  stopping: { label: "Stopping", dot: "bg-amber-500", pulse: true },
-  error: { label: "Error", dot: "bg-destructive" },
-  expired: { label: "Expired", dot: "bg-muted-foreground" },
+const statusMeta: Record<PillStatus, { label: string; tone: Tone }> = {
+  idle: { label: "Idle", tone: "idle" },
+  starting: { label: "Starting", tone: "progress" },
+  running: { label: "Running", tone: "success" },
+  stopping: { label: "Stopping", tone: "progress" },
+  error: { label: "Error", tone: "danger" },
+  expired: { label: "Expired", tone: "idle" },
 }
 
 export function statusLabel(status: PillStatus) {
   return statusMeta[status].label
 }
 
+export function statusTone(status: PillStatus) {
+  return statusMeta[status].tone
+}
+
 export function StatusBadge({ status }: { status: PillStatus }) {
   const meta = statusMeta[status]
-
-  return (
-    <Badge variant="outline" className="gap-1.5">
-      <span
-        className={cn(
-          "size-1.5 rounded-full",
-          meta.dot,
-          meta.pulse && "animate-pulse"
-        )}
-      />
-      {meta.label}
-    </Badge>
-  )
+  return <ToneBadge tone={meta.tone} label={meta.label} />
 }

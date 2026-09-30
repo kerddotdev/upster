@@ -4,7 +4,7 @@ import { TanStackDevtools } from "@tanstack/react-devtools"
 
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { AppShell } from "@/components/app-shell"
+import { AppShell } from "@/shell/app-shell"
 import { ErrorReportProvider } from "@/components/error-report"
 import { CloudflareVaultProvider } from "@/features/secrets/cloudflare-vault-provider"
 import { getAuthStatusFn } from "@/features/auth/auth.functions"
@@ -59,7 +59,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body className="dark">
+      <body>
         <TooltipProvider>
           <ErrorReportProvider>
             <CloudflareVaultProvider>
@@ -67,7 +67,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             </CloudflareVaultProvider>
           </ErrorReportProvider>
         </TooltipProvider>
-        <Toaster richColors />
+        <Toaster />
         <TanStackDevtools
           config={{
             position: "bottom-right",
