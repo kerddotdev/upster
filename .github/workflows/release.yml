@@ -24,6 +24,13 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Verify the Homebrew tap token
+        env:
+          GH_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+        run: |
+          gh workflow list --repo kerddotdev/homebrew-tap | grep -q "Update Upster Formula" \
+            || { echo "TAP_GITHUB_TOKEN cannot see the tap workflow" >&2; exit 1; }
+
       - id: meta
         run: |
           if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${{ inputs.dry_run }}" != "true" ]; then

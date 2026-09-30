@@ -2,7 +2,7 @@
   "name": "upster",
   "private": true,
   "type": "module",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "dev": "UPSTER_DATA_DIR=${UPSTER_DATA_DIR:-$PWD/.upster} UPSTER_WORKSPACE_ROOTS=${UPSTER_WORKSPACE_ROOTS:-$PWD} bun run --cwd apps/web dev",
