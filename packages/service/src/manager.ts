@@ -12,6 +12,7 @@ import { dirname, join } from "node:path"
 import { promisify } from "node:util"
 
 import {
+  isDevFlavor,
   readRuntimeState,
   serviceLogPath,
   type RuntimeState,
@@ -25,8 +26,15 @@ import {
 
 const execFileAsync = promisify(execFile)
 
-export const SERVICE_LABEL = "com.kerdofficial.upster"
-export const SYSTEMD_UNIT = "upster.service"
+export function serviceLabel(env: NodeJS.ProcessEnv = process.env) {
+  return isDevFlavor(env)
+    ? "com.kerdofficial.upster.dev"
+    : "com.kerdofficial.upster"
+}
+
+export function systemdUnit(env: NodeJS.ProcessEnv = process.env) {
+  return isDevFlavor(env) ? "upster-dev.service" : "upster.service"
+}
 
 export type ServiceInstallInput = {
   nodePath: string
@@ -58,11 +66,11 @@ export function servicePlatform(platform = process.platform) {
 }
 
 export function launchAgentPath(home = homedir()) {
-  return join(home, "Library", "LaunchAgents", `${SERVICE_LABEL}.plist`)
+  return join(home, "Library", "LaunchAgents", `${serviceLabel()}.plist`)
 }
 
 export function systemdUnitPath(home = homedir()) {
-  return join(home, ".config", "systemd", "user", SYSTEMD_UNIT)
+  return join(home, ".config", "systemd", "user", systemdUnit())
 }
 
 export async function resolveLoginShellPath(
@@ -89,7 +97,7 @@ export function buildServiceDefinition(
   path: string
 ): ServiceDefinition {
   return {
-    label: SERVICE_LABEL,
+    label: serviceLabel(),
     program: [input.nodePath, input.entryPath],
     logPath: serviceLogPath(input.dataDir),
     env: {
@@ -135,12 +143,12 @@ export async function installService(
     const path = launchAgentPath()
     mkdirSync(dirname(path), { recursive: true })
     const domain = `gui/${uid()}`
-    await run("launchctl", ["bootout", `${domain}/${SERVICE_LABEL}`]).catch(
+    await run("launchctl", ["bootout", `${domain}/${serviceLabel()}`]).catch(
       () => undefined
     )
     writeFileSync(path, renderLaunchAgentPlist(definition), { mode: 0o600 })
     await run("launchctl", ["bootstrap", domain, path])
-    await run("launchctl", ["kickstart", "-k", `${domain}/${SERVICE_LABEL}`])
+    await run("launchctl", ["kickstart", "-k", `${domain}/${serviceLabel()}`])
     return
   }
 
@@ -148,18 +156,18 @@ export async function installService(
   mkdirSync(dirname(path), { recursive: true })
   writeFileSync(path, renderSystemdUnit(definition), { mode: 0o600 })
   await run("systemctl", ["--user", "daemon-reload"])
-  await run("systemctl", ["--user", "enable", "--now", SYSTEMD_UNIT])
+  await run("systemctl", ["--user", "enable", "--now", systemdUnit()])
 }
 
 export async function uninstallService(run: RunCommand = defaultRun) {
   const platform = servicePlatform()
   if (platform === "darwin") {
-    await run("launchctl", ["bootout", `gui/${uid()}/${SERVICE_LABEL}`]).catch(
+    await run("launchctl", ["bootout", `gui/${uid()}/${serviceLabel()}`]).catch(
       () => undefined
     )
     rmSync(launchAgentPath(), { force: true })
   } else if (platform === "linux") {
-    await run("systemctl", ["--user", "disable", "--now", SYSTEMD_UNIT]).catch(
+    await run("systemctl", ["--user", "disable", "--now", systemdUnit()]).catch(
       () => undefined
     )
     rmSync(systemdUnitPath(), { force: true })
@@ -173,7 +181,7 @@ export async function controlService(
 ) {
   const platform = servicePlatform()
   if (platform === "darwin") {
-    const target = `gui/${uid()}/${SERVICE_LABEL}`
+    const target = `gui/${uid()}/${serviceLabel()}`
     if (action === "stop") {
       await run("launchctl", ["kill", "SIGTERM", target])
     } else {
@@ -184,7 +192,7 @@ export async function controlService(
       ])
     }
   } else if (platform === "linux") {
-    await run("systemctl", ["--user", action, SYSTEMD_UNIT])
+    await run("systemctl", ["--user", action, systemdUnit()])
   } else {
     throw new Error("Native service is supported on macOS and Linux only.")
   }
@@ -224,6 +232,17 @@ export function readBundleVersion(bundleDir: string) {
       readFileSync(join(bundleDir, "manifest.json"), "utf-8")
     ) as { version?: string }
     return manifest.version ?? null
+  } catch {
+    return null
+  }
+}
+
+export function readBundleIdentity(bundleDir: string) {
+  try {
+    const manifest = JSON.parse(
+      readFileSync(join(bundleDir, "manifest.json"), "utf-8")
+    ) as { version?: string; buildId?: string }
+    return `${manifest.version ?? ""}+${manifest.buildId ?? ""}`
   } catch {
     return null
   }

@@ -6,13 +6,13 @@ import { readRuntimeState } from "@upster/core/node"
 import {
   controlService,
   installFromBundle,
-  readBundleVersion,
+  readBundleIdentity,
   readInstalledConfig,
   serviceStatus,
   stagedBundleDir,
 } from "@upster/service"
 
-import { DEFAULT_PORT, dataDir } from "./paths"
+import { dataDir, defaultPort } from "./paths"
 
 const READY_TIMEOUT_MS = 30_000
 
@@ -43,15 +43,15 @@ export async function installBundledService(bundleDir: string) {
   await installFromBundle({
     bundleDir,
     dataDir: dataDir(),
-    port: existing?.port ?? DEFAULT_PORT,
+    port: existing?.port ?? defaultPort(),
     workspaceRoots: existing?.workspaceRoots ?? [homedir()],
   })
   return waitForRuntime()
 }
 
 export async function ensureServiceRunning(bundleDir: string) {
-  const bundled = readBundleVersion(bundleDir)
-  const staged = readBundleVersion(stagedBundleDir(dataDir()))
+  const bundled = readBundleIdentity(bundleDir)
+  const staged = readBundleIdentity(stagedBundleDir(dataDir()))
   if (bundled !== null && bundled !== staged) {
     return installBundledService(bundleDir)
   }

@@ -70,3 +70,14 @@ describe("defaultDataDir", () => {
     )
   })
 })
+
+describe("dev flavor", () => {
+  it("uses separate data dirs", () => {
+    expect(defaultDataDir({ UPSTER_FLAVOR: "dev" }, "darwin", "/Users/a")).toBe(
+      "/Users/a/Library/Application Support/Upster Dev"
+    )
+    expect(defaultDataDir({ UPSTER_FLAVOR: "dev" }, "linux", "/home/a")).toBe(
+      "/home/a/.local/share/upster-dev"
+    )
+  })
+})

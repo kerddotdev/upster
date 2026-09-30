@@ -40,10 +40,15 @@ const onboardingUrl = pathToFileURL(
   desktopAssetPath(appPath, "onboarding.html")
 ).href
 
+if (!app.isPackaged) {
+  process.env.UPSTER_FLAVOR ??= "dev"
+}
+
 const appName = "Upster"
 const homepage = "https://github.com/kerdofficial/upster"
 
 app.setName(appName)
+app.setPath("userData", join(dataDir(), "desktop"))
 app.setAboutPanelOptions({
   applicationName: appName,
   applicationVersion: app.getVersion(),

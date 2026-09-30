@@ -112,7 +112,8 @@ function developmentBundle() {
 
 const executable =
   process.platform === "darwin" ? developmentBundle() : electron
-const { ELECTRON_RUN_AS_NODE: _runAsNode, ...environment } = process.env
+const { ELECTRON_RUN_AS_NODE: _runAsNode, ...baseEnvironment } = process.env
+const environment = { ...baseEnvironment, UPSTER_FLAVOR: "dev" }
 const child = spawn(executable, [desktopDirectory, ...process.argv.slice(2)], {
   stdio: "inherit",
   env: environment,

@@ -20,6 +20,10 @@ const NODE_VERSION = "22.16.0"
 const CLOUDFLARED_VERSION = "2025.8.1"
 
 const root = resolve(import.meta.dirname, "..")
+const gitSha =
+  spawnSync("git", ["rev-parse", "--short", "HEAD"], { cwd: root })
+    .stdout?.toString()
+    .trim() || "unknown"
 const lockPath = join(root, "scripts", "server-bundle.lock.json")
 const updateLock = process.argv.includes("--update-lock")
 const lockOnly = process.argv.includes("--lock-only")
@@ -198,6 +202,7 @@ writeFileSync(
   JSON.stringify(
     {
       version: process.env.UPSTER_VERSION ?? rootPackage.version,
+      buildId: `${gitSha}-${Date.now()}`,
       platform: target.platform,
       arch: target.arch,
       node: NODE_VERSION,

@@ -48,3 +48,14 @@ describe("service rendering", () => {
     expect(built.logPath).toBe("/d/service.log")
   })
 })
+
+describe("service identity", () => {
+  it("separates the dev flavor from production", async () => {
+    const { serviceLabel, systemdUnit } = await import("../src")
+    expect(serviceLabel({})).toBe("com.kerdofficial.upster")
+    expect(serviceLabel({ UPSTER_FLAVOR: "dev" })).toBe(
+      "com.kerdofficial.upster.dev"
+    )
+    expect(systemdUnit({ UPSTER_FLAVOR: "dev" })).toBe("upster-dev.service")
+  })
+})

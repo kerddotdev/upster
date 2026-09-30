@@ -1,8 +1,10 @@
 import { join, resolve } from "node:path"
 
-import { defaultDataDir } from "@upster/core/node"
+import { defaultDataDir, isDevFlavor } from "@upster/core/node"
 
-export const DEFAULT_PORT = 3377
+export function defaultPort() {
+  return isDevFlavor() ? 3378 : 3377
+}
 
 export function desktopAssetPath(
   appPath: string,
