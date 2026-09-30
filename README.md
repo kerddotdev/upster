@@ -11,13 +11,9 @@ the CLI app lives in `apps/cli`, the Electron desktop app lives in
 `packages/core`, and the root `package.json` keeps the common commands for local
 development, validation, database tasks, and Docker builds.
 
-## Status
+## Scope
 
-Upster is in beta and under active development. Use it at your own risk.
-
-The project is intended for local, single-user development workflows. It is not production-ready yet, and some safety hardening is still planned around process isolation and Cloudflare record ownership.
-
-Do not use Upster for untrusted repositories, public multi-user access, or sensitive production workloads until those safety items are completed.
+Upster is built for local, single-user development workflows. Do not use it for untrusted repositories, public multi-user access, or sensitive production workloads: pills run with your own privileges, and some safety hardening around process isolation and Cloudflare record ownership is still planned. See `SECURITY.md` for the security model.
 
 ## Install
 

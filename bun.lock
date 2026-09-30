@@ -13,7 +13,7 @@
     },
     "apps/cli": {
       "name": "@upster/cli",
-      "version": "0.1.0",
+      "version": "1.0.0",
       "bin": {
         "upster": "./dist/upster",
       },
@@ -29,7 +29,7 @@
     },
     "apps/desktop": {
       "name": "@upster/desktop",
-      "version": "0.1.0",
+      "version": "1.0.0",
       "dependencies": {
         "@upster/core": "workspace:*",
         "@upster/service": "workspace:*",
@@ -45,7 +45,7 @@
     },
     "apps/web": {
       "name": "@upster/web",
-      "version": "0.1.0",
+      "version": "1.0.0",
       "dependencies": {
         "@base-ui/react": "^1.6.0",
         "@fontsource/fragment-mono": "^5.3.0",
@@ -101,7 +101,7 @@
     },
     "packages/core": {
       "name": "@upster/core",
-      "version": "0.1.0",
+      "version": "1.0.0",
       "dependencies": {
         "zod": "^4.4.3",
       },
@@ -112,7 +112,7 @@
     },
     "packages/migration": {
       "name": "@upster/migration",
-      "version": "0.1.0",
+      "version": "1.0.0",
       "dependencies": {
         "@libsql/client": "^0.17.4",
         "@upster/core": "workspace:*",
@@ -125,7 +125,7 @@
     },
     "packages/service": {
       "name": "@upster/service",
-      "version": "0.1.0",
+      "version": "1.0.0",
       "dependencies": {
         "@upster/core": "workspace:*",
       },
