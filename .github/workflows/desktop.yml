@@ -25,6 +25,7 @@ jobs:
   macos:
     # The Vectis macOS image has no Xcode, so notarytool is unavailable there.
     runs-on: macos-latest
+    timeout-minutes: 60
     environment: release
     permissions:
       contents: write
@@ -107,6 +108,7 @@ jobs:
 
   linux:
     runs-on: vectis-ubuntu
+    timeout-minutes: 45
     permissions:
       contents: write
     strategy:
