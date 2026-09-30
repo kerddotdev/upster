@@ -78,8 +78,8 @@ export function ExpiryPicker({
           <CalendarClockIcon data-icon="inline-start" />
           {label}
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-72 overflow-visible p-0">
-          <FieldGroup className="gap-0 rounded-lg bg-popover">
+        <PopoverContent align="start" className="w-72 p-0">
+          <FieldGroup className="gap-0 rounded-[inherit]">
             <Calendar
               className="mx-auto w-full bg-transparent"
               mode="single"

@@ -55,7 +55,7 @@ function PillDetailPage() {
     <Page
       title={pill.name}
       description={
-        <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
           <StatusBadge status={pill.status} />
           <Mono>{pill.repoPath}</Mono>
         </span>
@@ -69,7 +69,7 @@ function PillDetailPage() {
             render={<Link to="/" />}
           >
             <ArrowLeftIcon data-icon="inline-start" />
-            Pills
+            <span className="max-sm:sr-only">Pills</span>
           </Button>
           <PillActions
             pill={pill}
@@ -122,7 +122,7 @@ function PillDetailPage() {
         onValueChange={(value) => void navigate({ search: { tab: value } })}
         className="gap-6"
       >
-        <TabsList>
+        <TabsList className="max-w-full justify-start overflow-x-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="capsules">Capsules</TabsTrigger>
           <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>

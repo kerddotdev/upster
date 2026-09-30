@@ -310,14 +310,14 @@ export function PillActions({
       {showDelete && !canDelete ? (
         <GatedButton scopes={["pills:delete"]} variant="ghost" size="sm">
           <Trash2Icon data-icon="inline-start" />
-          Delete
+          <span className="max-sm:sr-only">Delete</span>
         </GatedButton>
       ) : null}
       {showDelete && canDelete && (
         <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
           <AlertDialogTrigger render={<Button variant="ghost" size="sm" />}>
             <Trash2Icon data-icon="inline-start" />
-            Delete
+            <span className="max-sm:sr-only">Delete</span>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>

@@ -90,9 +90,14 @@ export function Page({
             {title}
           </h1>
           {description && (
-            <p className="mt-1.5 max-w-[62ch] text-muted-foreground">
+            <div
+              className={cn(
+                "mt-1.5 min-w-0 text-muted-foreground",
+                typeof description === "string" && "max-w-[62ch]"
+              )}
+            >
               {description}
-            </p>
+            </div>
           )}
           <div className="mt-8 flex flex-col gap-10">{children}</div>
         </div>
@@ -118,8 +123,8 @@ export function Section({
 }) {
   return (
     <section className={cn("flex min-w-0 flex-col gap-3", className)}>
-      <div className="flex min-h-7 items-end justify-between gap-4">
-        <div className="min-w-0">
+      <div className="flex min-h-7 flex-wrap items-end justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0 flex-1 basis-56">
           <h2 className="flex items-center gap-1.5 text-sm font-semibold">
             {title}
             {hint}
@@ -130,9 +135,7 @@ export function Section({
             </p>
           )}
         </div>
-        {actions && (
-          <div className="flex shrink-0 items-center gap-1.5">{actions}</div>
-        )}
+        {actions && <div className="flex items-center gap-1.5">{actions}</div>}
       </div>
       {children}
     </section>
@@ -162,16 +165,25 @@ export function Row({
 }) {
   return (
     <div className="rise-in px-4 py-3">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         {leading}
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-40">
           <div className="truncate font-medium">{title}</div>
           {detail && (
-            <div className="mt-0.5 text-xs text-muted-foreground">{detail}</div>
+            <div className="mt-0.5 min-w-0 text-xs text-muted-foreground">
+              {detail}
+            </div>
           )}
         </div>
         {trailing && (
-          <div className="flex shrink-0 items-center gap-2">{trailing}</div>
+          <div
+            className={cn(
+              "flex flex-wrap items-center gap-2 @max-2xl:basis-full",
+              leading && "@max-2xl:pl-9"
+            )}
+          >
+            {trailing}
+          </div>
         )}
       </div>
       {children && (
@@ -179,6 +191,15 @@ export function Row({
       )}
     </div>
   )
+}
+
+function breakAtSlashes(value: ReactNode) {
+  if (typeof value !== "string") return value
+  return value
+    .split("/")
+    .flatMap((part, index) =>
+      index === 0 ? [part] : ["/", <wbr key={index} />, part]
+    )
 }
 
 export function Mono({
@@ -191,11 +212,11 @@ export function Mono({
   return (
     <code
       className={cn(
-        "font-mono text-[12px] break-all text-muted-foreground",
+        "font-mono text-[12px] [overflow-wrap:anywhere] text-muted-foreground",
         className
       )}
     >
-      {children}
+      {breakAtSlashes(children)}
     </code>
   )
 }
@@ -296,8 +317,8 @@ export function ExpandableRow({
 }) {
   return (
     <Collapsible defaultOpen={defaultOpen} className="rise-in">
-      <div className="flex items-center gap-2 pr-3">
-        <CollapsibleTrigger className="group/trigger flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-inset">
+      <div className="flex flex-wrap items-center gap-x-2 pr-3">
+        <CollapsibleTrigger className="group/trigger flex min-w-0 flex-1 basis-48 items-center gap-3 py-3 pl-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-inset">
           <ChevronRightIcon
             className="size-3.5 shrink-0 text-muted-foreground transition-transform duration-150 group-data-panel-open/trigger:rotate-90"
             aria-hidden
@@ -316,7 +337,9 @@ export function ExpandableRow({
           )}
         </CollapsibleTrigger>
         {actions && (
-          <div className="flex shrink-0 items-center gap-1.5">{actions}</div>
+          <div className="flex items-center gap-1.5 @max-xl:basis-full @max-xl:pb-3 @max-xl:pl-[46px]">
+            {actions}
+          </div>
         )}
       </div>
       <CollapsibleContent>
