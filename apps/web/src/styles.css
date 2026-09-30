@@ -149,10 +149,22 @@ html[data-desktop][data-platform="darwin"] {
     -webkit-user-drag: none;
   }
   button,
-  a,
+  a[href],
+  summary,
+  select,
   [role="button"],
   [role="menuitem"],
-  [role="option"] {
+  [role="option"],
+  [role="tab"],
+  [role="switch"],
+  [role="checkbox"],
+  [role="radio"],
+  [role="combobox"] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"],
+  [data-disabled] {
     cursor: default;
   }
   ::-webkit-scrollbar {

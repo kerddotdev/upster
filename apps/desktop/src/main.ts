@@ -476,8 +476,21 @@ if (!app.requestSingleInstanceLock()) {
   app.on("window-all-closed", () => undefined)
 
   void app.whenReady().then(() => {
-    session.defaultSession.setPermissionRequestHandler((_wc, _perm, callback) =>
-      callback(false)
+    const isTrustedUrl = (url: string) => {
+      const origin = currentOrigin()
+      return origin !== null && (url === origin || url.startsWith(`${origin}/`))
+    }
+    session.defaultSession.setPermissionRequestHandler(
+      (_wc, permission, callback, details) =>
+        callback(
+          permission === "clipboard-sanitized-write" &&
+            isTrustedUrl(details.requestingUrl)
+        )
+    )
+    session.defaultSession.setPermissionCheckHandler(
+      (_wc, permission, requestingOrigin) =>
+        permission === "clipboard-sanitized-write" &&
+        isTrustedUrl(requestingOrigin)
     )
     registerIpc()
     buildAppMenu()

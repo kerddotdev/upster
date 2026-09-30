@@ -5,6 +5,7 @@ import { toast } from "sonner"
 
 import { Mono } from "@/components/layout"
 import { Button } from "@/components/ui/button"
+import { writeClipboard } from "@/lib/clipboard"
 import { cn } from "@/lib/utils"
 
 export function LogOutput({
@@ -18,7 +19,7 @@ export function LogOutput({
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(content)
+      await writeClipboard(content)
       toast.success("Copied to clipboard.")
     } catch {
       toast.error("Could not copy to clipboard.")

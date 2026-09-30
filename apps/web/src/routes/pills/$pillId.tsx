@@ -56,7 +56,7 @@ function PillDetailPage() {
       title={pill.name}
       description={
         <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
-          <StatusBadge status={pill.status} />
+          <StatusBadge status={pill.status} source={pill.activeRun?.source} />
           <Mono>{pill.repoPath}</Mono>
         </span>
       }
@@ -122,7 +122,7 @@ function PillDetailPage() {
         onValueChange={(value) => void navigate({ search: { tab: value } })}
         className="gap-6"
       >
-        <TabsList className="max-w-full justify-start overflow-x-auto">
+        <TabsList className="max-w-full [scrollbar-width:none] justify-start overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="capsules">Capsules</TabsTrigger>
           <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>

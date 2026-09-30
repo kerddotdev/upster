@@ -1,5 +1,5 @@
 import { StatusBadge as ToneBadge, type Tone } from "@/components/status"
-import type { PillStatus } from "@/features/pills/types"
+import type { PillRunSource, PillStatus } from "@/features/pills/types"
 
 const statusMeta: Record<PillStatus, { label: string; tone: Tone }> = {
   idle: { label: "Idle", tone: "idle" },
@@ -18,7 +18,22 @@ export function statusTone(status: PillStatus) {
   return statusMeta[status].tone
 }
 
-export function StatusBadge({ status }: { status: PillStatus }) {
+const sourceLabels: Record<PillRunSource, string> = {
+  live: "Live",
+  capsule: "Snapshot",
+}
+
+export function StatusBadge({
+  status,
+  source,
+}: {
+  status: PillStatus
+  source?: PillRunSource | null
+}) {
   const meta = statusMeta[status]
-  return <ToneBadge tone={meta.tone} label={meta.label} />
+  const label =
+    status === "running" && source
+      ? `${meta.label} - ${sourceLabels[source]}`
+      : meta.label
+  return <ToneBadge tone={meta.tone} label={label} />
 }

@@ -5,6 +5,7 @@ import { ChevronRightIcon, ExternalLinkIcon } from "lucide-react"
 import { AccessDenied } from "@/components/access-denied"
 import { EmptyState, List, Mono, Page, Row } from "@/components/layout"
 import { Button } from "@/components/ui/button"
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible"
 import { CapsuleActions } from "@/features/capsules/components/capsule-actions"
 import { CapsuleManager } from "@/features/capsules/components/capsule-manager"
 import { CreatePillDialog } from "@/features/pills/components/create-pill-dialog"
@@ -95,7 +96,7 @@ function PillRow({ pill }: { pill: PillListItem }) {
       }
       trailing={
         <>
-          <StatusBadge status={pill.status} />
+          <StatusBadge status={pill.status} source={pill.activeRun?.source} />
           <ExpiryPicker
             value={expiresAt}
             onChange={setExpiresAt}
@@ -104,40 +105,43 @@ function PillRow({ pill }: { pill: PillListItem }) {
           <PillActions pill={pill} expiresAt={expiresAt} showDelete={false} />
         </>
       }
-    >
-      {expanded ? (
-        <>
-          <p className="text-xs text-muted-foreground">
-            Path <Mono>{pill.repoPath}</Mono>
-          </p>
-          <CapsuleManager
-            key={capsuleKey}
-            pillId={pill.id}
-            commandName={pill.defaultEnv}
-            slug={pill.slug}
-            expiresAt={expiresAt}
-            activeRun={
-              pill.activeRun
-                ? {
-                    id: pill.activeRun.id,
-                    capsuleId: pill.activeRun.capsuleId,
-                  }
-                : null
-            }
-            allowBrowse={false}
-            headerActions={
-              <CapsuleActions
+      panel={
+        <Collapsible open={expanded} onOpenChange={setExpanded}>
+          <CollapsibleContent>
+            <div className="mt-3 flex flex-col gap-3">
+              <Mono className="block rounded-xl bg-muted px-3 py-2">
+                {pill.repoPath}
+              </Mono>
+              <CapsuleManager
+                key={capsuleKey}
                 pillId={pill.id}
-                onChanged={() => {
-                  setCapsuleKey((value) => value + 1)
-                  void router.invalidate()
-                }}
+                commandName={pill.defaultEnv}
+                slug={pill.slug}
+                expiresAt={expiresAt}
+                activeRun={
+                  pill.activeRun
+                    ? {
+                        id: pill.activeRun.id,
+                        capsuleId: pill.activeRun.capsuleId,
+                      }
+                    : null
+                }
+                allowBrowse={false}
+                headerActions={
+                  <CapsuleActions
+                    pillId={pill.id}
+                    onChanged={() => {
+                      setCapsuleKey((value) => value + 1)
+                      void router.invalidate()
+                    }}
+                  />
+                }
+                onChanged={() => router.invalidate()}
               />
-            }
-            onChanged={() => router.invalidate()}
-          />
-        </>
-      ) : null}
-    </Row>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      }
+    />
   )
 }

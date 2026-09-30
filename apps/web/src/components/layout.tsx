@@ -155,12 +155,14 @@ export function Row({
   detail,
   leading,
   trailing,
+  panel,
   children,
 }: {
   title: ReactNode
   detail?: ReactNode
   leading?: ReactNode
   trailing?: ReactNode
+  panel?: ReactNode
   children?: ReactNode
 }) {
   return (
@@ -186,6 +188,7 @@ export function Row({
           </div>
         )}
       </div>
+      {panel}
       {children && (
         <div className="mt-3 flex flex-col gap-3 empty:hidden">{children}</div>
       )}
