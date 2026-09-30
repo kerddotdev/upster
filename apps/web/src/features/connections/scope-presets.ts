@@ -11,7 +11,7 @@ export const presetMeta: Record<
 > = {
   viewer: {
     label: "Viewer",
-    description: "Read pills, capsules, logs, metrics, and vault status.",
+    description: "Read pills, capsules, logs, metrics, and Vault status.",
   },
   operator: {
     label: "Operator",
@@ -19,7 +19,7 @@ export const presetMeta: Record<
   },
   fullAdmin: {
     label: "Full admin",
-    description: "Full control, including vault, sessions, and connections.",
+    description: "Full control, including Vault, sessions, and connections.",
   },
 }
 

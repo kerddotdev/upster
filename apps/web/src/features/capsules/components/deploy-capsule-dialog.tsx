@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start"
 import { toast } from "sonner"
 
 import { useErrorReporter } from "@/components/error-report"
+import { Mono } from "@/components/layout"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -110,16 +111,14 @@ export function DeployCapsuleDialog({
               type="button"
               onClick={() => setTarget(option.value)}
               className={cn(
-                "flex items-start gap-2 rounded-md border border-border p-2 text-left",
-                target === option.value && "border-primary bg-muted/40"
+                "flex items-start gap-3 rounded-2xl px-4 py-3 text-left ring-1 ring-border transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/60",
+                target === option.value && "bg-brand-soft ring-brand/40"
               )}
             >
               <RadioGroupItem value={option.value} className="mt-0.5" />
-              <span className="flex flex-col gap-0.5">
-                <span className="text-xs font-medium">{option.title}</span>
-                <span className="text-[0.65rem] text-muted-foreground">
-                  {option.host}
-                </span>
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="font-medium">{option.title}</span>
+                <Mono>{option.host}</Mono>
               </span>
             </button>
           ))}

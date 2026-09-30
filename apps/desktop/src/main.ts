@@ -8,16 +8,19 @@ import {
   ipcMain,
   Menu,
   nativeImage,
+  nativeTheme,
   session,
   shell,
   Tray,
 } from "electron"
 import { autoUpdater } from "electron-updater"
-import type { IpcMainInvokeEvent } from "electron"
+import type { IpcMainInvokeEvent, MenuItemConstructorOptions } from "electron"
 
+import type { DesktopWindowEvent } from "@upster/core"
 import { readRuntimeState } from "@upster/core/node"
 
 import { installCliShim } from "./cli-shim"
+import { platformWindowOptions, titleBarOverlay } from "./chrome"
 import { dataDir, desktopAssetPath, resourcePath } from "./paths"
 import {
   ensureServiceRunning,
@@ -36,6 +39,17 @@ const cliPath = () =>
 const onboardingUrl = pathToFileURL(
   desktopAssetPath(appPath, "onboarding.html")
 ).href
+
+const appName = "Upster"
+const homepage = "https://github.com/kerdofficial/upster"
+
+app.setName(appName)
+app.setAboutPanelOptions({
+  applicationName: appName,
+  applicationVersion: app.getVersion(),
+  copyright: "kerdofficial",
+  website: homepage,
+})
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -75,6 +89,94 @@ function openExternalIfSafe(url: string) {
   }
 }
 
+function sendToRenderer(event: DesktopWindowEvent) {
+  mainWindow?.webContents.send("upster:window", event)
+}
+
+const goRoutes = [
+  ["Pills", "/"],
+  ["Cloudflare", "/settings/cloudflare"],
+  ["Runtime", "/settings/runtime"],
+  ["Sessions", "/sessions"],
+  ["Remote Access", "/connections"],
+] as const
+
+function buildAppMenu() {
+  const mac = process.platform === "darwin"
+  const template: Array<MenuItemConstructorOptions> = [
+    {
+      label: appName,
+      submenu: [
+        { role: "about", label: `About ${appName}` },
+        { type: "separator" },
+        {
+          label: "Settings...",
+          accelerator: "CmdOrCtrl+,",
+          click: () => {
+            showWindow()
+            sendToRenderer({ type: "navigate", to: "/settings/runtime" })
+          },
+        },
+        { type: "separator" },
+        ...(mac
+          ? ([
+              { role: "hide", label: `Hide ${appName}` },
+              { role: "hideOthers" },
+              { role: "unhide", label: "Show All" },
+              { type: "separator" },
+            ] satisfies Array<MenuItemConstructorOptions>)
+          : []),
+        { role: "quit", label: `Quit ${appName}` },
+      ],
+    },
+    { role: "editMenu" },
+    {
+      label: "View",
+      submenu: [
+        {
+          label: "Toggle Sidebar",
+          accelerator: "CmdOrCtrl+B",
+          click: () => sendToRenderer({ type: "toggle-sidebar" }),
+        },
+        { role: "togglefullscreen" },
+        ...(app.isPackaged
+          ? []
+          : ([
+              { type: "separator" },
+              { role: "reload" },
+              { role: "toggleDevTools" },
+            ] satisfies Array<MenuItemConstructorOptions>)),
+      ],
+    },
+    {
+      label: "Go",
+      submenu: goRoutes.map(([label, to], index) => ({
+        label,
+        accelerator: `CmdOrCtrl+${index + 1}`,
+        click: () => {
+          showWindow()
+          sendToRenderer({ type: "navigate", to })
+        },
+      })),
+    },
+    { role: "windowMenu" },
+    {
+      role: "help",
+      submenu: [
+        {
+          label: "Upster on GitHub",
+          click: () => void shell.openExternal(homepage),
+        },
+        {
+          label: "Report an Issue",
+          click: () => void shell.openExternal(`${homepage}/issues`),
+        },
+      ],
+    },
+  ]
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
+
 function createWindow() {
   const window = new BrowserWindow({
     width: 1200,
@@ -82,16 +184,30 @@ function createWindow() {
     minWidth: 720,
     minHeight: 480,
     show: false,
-    title: "Upster",
+    title: appName,
+    ...(process.platform === "linux"
+      ? { icon: desktopAssetPath(appPath, "icon.png") }
+      : {}),
+    ...platformWindowOptions(process.platform, nativeTheme.shouldUseDarkColors),
     webPreferences: {
       preload: desktopAssetPath(appPath, "preload.cjs"),
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
+      devTools: !app.isPackaged,
     },
   })
 
   window.once("ready-to-show", () => window.show())
+  window.on("enter-full-screen", () =>
+    sendToRenderer({ type: "fullscreen", active: true })
+  )
+  window.on("leave-full-screen", () =>
+    sendToRenderer({ type: "fullscreen", active: false })
+  )
+  window.webContents.on("did-finish-load", () => {
+    void window.webContents.setVisualZoomLevelLimits(1, 1)
+  })
   window.on("close", (event) => {
     if (!quitting) {
       event.preventDefault()
@@ -192,8 +308,13 @@ async function refreshTray() {
 }
 
 function createTray() {
-  const icon = nativeImage.createFromPath(desktopAssetPath(appPath, "tray.png"))
-  icon.setTemplateImage(true)
+  const mac = process.platform === "darwin"
+  const icon = nativeImage.createFromPath(
+    desktopAssetPath(appPath, mac ? "trayTemplate.png" : "tray.png")
+  )
+  if (mac) {
+    icon.setTemplateImage(true)
+  }
   tray = new Tray(icon)
   tray.on("click", showWindow)
   void refreshTray()
@@ -275,7 +396,19 @@ if (!app.requestSingleInstanceLock()) {
       callback(false)
     )
     registerIpc()
+    buildAppMenu()
     mainWindow = createWindow()
+    nativeTheme.on("updated", () => {
+      if (process.platform !== "darwin") {
+        mainWindow?.setTitleBarOverlay(
+          titleBarOverlay(nativeTheme.shouldUseDarkColors)
+        )
+        mainWindow?.setBackgroundColor(
+          platformWindowOptions("linux", nativeTheme.shouldUseDarkColors)
+            .backgroundColor ?? "#ffffff"
+        )
+      }
+    })
     createTray()
     setupAutoUpdate()
     void boot(mainWindow)

@@ -130,9 +130,11 @@ export function CreatePillForm({ onCreated }: { onCreated?: () => void }) {
           <Input id="healthcheckPath" name="healthcheckPath" placeholder="/" />
         </Field>
       </FieldGroup>
-      <Button type="submit" disabled={pending}>
-        {pending ? "Adding..." : "Add pill"}
-      </Button>
+      <div className="flex justify-end">
+        <Button type="submit" disabled={pending}>
+          {pending ? "Adding..." : "Add pill"}
+        </Button>
+      </div>
     </form>
   )
 }

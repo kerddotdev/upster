@@ -32,4 +32,12 @@ for (const [entry, out] of [
 }
 
 cpSync(join(here, "src", "onboarding.html"), join(dist, "onboarding.html"))
-cpSync(join(here, "assets", "tray.png"), join(dist, "tray.png"))
+for (const asset of [
+  "tray.png",
+  "tray@2x.png",
+  "trayTemplate.png",
+  "trayTemplate@2x.png",
+  "icon.png",
+]) {
+  cpSync(join(here, "assets", asset), join(dist, asset))
+}

@@ -305,7 +305,7 @@ export const panicLockdownFn = createServerFn({ method: "POST" })
 
     await recordSecurityEvent({
       type: "security.panic",
-      message: `Emergency lockdown revoked ${revoked} connection(s), locked the vault and disabled remote access.`,
+      message: `Emergency lockdown revoked ${revoked} connection(s), locked the Vault and disabled remote access.`,
       actorSessionId: context.session.sid,
       actorKind: context.session.kind,
       source: "panic",

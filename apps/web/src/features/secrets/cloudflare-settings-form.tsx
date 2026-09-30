@@ -3,15 +3,9 @@
 import { useState } from "react"
 import { useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import {
-  LockIcon,
-  LockOpenIcon,
-  ShieldCheckIcon,
-  Trash2Icon,
-} from "lucide-react"
+import { LockIcon, LockOpenIcon, Trash2Icon } from "lucide-react"
 import { toast } from "sonner"
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,21 +18,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field"
+import { List, Mono, Notice, Row, Section } from "@/components/layout"
+import { StatusText } from "@/components/status"
 import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
 import type { CloudflareConfig } from "@/features/pills/types"
 import { CloudflareSetupGuide } from "@/features/secrets/cloudflare-setup-guide"
 import { useCloudflareVault } from "@/features/secrets/cloudflare-vault-provider"
@@ -53,46 +35,7 @@ import {
 type VaultStatus = Awaited<ReturnType<typeof getCloudflareVaultStatusFn>>
 
 export function CloudflareSettingsForm({ status }: { status: VaultStatus }) {
-  const hasVault = status.hasVault
-
-  return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-medium">Cloudflare</h1>
-        <p className="text-sm text-muted-foreground">
-          Save an encrypted local vault and unlock it only in control plane
-          memory.
-        </p>
-      </div>
-
-      {hasVault ? <VaultManager /> : <VaultSetup />}
-    </div>
-  )
-}
-
-function StatusRow({
-  label,
-  value,
-  tone,
-}: {
-  label: string
-  value: string
-  tone: "ok" | "muted"
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="inline-flex items-center gap-1.5 text-sm font-medium">
-        <span
-          className={cn(
-            "size-1.5 rounded-full",
-            tone === "ok" ? "bg-emerald-500" : "bg-muted-foreground"
-          )}
-        />
-        {value}
-      </span>
-    </div>
-  )
+  return status.hasVault ? <VaultManager /> : <VaultSetup />
 }
 
 function VaultManager() {
@@ -107,117 +50,142 @@ function VaultManager() {
   const [locking, setLocking] = useState(false)
 
   return (
-    <Card className="max-w-2xl">
-      <CardHeader>
-        <CardTitle>Vault</CardTitle>
-        <CardDescription>
-          Your Cloudflare config is stored locally as ciphertext. Unlock it to
-          start tunnels.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <StatusRow label="Vault" value="Saved" tone="ok" />
-          <StatusRow
-            label="Session"
-            value={isUnlocked ? "Unlocked" : "Locked"}
-            tone={isUnlocked ? "ok" : "muted"}
+    <>
+      <Section title="Vault">
+        <List>
+          <Row
+            title="Vault"
+            detail="Your Cloudflare config is stored locally as ciphertext."
+            trailing={<StatusText tone="success" label="Saved" />}
           />
-        </div>
-
-        {rootDomain && (
-          <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
-            <span className="text-xs text-muted-foreground">Root domain</span>
-            <span className="truncate font-mono text-xs font-medium">
-              {rootDomain}
-            </span>
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-2">
-          {!canUnlock ? (
-            <GatedButton scopes={["vault:unlock"]} variant="outline">
-              <LockOpenIcon data-icon="inline-start" />
-              {isUnlocked ? "Lock session" : "Unlock vault"}
-            </GatedButton>
-          ) : isUnlocked ? (
-            <Button
-              variant="outline"
-              disabled={locking}
-              onClick={async () => {
-                setLocking(true)
-                try {
-                  await lock()
-                } finally {
-                  setLocking(false)
-                }
-              }}
-            >
-              <LockIcon data-icon="inline-start" />
-              Lock session
-            </Button>
-          ) : (
-            <Button onClick={() => requestUnlock()}>
-              <LockOpenIcon data-icon="inline-start" />
-              Unlock vault
-            </Button>
+          <Row
+            title="Session"
+            detail="Unlock the Vault to start tunnels."
+            trailing={
+              <StatusText
+                tone={isUnlocked ? "success" : "idle"}
+                label={isUnlocked ? "Unlocked" : "Locked"}
+              />
+            }
+          />
+          {rootDomain && (
+            <Row
+              title="Root domain"
+              trailing={<Mono className="text-foreground">{rootDomain}</Mono>}
+            />
           )}
+        </List>
+      </Section>
 
-          {!canDelete ? (
-            <GatedButton scopes={["vault:delete"]} variant="outline">
-              <Trash2Icon data-icon="inline-start" />
-              Delete vault
-            </GatedButton>
-          ) : (
-            <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-              <AlertDialogTrigger render={<Button variant="outline" />}>
-                <Trash2Icon data-icon="inline-start" />
-                Delete vault
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Cloudflare vault?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This removes the encrypted config from local storage and
-                    locks the current session. You can save a new vault
-                    afterwards.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={deleting}>
-                    Cancel
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    variant="destructive"
-                    disabled={deleting}
-                    onClick={async () => {
-                      setDeleting(true)
-                      try {
-                        await deleteVault()
-                        await refreshVault()
-                        toast.success("Cloudflare vault deleted.")
-                        setDeleteOpen(false)
-                        await router.invalidate()
-                      } catch (err) {
-                        toast.error(
-                          err instanceof Error
-                            ? err.message
-                            : "Failed to delete vault."
-                        )
-                      } finally {
-                        setDeleting(false)
-                      }
-                    }}
+      <Section title="Manage">
+        <List>
+          <Row
+            title={isUnlocked ? "Lock session" : "Unlock Vault"}
+            detail="The passphrase decrypts the config into control plane memory only."
+            trailing={
+              !canUnlock ? (
+                <GatedButton
+                  scopes={["vault:unlock"]}
+                  variant="secondary"
+                  size="sm"
+                >
+                  <LockOpenIcon data-icon="inline-start" />
+                  {isUnlocked ? "Lock session" : "Unlock Vault"}
+                </GatedButton>
+              ) : isUnlocked ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={locking}
+                  onClick={async () => {
+                    setLocking(true)
+                    try {
+                      await lock()
+                    } finally {
+                      setLocking(false)
+                    }
+                  }}
+                >
+                  <LockIcon data-icon="inline-start" />
+                  Lock session
+                </Button>
+              ) : (
+                <Button size="sm" onClick={() => requestUnlock()}>
+                  <LockOpenIcon data-icon="inline-start" />
+                  Unlock Vault
+                </Button>
+              )
+            }
+          />
+          <Row
+            title="Delete Vault"
+            detail="Removes the encrypted config from local storage and locks the session."
+            trailing={
+              !canDelete ? (
+                <GatedButton
+                  scopes={["vault:delete"]}
+                  variant="secondary"
+                  size="sm"
+                >
+                  <Trash2Icon data-icon="inline-start" />
+                  Delete Vault
+                </GatedButton>
+              ) : (
+                <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                  <AlertDialogTrigger
+                    render={<Button variant="secondary" size="sm" />}
                   >
-                    Delete vault
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+                    <Trash2Icon data-icon="inline-start" />
+                    Delete Vault
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Delete Cloudflare Vault?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This removes the encrypted config from local storage and
+                        locks the current session. You can save a new Vault
+                        afterwards.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={deleting}>
+                        Cancel
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        disabled={deleting}
+                        onClick={async () => {
+                          setDeleting(true)
+                          try {
+                            await deleteVault()
+                            await refreshVault()
+                            toast.success("Cloudflare Vault deleted.")
+                            setDeleteOpen(false)
+                            await router.invalidate()
+                          } catch (err) {
+                            toast.error(
+                              err instanceof Error
+                                ? err.message
+                                : "Failed to delete Vault."
+                            )
+                          } finally {
+                            setDeleting(false)
+                          }
+                        }}
+                      >
+                        Delete Vault
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )
+            }
+          />
+        </List>
+      </Section>
+    </>
   )
 }
 
@@ -253,87 +221,104 @@ function VaultSetup() {
       })
       await refreshVault()
       toast.success(
-        "Cloudflare vault saved and unlocked for this Upster session."
+        "Cloudflare Vault saved and unlocked for this Upster session."
       )
       await router.invalidate()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save vault.")
+      toast.error(err instanceof Error ? err.message : "Failed to save Vault.")
     } finally {
       setPending(false)
     }
   }
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-2">
+    <>
       <CloudflareSetupGuide />
-      <Card>
-        <CardHeader>
-          <CardTitle>Save vault</CardTitle>
-          <CardDescription>
-            Paste your Cloudflare details to create an encrypted local vault.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="flex flex-col gap-4" onSubmit={handleSave}>
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="accountId">Account ID</FieldLabel>
-                <Input id="accountId" name="accountId" required />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="zoneId">Zone ID</FieldLabel>
-                <Input id="zoneId" name="zoneId" required />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="rootDomain">Root domain</FieldLabel>
+      <form className="flex flex-col gap-10" onSubmit={handleSave}>
+        <Section
+          title="Save Vault"
+          description="Paste your Cloudflare details to create an encrypted local Vault."
+        >
+          <List>
+            <Row
+              title="Account ID"
+              trailing={
                 <Input
-                  id="rootDomain"
-                  name="rootDomain"
-                  placeholder="example.com"
+                  name="accountId"
+                  aria-label="Account ID"
+                  className="w-64"
                   required
                 />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="apiToken">API token</FieldLabel>
-                <Input id="apiToken" name="apiToken" type="password" required />
-                <FieldDescription>
-                  Needs tunnel and DNS permissions for the selected zone.
-                </FieldDescription>
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="passphrase">Vault passphrase</FieldLabel>
+              }
+            />
+            <Row
+              title="Zone ID"
+              trailing={
                 <Input
-                  id="passphrase"
+                  name="zoneId"
+                  aria-label="Zone ID"
+                  className="w-64"
+                  required
+                />
+              }
+            />
+            <Row
+              title="Root domain"
+              trailing={
+                <Input
+                  name="rootDomain"
+                  aria-label="Root domain"
+                  placeholder="example.com"
+                  className="w-64"
+                  required
+                />
+              }
+            />
+            <Row
+              title="API token"
+              detail="Needs tunnel and DNS permissions for the selected zone."
+              trailing={
+                <Input
+                  name="apiToken"
+                  aria-label="API token"
+                  type="password"
+                  className="w-64"
+                  required
+                />
+              }
+            />
+            <Row
+              title="Vault passphrase"
+              detail="At least 12 characters. Decrypts the Vault in control plane memory only during explicit runtime actions."
+              trailing={
+                <Input
                   name="passphrase"
+                  aria-label="Vault passphrase"
                   type="password"
                   minLength={12}
+                  className="w-64"
                   required
                 />
-                <FieldDescription>
-                  Use at least 12 characters. This decrypts the vault in control
-                  plane memory only during explicit runtime actions.
-                </FieldDescription>
-              </Field>
-            </FieldGroup>
-            <GatedButton
-              scopes={["vault:write"]}
-              type="submit"
-              disabled={pending || !canSave}
-            >
-              {pending ? "Saving..." : "Validate and save vault"}
-            </GatedButton>
-          </form>
+              }
+            />
+          </List>
+        </Section>
 
-          <Alert className="mt-4">
-            <ShieldCheckIcon />
-            <AlertTitle>Stored encrypted</AlertTitle>
-            <AlertDescription>
-              The token is validated, encrypted with your passphrase, and stored
-              only as ciphertext. It is never logged.
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-    </div>
+        <Notice title="Stored encrypted">
+          The token is validated, encrypted with your passphrase, and stored
+          only as ciphertext. It is never logged.
+        </Notice>
+
+        <div>
+          <GatedButton
+            scopes={["vault:write"]}
+            type="submit"
+            disabled={pending || !canSave}
+          >
+            {pending ? "Saving..." : "Validate and save Vault"}
+          </GatedButton>
+        </div>
+      </form>
+    </>
   )
 }

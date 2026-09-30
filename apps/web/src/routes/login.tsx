@@ -4,15 +4,9 @@ import { useServerFn } from "@tanstack/react-start"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { AuthPanel } from "@/features/auth/auth-panel"
 import { getAuthStatusFn, loginFn } from "@/features/auth/auth.functions"
 
 export const Route = createFileRoute("/login")({
@@ -55,32 +49,25 @@ function LoginPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-sm items-center justify-center p-4">
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Sign in to Upster</CardTitle>
-          <CardDescription>
-            Enter the admin passphrase to access the dashboard.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-            <Field>
-              <FieldLabel htmlFor="passphrase">Passphrase</FieldLabel>
-              <Input
-                id="passphrase"
-                name="passphrase"
-                type="password"
-                autoFocus
-                required
-              />
-            </Field>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Signing in..." : "Sign in"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+    <AuthPanel
+      title="Sign in to Upster"
+      description="Enter the admin passphrase to access the dashboard."
+    >
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <Field>
+          <FieldLabel htmlFor="passphrase">Passphrase</FieldLabel>
+          <Input
+            id="passphrase"
+            name="passphrase"
+            type="password"
+            autoFocus
+            required
+          />
+        </Field>
+        <Button type="submit" size="lg" disabled={pending}>
+          {pending ? "Signing in..." : "Sign in"}
+        </Button>
+      </form>
+    </AuthPanel>
   )
 }

@@ -1,36 +1,22 @@
 import { useMemo, useState } from "react"
 import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { useServerFn } from "@tanstack/react-start"
-import {
-  type ColumnDef,
-  type ColumnFiltersState,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  type SortingState,
-  useReactTable,
-} from "@tanstack/react-table"
-import {
-  ArrowUpDownIcon,
-  BanIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  ChevronsLeftIcon,
-  ChevronsRightIcon,
-} from "lucide-react"
+import { BanIcon } from "lucide-react"
 import { toast } from "sonner"
 
+import { AccessDenied } from "@/components/access-denied"
+import {
+  Details,
+  EmptyState,
+  ExpandableRow,
+  List,
+  Page,
+  Row,
+  Section,
+} from "@/components/layout"
+import { StatusBadge, StatusDot, type Tone } from "@/components/status"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -40,21 +26,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { GatedButton } from "@/features/auth/gated-button"
 import {
   listSecurityEventsFn,
   listSessionsFn,
   revokeSessionFn,
 } from "@/features/sessions/session.functions"
-import { AccessDenied } from "@/components/access-denied"
-import { GatedButton } from "@/features/auth/gated-button"
 
 export const Route = createFileRoute("/sessions")({
   loader: loadSessionsPage,
@@ -109,16 +86,26 @@ type SessionRow = {
   status: SessionStatus
 }
 
-type SessionTableProps = {
-  sessions: Array<SessionRow>
-  pendingId: string | null
-  onRevoke: (sessionId: string) => Promise<void>
+type SessionSort = "status" | "lastSeen" | "expires" | "label" | "kind"
+
+const sortLabels: Record<SessionSort, string> = {
+  status: "Status",
+  lastSeen: "Last seen",
+  expires: "Expires",
+  label: "Label",
+  kind: "Type",
 }
 
 const statusLabels: Record<SessionStatus, string> = {
   active: "Active",
   expired: "Expired",
   revoked: "Revoked",
+}
+
+const statusTones: Record<SessionStatus, Tone> = {
+  active: "success",
+  expired: "idle",
+  revoked: "danger",
 }
 
 const kindFilterLabels: Record<string, string> = {
@@ -141,12 +128,52 @@ const statusSortOrder: Record<SessionStatus, number> = {
   revoked: 2,
 }
 
+const PAGE_SIZE = 10
+
+function timeOf(value: string | null) {
+  return value ? new Date(value).getTime() : 0
+}
+
+const comparators: Record<
+  SessionSort,
+  (a: SessionRow, b: SessionRow) => number
+> = {
+  status: (a, b) =>
+    statusSortOrder[a.status] - statusSortOrder[b.status] ||
+    timeOf(b.lastSeenAt) - timeOf(a.lastSeenAt),
+  lastSeen: (a, b) => timeOf(b.lastSeenAt) - timeOf(a.lastSeenAt),
+  expires: (a, b) => timeOf(b.expiresAt) - timeOf(a.expiresAt),
+  label: (a, b) => a.label.localeCompare(b.label),
+  kind: (a, b) => a.kind.localeCompare(b.kind),
+}
+
+function matchesQuery(session: SessionRow, query: string) {
+  return [
+    session.id,
+    session.kind,
+    session.subject,
+    session.label,
+    session.userAgent ?? "",
+    session.remoteAddr ?? "",
+    ...session.scopes,
+  ]
+    .join(" ")
+    .toLowerCase()
+    .includes(query)
+}
+
 function SessionsPage() {
   const { sessions, auditEvents } = Route.useLoaderData()
   const revokeSession = useServerFn(revokeSessionFn)
   const router = useRouter()
   const [pendingId, setPendingId] = useState<string | null>(null)
-  const rows = useMemo(
+  const [sort, setSort] = useState<SessionSort>("status")
+  const [query, setQuery] = useState("")
+  const [kindFilter, setKindFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [limit, setLimit] = useState(PAGE_SIZE)
+
+  const rows = useMemo<Array<SessionRow>>(
     () =>
       sessions.map((session) => ({
         ...session,
@@ -155,186 +182,76 @@ function SessionsPage() {
     [sessions]
   )
 
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    return rows
+      .filter(
+        (row) =>
+          (kindFilter === "all" || row.kind === kindFilter) &&
+          (statusFilter === "all" || row.status === statusFilter) &&
+          (!needle || matchesQuery(row, needle))
+      )
+      .sort(comparators[sort])
+  }, [rows, query, kindFilter, statusFilter, sort])
+
+  async function handleRevoke(sessionId: string) {
+    setPendingId(sessionId)
+    try {
+      await revokeSession({ data: { sessionId } })
+      toast.success("Session revoked.")
+      await router.invalidate()
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to revoke session."
+      )
+    } finally {
+      setPendingId(null)
+    }
+  }
+
+  const visible = filtered.slice(0, limit)
+
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-medium">Sessions</h1>
-        <p className="text-sm text-muted-foreground">
-          Review dashboard, CLI, and agent access to this Upster instance.
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Access sessions</CardTitle>
-          <CardDescription>
-            Revoked or expired sessions can no longer call the dashboard or CLI
-            API.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <SessionsTable
-            sessions={rows}
-            pendingId={pendingId}
-            onRevoke={async (sessionId) => {
-              setPendingId(sessionId)
-              try {
-                await revokeSession({
-                  data: { sessionId },
-                })
-                toast.success("Session revoked.")
-                await router.invalidate()
-              } catch (err) {
-                toast.error(
-                  err instanceof Error
-                    ? err.message
-                    : "Failed to revoke session."
-                )
-              } finally {
-                setPendingId(null)
-              }
-            }}
-          />
-        </CardContent>
-      </Card>
-
-      <SecurityAuditCard events={auditEvents} />
-    </div>
-  )
-}
-
-function SecurityAuditCard({ events }: { events: Array<AuditEventRow> }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Security audit</CardTitle>
-        <CardDescription>
-          Denied access attempts, pairings, revocations, logins and lockdowns.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {events.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No security events recorded yet.
-          </p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Time</TableHead>
-                <TableHead>Event</TableHead>
-                <TableHead>Actor</TableHead>
-                <TableHead>Details</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {events.map((event) => (
-                <TableRow key={event.id}>
-                  <TableCell className="whitespace-nowrap">
-                    {formatDate(event.createdAt)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        auditDestructiveTypes.has(event.type)
-                          ? "destructive"
-                          : "secondary"
-                      }
-                    >
-                      {auditTypeLabels[event.type] ?? event.type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {event.actorKind ?? "-"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {event.message}
-                  </TableCell>
-                </TableRow>
+    <Page
+      title="Sessions"
+      description="Review dashboard, CLI, and agent access to this Upster instance."
+      actions={
+        <Select
+          value={sort}
+          onValueChange={(value) => setSort(value as SessionSort)}
+        >
+          <SelectTrigger size="sm" aria-label="Sort sessions">
+            <SelectValue>
+              {(value) => `Sort: ${sortLabels[value as SessionSort]}`}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {Object.entries(sortLabels).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
               ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-function SessionsTable({ sessions, pendingId, onRevoke }: SessionTableProps) {
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "status", desc: false },
-    { id: "lastSeenAt", desc: true },
-  ])
-  const [globalFilter, setGlobalFilter] = useState("")
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const columns = useMemo(
-    () => createSessionColumns({ pendingId, onRevoke }),
-    [pendingId, onRevoke]
-  )
-  const table = useReactTable({
-    data: sessions,
-    columns,
-    state: {
-      sorting,
-      globalFilter,
-      columnFilters,
-    },
-    initialState: {
-      pagination: {
-        pageSize: 10,
-      },
-    },
-    globalFilterFn: (row, _columnId, filterValue) => {
-      const query = String(filterValue).trim().toLowerCase()
-      if (!query) {
-        return true
+            </SelectGroup>
+          </SelectContent>
+        </Select>
       }
-
-      const session = row.original
-      return [
-        session.id,
-        session.kind,
-        session.subject,
-        session.label,
-        session.userAgent ?? "",
-        session.remoteAddr ?? "",
-        ...session.scopes,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(query)
-    },
-    onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
-    onColumnFiltersChange: setColumnFilters,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-  })
-  const kindFilter = String(table.getColumn("kind")?.getFilterValue() ?? "all")
-  const statusFilter = String(
-    table.getColumn("status")?.getFilterValue() ?? "all"
-  )
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <Input
-          value={globalFilter}
-          onChange={(event) => setGlobalFilter(event.target.value)}
-          placeholder="Filter by label, ID, scope, or user agent"
-          aria-label="Filter sessions"
-          className="max-w-md"
-        />
+    >
+      <Section
+        title="Access sessions"
+        description="Revoked or expired sessions can no longer call the dashboard or CLI API."
+      >
         <div className="flex flex-wrap items-center gap-2">
+          <Input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Filter by label, ID, scope, or user agent"
+            aria-label="Filter sessions"
+            className="max-w-md min-w-56 flex-1"
+          />
           <Select
             value={kindFilter}
-            onValueChange={(value) =>
-              table
-                .getColumn("kind")
-                ?.setFilterValue(value === "all" ? undefined : value)
-            }
+            onValueChange={(value) => setKindFilter(String(value))}
           >
             <SelectTrigger aria-label="Filter by session type">
               <SelectValue>
@@ -343,20 +260,17 @@ function SessionsTable({ sessions, pendingId, onRevoke }: SessionTableProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value="all">All types</SelectItem>
-                <SelectItem value="dashboard">Dashboard</SelectItem>
-                <SelectItem value="cli">CLI</SelectItem>
-                <SelectItem value="agent">Agent</SelectItem>
+                {Object.entries(kindFilterLabels).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
               </SelectGroup>
             </SelectContent>
           </Select>
           <Select
             value={statusFilter}
-            onValueChange={(value) =>
-              table
-                .getColumn("status")
-                ?.setFilterValue(value === "all" ? undefined : value)
-            }
+            onValueChange={(value) => setStatusFilter(String(value))}
           >
             <SelectTrigger aria-label="Filter by session status">
               <SelectValue>
@@ -365,279 +279,143 @@ function SessionsTable({ sessions, pendingId, onRevoke }: SessionTableProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="expired">Expired</SelectItem>
-                <SelectItem value="revoked">Revoked</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setGlobalFilter("")
-              table.resetColumnFilters()
-            }}
-          >
-            Reset
-          </Button>
-        </div>
-      </div>
-
-      <div className="overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="whitespace-nowrap">
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center text-muted-foreground"
-                >
-                  No sessions match the current filters.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="text-sm text-muted-foreground">
-          Showing {table.getRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} filtered sessions.
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Select
-            value={String(table.getState().pagination.pageSize)}
-            onValueChange={(value) => table.setPageSize(Number(value))}
-          >
-            <SelectTrigger aria-label="Rows per page">
-              <SelectValue>{(value) => `${String(value)} rows`}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {[10, 20, 50].map((pageSize) => (
-                  <SelectItem key={pageSize} value={String(pageSize)}>
-                    {pageSize} rows
+                {Object.entries(statusFilterLabels).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
                   </SelectItem>
                 ))}
               </SelectGroup>
             </SelectContent>
           </Select>
-          <div className="text-sm text-muted-foreground">
-            Page {table.getState().pagination.pageIndex + 1} of{" "}
-            {table.getPageCount() || 1}
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon-sm"
-              disabled={!table.getCanPreviousPage()}
-              onClick={() => table.setPageIndex(0)}
-              aria-label="First page"
-            >
-              <ChevronsLeftIcon data-icon="icon-only" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              disabled={!table.getCanPreviousPage()}
-              onClick={() => table.previousPage()}
-              aria-label="Previous page"
-            >
-              <ChevronLeftIcon data-icon="icon-only" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              disabled={!table.getCanNextPage()}
-              onClick={() => table.nextPage()}
-              aria-label="Next page"
-            >
-              <ChevronRightIcon data-icon="icon-only" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              disabled={!table.getCanNextPage()}
-              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-              aria-label="Last page"
-            >
-              <ChevronsRightIcon data-icon="icon-only" />
-            </Button>
-          </div>
         </div>
-      </div>
-    </div>
+
+        {visible.length ? (
+          <List>
+            {visible.map((session) => (
+              <SessionRowItem
+                key={session.id}
+                session={session}
+                pending={pendingId === session.id}
+                onRevoke={handleRevoke}
+              />
+            ))}
+          </List>
+        ) : (
+          <EmptyState>No sessions match the current filters.</EmptyState>
+        )}
+
+        {filtered.length > visible.length && (
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">
+              Showing {visible.length} of {filtered.length} sessions.
+            </p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setLimit(limit + PAGE_SIZE)}
+            >
+              Show more
+            </Button>
+          </div>
+        )}
+      </Section>
+
+      <SecurityAudit events={auditEvents} />
+    </Page>
   )
 }
 
-function createSessionColumns({
-  pendingId,
+function SessionRowItem({
+  session,
+  pending,
   onRevoke,
 }: {
-  pendingId: string | null
+  session: SessionRow
+  pending: boolean
   onRevoke: (sessionId: string) => Promise<void>
-}): Array<ColumnDef<SessionRow>> {
-  return [
-    {
-      accessorKey: "kind",
-      header: ({ column }) => (
-        <SortableHeader
-          label="Type"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+}) {
+  return (
+    <ExpandableRow
+      title={session.label}
+      summary={`${kindFilterLabels[session.kind]} - last seen ${formatDate(session.lastSeenAt)}`}
+      aside={
+        <StatusBadge
+          tone={statusTones[session.status]}
+          label={statusLabels[session.status]}
         />
-      ),
-      filterFn: "equalsString",
-      cell: ({ row }) => <Badge variant="outline">{row.original.kind}</Badge>,
-    },
-    {
-      accessorKey: "label",
-      header: ({ column }) => (
-        <SortableHeader
-          label="Label"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        />
-      ),
-      cell: ({ row }) => (
-        <div className="flex min-w-56 flex-col gap-1">
-          <div className="font-medium">{row.original.label}</div>
-          <div className="font-mono text-[11px] text-muted-foreground">
-            {row.original.id}
-          </div>
-        </div>
-      ),
-    },
-    {
-      accessorKey: "scopes",
-      header: "Scopes",
-      enableSorting: false,
-      cell: ({ row }) => (
-        <div className="flex max-w-80 flex-wrap gap-1">
-          {row.original.scopes.slice(0, 6).map((scope) => (
-            <Badge key={scope} variant="secondary">
-              {scope}
-            </Badge>
-          ))}
-          {row.original.scopes.length > 6 && (
-            <Badge variant="outline">+{row.original.scopes.length - 6}</Badge>
-          )}
-        </div>
-      ),
-    },
-    {
-      accessorKey: "lastSeenAt",
-      header: ({ column }) => (
-        <SortableHeader
-          label="Last seen"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        />
-      ),
-      sortingFn: "datetime",
-      cell: ({ row }) => (
-        <span className="whitespace-nowrap text-muted-foreground">
-          {formatDate(row.original.lastSeenAt)}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "expiresAt",
-      header: ({ column }) => (
-        <SortableHeader
-          label="Expires"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        />
-      ),
-      sortingFn: "datetime",
-      cell: ({ row }) => (
-        <span className="whitespace-nowrap text-muted-foreground">
-          {formatDate(row.original.expiresAt)}
-        </span>
-      ),
-    },
-    {
-      accessorKey: "status",
-      header: ({ column }) => (
-        <SortableHeader
-          label="Status"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        />
-      ),
-      filterFn: "equalsString",
-      sortingFn: (a, b) =>
-        statusSortOrder[a.original.status] - statusSortOrder[b.original.status],
-      cell: ({ row }) => (
-        <Badge
-          variant={row.original.status === "active" ? "default" : "outline"}
-        >
-          {statusLabels[row.original.status]}
-        </Badge>
-      ),
-    },
-    {
-      id: "actions",
-      header: "",
-      enableSorting: false,
-      cell: ({ row }) => (
+      }
+      actions={
         <GatedButton
           scopes={["sessions:revoke"]}
-          variant="outline"
+          variant="secondary"
           size="sm"
-          disabled={
-            row.original.status !== "active" || pendingId === row.original.id
-          }
-          onClick={() => onRevoke(row.original.id)}
+          disabled={session.status !== "active" || pending}
+          onClick={() => onRevoke(session.id)}
         >
           <BanIcon data-icon="inline-start" />
           Revoke
         </GatedButton>
-      ),
-    },
-  ]
+      }
+    >
+      <Details
+        items={[
+          ["ID", session.id],
+          ["Subject", session.subject],
+          ["Created", formatDate(session.createdAt)],
+          ["Last seen", formatDate(session.lastSeenAt)],
+          ["Expires", formatDate(session.expiresAt)],
+          ["Revoked", session.revokedAt && formatDate(session.revokedAt)],
+          ["Address", session.remoteAddr],
+          ["User agent", session.userAgent],
+        ]}
+      />
+      {session.scopes.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {session.scopes.map((scope) => (
+            <Badge key={scope} variant="secondary">
+              {scope}
+            </Badge>
+          ))}
+        </div>
+      )}
+    </ExpandableRow>
+  )
 }
 
-function SortableHeader({
-  label,
-  onClick,
-}: {
-  label: string
-  onClick: () => void
-}) {
+function SecurityAudit({ events }: { events: Array<AuditEventRow> }) {
   return (
-    <Button variant="ghost" size="sm" className="-ml-2" onClick={onClick}>
-      {label}
-      <ArrowUpDownIcon data-icon="inline-end" />
-    </Button>
+    <Section
+      title="Security audit"
+      description="Denied access attempts, pairings, revocations, logins and lockdowns."
+    >
+      {events.length === 0 ? (
+        <EmptyState>No security events recorded yet.</EmptyState>
+      ) : (
+        <List>
+          {events.map((event) => (
+            <Row
+              key={event.id}
+              leading={
+                <StatusDot
+                  tone={
+                    auditDestructiveTypes.has(event.type) ? "danger" : "idle"
+                  }
+                />
+              }
+              title={auditTypeLabels[event.type] ?? event.type}
+              detail={[event.actorKind, event.message]
+                .filter(Boolean)
+                .join(" - ")}
+              trailing={
+                <span className="text-xs whitespace-nowrap text-muted-foreground">
+                  {formatDate(event.createdAt)}
+                </span>
+              }
+            />
+          ))}
+        </List>
+      )}
+    </Section>
   )
 }
 

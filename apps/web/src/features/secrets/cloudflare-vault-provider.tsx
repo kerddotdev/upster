@@ -129,7 +129,7 @@ function CloudflareUnlockDialog() {
     event.preventDefault()
 
     if (!hasVault) {
-      toast.error("No Cloudflare vault has been saved yet.")
+      toast.error("No Cloudflare Vault has been saved yet.")
       return
     }
 
@@ -141,11 +141,11 @@ function CloudflareUnlockDialog() {
     try {
       await unlockVault({ data: { passphrase } })
       await refreshVault()
-      toast.success("Cloudflare vault unlocked for this Upster session.")
+      toast.success("Cloudflare Vault unlocked for this Upster session.")
       close()
       onUnlocked?.()
     } catch {
-      toast.error("Could not unlock the vault with that passphrase.")
+      toast.error("Could not unlock the Vault with that passphrase.")
     } finally {
       setPending(false)
     }
@@ -155,7 +155,7 @@ function CloudflareUnlockDialog() {
     <Dialog open={open} onOpenChange={(next) => !next && close()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Unlock Cloudflare vault</DialogTitle>
+          <DialogTitle>Unlock Cloudflare Vault</DialogTitle>
           <DialogDescription>
             The passphrase decrypts your config into control plane memory for
             this Upster session only.
@@ -182,7 +182,7 @@ function CloudflareUnlockDialog() {
         ) : (
           <div className="flex flex-col gap-4">
             <p className="text-muted-foreground">
-              Save a Cloudflare vault before unlocking it.
+              Save a Cloudflare Vault before unlocking it.
             </p>
             <Button render={<Link to="/settings/cloudflare" />} onClick={close}>
               Go to Cloudflare settings

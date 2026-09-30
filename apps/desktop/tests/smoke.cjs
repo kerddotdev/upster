@@ -42,7 +42,14 @@ app.once("web-contents-created", (_event, contents) => {
         pathToFileURL(join(appRoot, "dist", "onboarding.html")).href
       )
       assert.deepEqual(images, [
-        { path: join(appRoot, "dist", "tray.png"), empty: false },
+        {
+          path: join(
+            appRoot,
+            "dist",
+            process.platform === "darwin" ? "trayTemplate.png" : "tray.png"
+          ),
+          empty: false,
+        },
       ])
       const result = await contents.executeJavaScript(`(async () => ({
         title: document.title,

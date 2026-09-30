@@ -36,7 +36,7 @@ export function ClearDiagnosticsButton({
 
   if (!canClear) {
     return (
-      <GatedButton scopes={["pills:delete"]} size="sm" variant="outline">
+      <GatedButton scopes={["pills:delete"]} size="sm" variant="secondary">
         <Trash2Icon data-icon="inline-start" />
         Clear diagnostics
       </GatedButton>
@@ -58,7 +58,7 @@ export function ClearDiagnosticsButton({
 
   return (
     <AlertDialog>
-      <AlertDialogTrigger render={<Button size="sm" variant="outline" />}>
+      <AlertDialogTrigger render={<Button size="sm" variant="secondary" />}>
         <Trash2Icon data-icon="inline-start" />
         Clear diagnostics
       </AlertDialogTrigger>

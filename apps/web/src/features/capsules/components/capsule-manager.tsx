@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 
 import { useErrorReporter } from "@/components/error-report"
+import { EmptyState, List, Mono, Row } from "@/components/layout"
 import { LogOutput } from "@/components/log-output"
 import { Button } from "@/components/ui/button"
 import {
@@ -35,6 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import { StatusDot, type Tone } from "@/components/status"
 import {
   Tooltip,
   TooltipContent,
@@ -51,7 +53,6 @@ import {
   relabelCapsuleFn,
 } from "@/features/capsules/capsule.functions"
 import type { Capsule, CapsuleInfo } from "@/features/capsules/types"
-import { cn } from "@/lib/utils"
 
 function formatBytes(bytes: number | null) {
   if (bytes === null) {
@@ -63,10 +64,10 @@ function formatBytes(bytes: number | null) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
-const statusDot: Record<Capsule["status"], string> = {
-  ready: "bg-emerald-500",
-  building: "bg-amber-500 animate-pulse",
-  error: "bg-destructive",
+const statusTone: Record<Capsule["status"], Tone> = {
+  ready: "success",
+  building: "progress",
+  error: "danger",
 }
 
 export function CapsuleManager({
@@ -180,7 +181,7 @@ export function CapsuleManager({
   }
 
   if (!info) {
-    return <Skeleton className="h-16 w-full" />
+    return <Skeleton className="h-16 w-full rounded-2xl" />
   }
 
   const running = Boolean(activeRun)
@@ -198,114 +199,108 @@ export function CapsuleManager({
       </div>
 
       {info.capsules.length === 0 ? (
-        <p className="text-xs text-muted-foreground">
+        <EmptyState>
           No snapshots yet. Build one to deploy a frozen copy of the source.
-        </p>
+        </EmptyState>
       ) : (
-        <div className="flex flex-col gap-1.5">
+        <List>
           {info.capsules.map((capsule) => {
             const deployed = activeRun?.capsuleId === capsule.id
             const isBusy = busy === capsule.id
 
             return (
-              <div
+              <Row
                 key={capsule.id}
-                className="flex flex-col gap-1 rounded-md border border-border p-2"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "size-2 shrink-0 rounded-full",
-                          statusDot[capsule.status]
-                        )}
-                      />
-                      {renaming === capsule.id ? (
-                        <span className="flex items-center gap-1">
-                          <Input
-                            value={renameValue}
-                            onChange={(event) =>
-                              setRenameValue(event.target.value)
-                            }
-                            className="h-6 w-40"
-                            placeholder="Label"
-                          />
-                          <Button
-                            size="icon-sm"
-                            variant="ghost"
-                            onClick={() => void saveRename(capsule)}
-                            disabled={isBusy}
-                          >
-                            <CheckIcon />
-                          </Button>
-                        </span>
-                      ) : canWriteCapsules ? (
-                        <button
-                          type="button"
-                          className="flex items-center gap-2 text-xs font-medium hover:underline"
-                          onClick={() => {
-                            setRenaming(capsule.id)
-                            setRenameValue(capsule.label ?? "")
-                          }}
+                leading={<StatusDot tone={statusTone[capsule.status]} />}
+                title={
+                  <span className="flex items-center gap-2">
+                    {renaming === capsule.id ? (
+                      <span className="flex items-center gap-1">
+                        <Input
+                          value={renameValue}
+                          onChange={(event) =>
+                            setRenameValue(event.target.value)
+                          }
+                          className="h-7 w-44"
+                          placeholder="Label"
+                        />
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          onClick={() => void saveRename(capsule)}
+                          disabled={isBusy}
+                          aria-label="Save label"
                         >
-                          {capsule.label ?? capsule.id.slice(0, 8)}
-                          <PencilIcon className="size-3 text-muted-foreground" />
-                        </button>
-                      ) : (
-                        <span className="text-xs font-medium">
-                          {capsule.label ?? capsule.id.slice(0, 8)}
-                        </span>
-                      )}
-                      {deployed ? (
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={<span className="inline-flex" />}
-                          >
-                            <RocketIcon className="size-3.5 text-primary" />
-                          </TooltipTrigger>
-                          <TooltipContent>Deployed</TooltipContent>
-                        </Tooltip>
-                      ) : null}
-                      {capsule.pinned ? (
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={<span className="inline-flex" />}
-                          >
-                            <PinIcon className="size-3.5 text-muted-foreground" />
-                          </TooltipTrigger>
-                          <TooltipContent>Pinned</TooltipContent>
-                        </Tooltip>
-                      ) : null}
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-4 text-[0.65rem] text-muted-foreground">
-                      {capsule.git.commit ? (
-                        <span className="inline-flex items-center gap-1">
-                          <GitBranchIcon className="size-3" />
+                          <CheckIcon />
+                        </Button>
+                      </span>
+                    ) : canWriteCapsules ? (
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 rounded-md outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/60"
+                        onClick={() => {
+                          setRenaming(capsule.id)
+                          setRenameValue(capsule.label ?? "")
+                        }}
+                      >
+                        {capsule.label ?? capsule.id.slice(0, 8)}
+                        <PencilIcon className="size-3 text-muted-foreground" />
+                      </button>
+                    ) : (
+                      <span>{capsule.label ?? capsule.id.slice(0, 8)}</span>
+                    )}
+                    {deployed ? (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={<span className="inline-flex" />}
+                        >
+                          <RocketIcon className="size-3.5 text-brand" />
+                        </TooltipTrigger>
+                        <TooltipContent>Deployed</TooltipContent>
+                      </Tooltip>
+                    ) : null}
+                    {capsule.pinned ? (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={<span className="inline-flex" />}
+                        >
+                          <PinIcon className="size-3.5 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>Pinned</TooltipContent>
+                      </Tooltip>
+                    ) : null}
+                  </span>
+                }
+                detail={
+                  <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    {capsule.git.commit ? (
+                      <span className="inline-flex items-center gap-1">
+                        <GitBranchIcon className="size-3" />
+                        <Mono className="text-xs">
                           {capsule.git.branch ?? "?"}@
                           {capsule.git.commit.slice(0, 7)}
                           {capsule.git.dirty ? "*" : ""}
-                        </span>
-                      ) : null}
-                      <span>
-                        {formatBytes(capsule.sizeBytes)}
-                        {capsule.builtAt
-                          ? ` - ${new Date(capsule.builtAt).toLocaleString()}`
-                          : ""}
+                        </Mono>
                       </span>
-                    </div>
-                  </div>
-
-                  <div className="flex shrink-0 items-center gap-1">
+                    ) : null}
+                    <span>
+                      {formatBytes(capsule.sizeBytes)}
+                      {capsule.builtAt
+                        ? ` - ${new Date(capsule.builtAt).toLocaleString()}`
+                        : ""}
+                    </span>
+                  </span>
+                }
+                trailing={
+                  <>
                     {capsule.status === "error" ? (
                       <Tooltip>
                         <TooltipTrigger
                           render={
                             <Button
-                              size="icon"
+                              size="icon-sm"
                               variant="ghost"
-                              className="text-destructive"
+                              className="text-danger"
                               onClick={() => setErrorCapsule(capsule)}
                               aria-label="View build error"
                             />
@@ -317,6 +312,7 @@ export function CapsuleManager({
                       </Tooltip>
                     ) : null}
                     <Button
+                      size="sm"
                       variant={deployed ? "secondary" : "default"}
                       onClick={() => startVersion(capsule)}
                       disabled={
@@ -333,7 +329,7 @@ export function CapsuleManager({
                       <DropdownMenuTrigger
                         render={
                           <Button
-                            size="icon"
+                            size="icon-sm"
                             variant="ghost"
                             aria-label="More snapshot actions"
                           />
@@ -402,16 +398,16 @@ export function CapsuleManager({
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                  </div>
-                </div>
-
+                  </>
+                }
+              >
                 {allowBrowse && browseId === capsule.id ? (
                   <CapsuleFileBrowser capsuleId={capsule.id} />
                 ) : null}
-              </div>
+              </Row>
             )
           })}
-        </div>
+        </List>
       )}
 
       <Dialog

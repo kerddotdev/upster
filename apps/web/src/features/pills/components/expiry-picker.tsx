@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 import {
   Popover,
   PopoverContent,
@@ -62,13 +63,14 @@ export function ExpiryPicker({
     : "No expiry"
 
   return (
-    <div className="flex w-[14.25rem] items-center gap-2">
+    <div className="flex items-center gap-1">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           render={
             <Button
-              variant="outline"
-              className="w-48 justify-start"
+              variant="secondary"
+              size="sm"
+              className="justify-start font-normal"
               disabled={disabled}
             />
           }
@@ -108,8 +110,8 @@ export function ExpiryPicker({
       </Popover>
       <Button
         variant="ghost"
-        size="icon"
-        className={value ? undefined : "invisible"}
+        size="icon-sm"
+        className={cn("text-muted-foreground", !value && "hidden")}
         onClick={() => onChange(null)}
         disabled={disabled || !value}
         aria-label="Clear expiry"

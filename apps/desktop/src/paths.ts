@@ -6,7 +6,12 @@ export const DEFAULT_PORT = 3377
 
 export function desktopAssetPath(
   appPath: string,
-  asset: "preload.cjs" | "onboarding.html" | "tray.png"
+  asset:
+    | "preload.cjs"
+    | "onboarding.html"
+    | "tray.png"
+    | "trayTemplate.png"
+    | "icon.png"
 ) {
   return join(appPath, "dist", asset)
 }

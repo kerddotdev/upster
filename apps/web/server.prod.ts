@@ -7,9 +7,10 @@ import {
   writeRuntimeState,
 } from "@upster/core/node"
 import { resolve } from "node:path"
+import { fileURLToPath } from "node:url"
 
 const serverEntry = new URL("./dist/server/server.js", import.meta.url).href
-const clientDir = new URL("./dist/client", import.meta.url).pathname
+const clientDir = fileURLToPath(new URL("./dist/client", import.meta.url))
 
 const dataDir = resolve(process.env.UPSTER_DATA_DIR || defaultDataDir())
 const port = Number(process.env.UPSTER_PORT ?? 3377)

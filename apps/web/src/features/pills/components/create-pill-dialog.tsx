@@ -22,7 +22,7 @@ export function CreatePillDialog() {
 
   if (!canCreate) {
     return (
-      <GatedButton scopes={["pills:write"]}>
+      <GatedButton scopes={["pills:write"]} size="sm">
         <PlusIcon data-icon="inline-start" />
         Add pill
       </GatedButton>
@@ -31,7 +31,7 @@ export function CreatePillDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button />}>
+      <DialogTrigger render={<Button size="sm" />}>
         <PlusIcon data-icon="inline-start" />
         Add pill
       </DialogTrigger>

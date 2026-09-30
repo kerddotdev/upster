@@ -1,0 +1,32 @@
+:root {
+  --upster-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --upster-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --upster-duration-press: 120ms;
+  --upster-duration-fade: 140ms;
+  --upster-duration-enter: 180ms;
+  --upster-duration-drawer: 300ms;
+}
+
+@keyframes upster-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes upster-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

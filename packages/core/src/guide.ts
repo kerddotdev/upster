@@ -11,7 +11,7 @@ export function getAgentGuide() {
   return {
     version: 1,
     summary:
-      "Upster agents use scoped bearer tokens against the local Upster control plane. Agents can operate pills, capsules, runs, logs, metrics, runtime status, and vault status when their token scopes allow it. Capsules are frozen, versioned snapshots of a pill's source that can be deployed to production or to a per-snapshot preview hostname. Agents can never read Cloudflare secrets or unlock the vault.",
+      "Upster agents use scoped bearer tokens against the local Upster control plane. Agents can operate pills, capsules, runs, logs, metrics, runtime status, and Vault status when their token scopes allow it. Capsules are frozen, versioned snapshots of a pill's source that can be deployed to production or to a per-snapshot preview hostname. Agents can never read Cloudflare secrets or unlock the Vault.",
     defaultDashboardUrl: "http://127.0.0.1:3377",
     authModel: {
       tokenSources: [
@@ -78,7 +78,7 @@ export function getAgentGuide() {
       outputFile:
         "--output writes the full envelope or stream payload to a file. Existing files require --force.",
       sensitiveData:
-        "Outputs must never include passphrases, bearer tokens after initial creation, vault ciphertext, Cloudflare API tokens, decrypted configs, or command env values.",
+        "Outputs must never include passphrases, bearer tokens after initial creation, Vault ciphertext, Cloudflare API tokens, decrypted configs, or command env values.",
     },
     commonErrors: [
       {
@@ -96,7 +96,7 @@ export function getAgentGuide() {
       {
         code: "VAULT_LOCKED",
         meaning:
-          "A Cloudflare operation needs a human-unlocked vault session in the control plane.",
+          "A Cloudflare operation needs a human-unlocked Vault session in the control plane.",
         agentAction:
           "Ask the human operator to run upster vault unlock. Do not ask for the passphrase.",
       },
@@ -214,7 +214,7 @@ export function renderCliHelp() {
     "  The CLI talks to the local Upster control plane, not directly to the runtime.",
     "  Human users sign in with the admin passphrase. Agents use scoped bearer tokens.",
     "  Non-interactive commands never use the saved human credential automatically.",
-    "  Agents must never receive a human admin token or a vault passphrase.",
+    "  Agents must never receive a human admin token or a Vault passphrase.",
     "",
     "Human-only commands:",
     "  upster auth setup",
@@ -281,7 +281,7 @@ export function renderCliHelp() {
     }),
     "",
     "Diagnostics:",
-    "  Run upster agent doctor --json first when an agent sees an auth, scope, vault, runtime, or connectivity failure.",
+    "  Run upster agent doctor --json first when an agent sees an auth, scope, Vault, runtime, or connectivity failure.",
     "  Run upster agent guide for detailed agent instructions and common error remediation.",
     "",
     "Common errors:",

@@ -348,7 +348,7 @@ export async function deleteCapsuleVersion(
 
   if (!cleaned) {
     throw new Error(
-      "This snapshot has a preview tunnel that could not be removed. Unlock the Cloudflare vault, then delete it again so the preview tunnel and DNS record are cleaned up instead of orphaned."
+      "This snapshot has a preview tunnel that could not be removed. Unlock the Cloudflare Vault, then delete it again so the preview tunnel and DNS record are cleaned up instead of orphaned."
     )
   }
 

@@ -10,6 +10,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { Mono } from "@/components/layout"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   capsuleDirFn,
@@ -93,7 +94,7 @@ function DirContents({
             }
           >
             <CollapsibleTrigger
-              className="flex w-full items-center gap-1 rounded-sm py-1 text-left text-xs hover:bg-muted"
+              className="flex w-full items-center gap-1 rounded-md py-1 text-left text-xs hover:bg-muted"
               style={{ paddingLeft: depth * 14 + 4 }}
             >
               <ChevronRightIcon
@@ -123,7 +124,7 @@ function DirContents({
             type="button"
             onClick={() => onSelectFile(entry)}
             className={cn(
-              "flex w-full items-center gap-1 rounded-sm py-1 text-left text-xs hover:bg-muted",
+              "flex w-full items-center gap-1 rounded-md py-1 text-left text-xs hover:bg-muted",
               selectedPath === entry.path && "bg-muted"
             )}
             style={{ paddingLeft: depth * 14 + 20 }}
@@ -170,19 +171,21 @@ export function CapsuleFileBrowser({ capsuleId }: { capsuleId: string }) {
 
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      <ScrollArea className="h-80 rounded-md border border-border p-1">
-        <DirContents
-          capsuleId={capsuleId}
-          path=""
-          depth={0}
-          selectedPath={selected}
-          onSelectFile={selectFile}
-        />
+      <ScrollArea className="h-80 rounded-2xl bg-background ring-1 ring-border">
+        <div className="p-1">
+          <DirContents
+            capsuleId={capsuleId}
+            path=""
+            depth={0}
+            selectedPath={selected}
+            onSelectFile={selectFile}
+          />
+        </div>
       </ScrollArea>
-      <div className="flex h-80 flex-col rounded-md border border-border">
+      <div className="flex h-80 flex-col overflow-hidden rounded-2xl bg-background ring-1 ring-border">
         {selected ? (
-          <div className="flex items-center justify-between gap-2 border-b border-border px-2 py-1 text-xs">
-            <span className="truncate font-medium">{selected}</span>
+          <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2 text-xs">
+            <Mono className="truncate">{selected}</Mono>
             {preview ? (
               <span className="shrink-0 text-muted-foreground">
                 {formatBytes(preview.size)}
@@ -193,17 +196,17 @@ export function CapsuleFileBrowser({ capsuleId }: { capsuleId: string }) {
         ) : null}
         <ScrollArea className="min-h-0 flex-1">
           {loading ? (
-            <p className="p-2 text-xs text-muted-foreground">Loading...</p>
+            <p className="p-3 text-xs text-muted-foreground">Loading...</p>
           ) : !selected ? (
-            <p className="p-2 text-xs text-muted-foreground">
+            <p className="p-3 text-xs text-muted-foreground">
               Select a file to preview.
             </p>
           ) : preview?.binary ? (
-            <p className="p-2 text-xs text-muted-foreground">
+            <p className="p-3 text-xs text-muted-foreground">
               Binary file - preview not available.
             </p>
           ) : (
-            <pre className="p-2 text-xs break-all whitespace-pre-wrap">
+            <pre className="p-3 font-mono text-[12px] break-all whitespace-pre-wrap">
               {preview?.content}
             </pre>
           )}
