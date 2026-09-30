@@ -1,5 +1,7 @@
 FROM oven/bun:1.3.13-debian AS base
 
+LABEL org.opencontainers.image.source="https://github.com/kerddotdev/upster"
+
 WORKDIR /app
 ARG TARGETARCH
 ENV DEBIAN_FRONTEND=noninteractive

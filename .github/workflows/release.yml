@@ -3,13 +3,91 @@ name: Release
 on:
   push:
     tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build everything but publish nothing
+        type: boolean
+        default: true
 
 permissions:
   contents: read
 
 jobs:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      publish: ${{ steps.meta.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - id: meta
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${{ inputs.dry_run }}" != "true" ]; then
+            version="${GITHUB_REF_NAME#v}"
+            package_version=$(node -p "require('./package.json').version")
+            if [ "$version" != "$package_version" ]; then
+              echo "Tag $GITHUB_REF_NAME does not match package.json version $package_version" >&2
+              exit 1
+            fi
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            version="0.0.0-dryrun"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  server-bundles:
+    runs-on: vectis-ubuntu
+    needs: meta
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: darwin, arch: arm64 }
+          - { platform: darwin, arch: x64 }
+          - { platform: linux, arch: arm64 }
+          - { platform: linux, arch: x64 }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.13
+          no-cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run build
+
+      - name: Package the headless server bundle
+        env:
+          UPSTER_VERSION: ${{ needs.meta.outputs.version }}
+          UPSTER_TARGET_PLATFORM: ${{ matrix.platform }}
+          UPSTER_TARGET_ARCH: ${{ matrix.arch }}
+        run: |
+          bun run package:server
+          tar -czf "upster-server-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz" \
+            -C dist/server-bundle "${{ matrix.platform }}-${{ matrix.arch }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-bundle-${{ matrix.platform }}-${{ matrix.arch }}
+          path: upster-server-${{ matrix.platform }}-${{ matrix.arch }}.tar.gz
+          retention-days: 1
+
   macos-binaries:
     runs-on: macos-latest
+    needs: meta
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,14 +100,10 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
-      - name: Resolve version
-        id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
       - name: Build and sign macOS binaries
         working-directory: apps/cli
         env:
-          UPSTER_VERSION: ${{ steps.version.outputs.version }}
+          UPSTER_VERSION: ${{ needs.meta.outputs.version }}
         run: |
           UPSTER_CLI_TARGET=bun-darwin-arm64 UPSTER_CLI_OUTFILE=dist/upster-darwin-arm64 bun run build.ts
           UPSTER_CLI_TARGET=bun-darwin-x64 UPSTER_CLI_OUTFILE=dist/upster-darwin-x64 bun run build.ts
@@ -55,7 +129,7 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    needs: macos-binaries
+    needs: [meta, macos-binaries, server-bundles]
     permissions:
       contents: write
       packages: write
@@ -73,14 +147,10 @@ jobs:
 
       - run: bun run test
 
-      - name: Resolve version
-        id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
       - name: Build Linux binaries
         working-directory: apps/cli
         env:
-          UPSTER_VERSION: ${{ steps.version.outputs.version }}
+          UPSTER_VERSION: ${{ needs.meta.outputs.version }}
         run: |
           UPSTER_CLI_TARGET=bun-linux-arm64 UPSTER_CLI_OUTFILE=dist/upster-linux-arm64 bun run build.ts
           UPSTER_CLI_TARGET=bun-linux-x64 UPSTER_CLI_OUTFILE=dist/upster-linux-x64 bun run build.ts
@@ -89,6 +159,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: macos-tarballs
+          path: apps/cli/dist
+
+      - name: Download headless server bundles
+        uses: actions/download-artifact@v4
+        with:
+          pattern: server-bundle-*
+          merge-multiple: true
           path: apps/cli/dist
 
       - name: Package Linux tarballs and checksums
@@ -105,11 +182,12 @@ jobs:
             upster-macos-x64.tar.gz \
             upster-linux-arm64.tar.gz \
             upster-linux-x64.tar.gz \
+            upster-server-*.tar.gz \
             > checksums.sha256
 
       - name: Prepare Docker consumer assets
         env:
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ needs.meta.outputs.version }}
         run: |
           mkdir -p release-assets
           sed "s|image: ghcr.io/kerddotdev/upster:.*|image: ghcr.io/kerddotdev/upster:$VERSION|" \
@@ -123,6 +201,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
+        if: needs.meta.outputs.publish == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -134,12 +213,24 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: true
+          push: ${{ needs.meta.outputs.publish == 'true' }}
           tags: |
-            ghcr.io/kerddotdev/upster:${{ steps.version.outputs.version }}
+            ghcr.io/kerddotdev/upster:${{ needs.meta.outputs.version }}
             ghcr.io/kerddotdev/upster:latest
 
+      - name: Keep dry-run artifacts
+        if: needs.meta.outputs.publish != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dry-run-release-assets
+          path: |
+            apps/cli/dist/*.tar.gz
+            apps/cli/dist/checksums.sha256
+            release-assets/*
+          retention-days: 3
+
       - name: Create GitHub Release
+        if: needs.meta.outputs.publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
@@ -148,15 +239,16 @@ jobs:
             apps/cli/dist/upster-macos-x64.tar.gz
             apps/cli/dist/upster-linux-arm64.tar.gz
             apps/cli/dist/upster-linux-x64.tar.gz
+            apps/cli/dist/upster-server-*.tar.gz
             apps/cli/dist/checksums.sha256
             release-assets/docker-compose.yaml
             release-assets/env.example
 
       - name: Trigger Homebrew tap update
-        if: success()
+        if: success() && needs.meta.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ needs.meta.outputs.version }}
         run: |
           cd apps/cli/dist
           MACOS_ARM64=$(sha256sum upster-macos-arm64.tar.gz | cut -d' ' -f1)
@@ -170,3 +262,13 @@ jobs:
             -f sha256_macos_x64="$MACOS_X64" \
             -f sha256_linux_arm64="$LINUX_ARM64" \
             -f sha256_linux_x64="$LINUX_X64"
+
+  desktop:
+    needs: [meta, release]
+    permissions:
+      contents: write
+    uses: ./.github/workflows/desktop.yml
+    with:
+      version: ${{ needs.meta.outputs.version }}
+      publish: ${{ needs.meta.outputs.publish == 'true' }}
+    secrets: inherit
