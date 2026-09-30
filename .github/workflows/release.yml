@@ -41,7 +41,10 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
   server-bundles:
-    runs-on: vectis-ubuntu
+    # GitHub-hosted: Vectis job admission occasionally stalls and a stalled
+    # job would block the whole release.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: meta
     strategy:
       fail-fast: false
