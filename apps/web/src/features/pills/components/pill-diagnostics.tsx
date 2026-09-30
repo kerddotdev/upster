@@ -9,6 +9,7 @@ import { LogOutput } from "@/components/log-output"
 import { List } from "@/components/layout"
 import { StatusBadge } from "@/components/status"
 import { Button } from "@/components/ui/button"
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   getPillDiagnosticsFn,
@@ -83,19 +84,21 @@ function RunRow({ run }: { run: PillRun }) {
       {run.error && !open ? (
         <p className="mt-1 text-xs text-danger">{run.error}</p>
       ) : null}
-      {open ? (
-        loading ? (
-          <Skeleton className="mt-3 h-16 w-full" />
-        ) : (
-          <LogOutput
-            className="mt-3"
-            text={(logs ?? [])
-              .map((entry) => entry.chunk)
-              .join("")
-              .trim()}
-          />
-        )
-      ) : null}
+      <Collapsible open={open}>
+        <CollapsibleContent>
+          {loading ? (
+            <Skeleton className="mt-3 h-16 w-full" />
+          ) : (
+            <LogOutput
+              className="mt-3"
+              text={(logs ?? [])
+                .map((entry) => entry.chunk)
+                .join("")
+                .trim()}
+            />
+          )}
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   )
 }
@@ -130,9 +133,11 @@ function CapsuleErrorRow({ capsule }: { capsule: Capsule }) {
       {capsule.error && !open ? (
         <p className="mt-1 text-xs text-danger">{capsule.error}</p>
       ) : null}
-      {open && capsule.buildLog ? (
-        <LogOutput className="mt-3" text={capsule.buildLog} />
-      ) : null}
+      <Collapsible open={open && Boolean(capsule.buildLog)}>
+        <CollapsibleContent>
+          <LogOutput className="mt-3" text={capsule.buildLog ?? ""} />
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   )
 }

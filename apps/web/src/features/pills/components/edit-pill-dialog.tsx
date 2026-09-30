@@ -79,7 +79,7 @@ export function EditPillDialog({ pill }: { pill: PillDetail }) {
     return (
       <GatedButton scopes={["pills:write"]} variant="ghost" size="sm">
         <PencilIcon data-icon="inline-start" />
-        Edit
+        <span className="max-sm:sr-only">Edit</span>
       </GatedButton>
     )
   }
@@ -88,7 +88,7 @@ export function EditPillDialog({ pill }: { pill: PillDetail }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button variant="ghost" size="sm" />}>
         <PencilIcon data-icon="inline-start" />
-        Edit
+        <span className="max-sm:sr-only">Edit</span>
       </DialogTrigger>
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
         <DialogHeader>

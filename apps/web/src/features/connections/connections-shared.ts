@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
+import { writeClipboard } from "@/lib/clipboard"
+
 import {
   getConnectionEndpointsFn,
   listConnectionsFn,
@@ -42,7 +44,7 @@ export function buildPairingUrl(origin: string, token: string) {
 
 export async function copyText(value: string, message: string) {
   try {
-    await navigator.clipboard.writeText(value)
+    await writeClipboard(value)
     toast.success(message)
   } catch {
     toast.error("Could not copy to clipboard.")

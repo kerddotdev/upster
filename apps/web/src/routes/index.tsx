@@ -5,6 +5,7 @@ import { ChevronRightIcon, ExternalLinkIcon } from "lucide-react"
 import { AccessDenied } from "@/components/access-denied"
 import { EmptyState, List, Mono, Page, Row } from "@/components/layout"
 import { Button } from "@/components/ui/button"
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible"
 import { CapsuleActions } from "@/features/capsules/components/capsule-actions"
 import { CapsuleManager } from "@/features/capsules/components/capsule-manager"
 import { CreatePillDialog } from "@/features/pills/components/create-pill-dialog"
@@ -81,25 +82,21 @@ function PillRow({ pill }: { pill: PillListItem }) {
         </Link>
       }
       detail={
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          <Mono className="break-normal">{pill.repoPath}</Mono>
-          {pill.hostname ? (
-            <a
-              href={`https://${pill.hostname}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 font-mono text-[12px] text-brand hover:underline"
-            >
-              {pill.hostname}
-              <ExternalLinkIcon className="size-3" aria-hidden />
-            </a>
-          ) : null}
-          <PortSummary appPort={pill.appPort} metricsPort={pill.metricsPort} />
-        </div>
+        pill.hostname ? (
+          <a
+            href={`https://${pill.hostname}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex max-w-full items-center gap-1 font-mono text-[12px] text-brand hover:underline"
+          >
+            <span className="truncate">{pill.hostname}</span>
+            <ExternalLinkIcon className="size-3 shrink-0" aria-hidden />
+          </a>
+        ) : null
       }
       trailing={
         <>
-          <StatusBadge status={pill.status} />
+          <StatusBadge status={pill.status} source={pill.activeRun?.source} />
           <ExpiryPicker
             value={expiresAt}
             onChange={setExpiresAt}
@@ -108,59 +105,43 @@ function PillRow({ pill }: { pill: PillListItem }) {
           <PillActions pill={pill} expiresAt={expiresAt} showDelete={false} />
         </>
       }
-    >
-      {expanded ? (
-        <CapsuleManager
-          key={capsuleKey}
-          pillId={pill.id}
-          commandName={pill.defaultEnv}
-          slug={pill.slug}
-          expiresAt={expiresAt}
-          activeRun={
-            pill.activeRun
-              ? {
-                  id: pill.activeRun.id,
-                  capsuleId: pill.activeRun.capsuleId,
+      panel={
+        <Collapsible open={expanded} onOpenChange={setExpanded}>
+          <CollapsibleContent>
+            <div className="mt-3 flex flex-col gap-3">
+              <Mono className="block rounded-xl bg-muted px-3 py-2">
+                {pill.repoPath}
+              </Mono>
+              <CapsuleManager
+                key={capsuleKey}
+                pillId={pill.id}
+                commandName={pill.defaultEnv}
+                slug={pill.slug}
+                expiresAt={expiresAt}
+                activeRun={
+                  pill.activeRun
+                    ? {
+                        id: pill.activeRun.id,
+                        capsuleId: pill.activeRun.capsuleId,
+                      }
+                    : null
                 }
-              : null
-          }
-          allowBrowse={false}
-          headerActions={
-            <CapsuleActions
-              pillId={pill.id}
-              onChanged={() => {
-                setCapsuleKey((value) => value + 1)
-                void router.invalidate()
-              }}
-            />
-          }
-          onChanged={() => router.invalidate()}
-        />
-      ) : null}
-    </Row>
-  )
-}
-
-function PortSummary({
-  appPort,
-  metricsPort,
-}: {
-  appPort: number | null
-  metricsPort: number | null
-}) {
-  return (
-    <span className="inline-flex items-center gap-3">
-      <PortValue label="App" value={appPort} />
-      <PortValue label="Metrics" value={metricsPort} />
-    </span>
-  )
-}
-
-function PortValue({ label, value }: { label: string; value: number | null }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      {label}
-      <Mono className="text-foreground">{value ?? "-"}</Mono>
-    </span>
+                allowBrowse={false}
+                headerActions={
+                  <CapsuleActions
+                    pillId={pill.id}
+                    onChanged={() => {
+                      setCapsuleKey((value) => value + 1)
+                      void router.invalidate()
+                    }}
+                  />
+                }
+                onChanged={() => router.invalidate()}
+              />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      }
+    />
   )
 }

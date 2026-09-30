@@ -24,7 +24,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useErrorReporter } from "@/components/error-report"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -199,11 +198,6 @@ export function PillActions({
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-1.5">
-      {isRunning && pill.activeRun?.source ? (
-        <Badge variant="outline" className="capitalize">
-          {pill.activeRun.source}
-        </Badge>
-      ) : null}
       {isRunning ? (
         <div className="inline-flex">
           <GatedButton
@@ -241,7 +235,7 @@ export function PillActions({
                 <Button
                   variant="destructive"
                   size="icon-sm"
-                  className="rounded-l-none border-l border-destructive/20"
+                  className="rounded-l-none border-l-destructive/20"
                   disabled={pending || !canStop}
                   aria-label="More run options"
                 />
@@ -275,7 +269,7 @@ export function PillActions({
               render={
                 <Button
                   size="icon-sm"
-                  className="rounded-l-none border-l border-primary-foreground/20 ring-0 outline-none focus:outline-none"
+                  className="rounded-l-none border-l-primary-foreground/20 ring-0 outline-none focus:outline-none"
                   disabled={pending || !canStart}
                   aria-label="More start options"
                 />
@@ -310,14 +304,14 @@ export function PillActions({
       {showDelete && !canDelete ? (
         <GatedButton scopes={["pills:delete"]} variant="ghost" size="sm">
           <Trash2Icon data-icon="inline-start" />
-          Delete
+          <span className="max-sm:sr-only">Delete</span>
         </GatedButton>
       ) : null}
       {showDelete && canDelete && (
         <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
           <AlertDialogTrigger render={<Button variant="ghost" size="sm" />}>
             <Trash2Icon data-icon="inline-start" />
-            Delete
+            <span className="max-sm:sr-only">Delete</span>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>

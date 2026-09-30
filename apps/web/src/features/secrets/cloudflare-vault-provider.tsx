@@ -80,7 +80,10 @@ export function CloudflareVaultProvider({
         setStatus(await lockVault())
       },
       refreshVault,
-      requestUnlock: (options) => setRequest(options ?? {}),
+      requestUnlock: (options) => {
+        setRequest(options ?? {})
+        void refreshVault()
+      },
     }),
     [lockVault, refreshVault, status]
   )
@@ -114,7 +117,7 @@ export function useCloudflareVault() {
 
 function CloudflareUnlockDialog() {
   const requestContext = useContext(UnlockRequestContext)
-  const { hasVault, refreshVault } = useCloudflareVault()
+  const { hasVault, status, refreshVault } = useCloudflareVault()
   const unlockVault = useServerFn(unlockCloudflareVaultFn)
   const [pending, setPending] = useState(false)
 
@@ -161,7 +164,9 @@ function CloudflareUnlockDialog() {
             this Upster session only.
           </DialogDescription>
         </DialogHeader>
-        {hasVault ? (
+        {status === null ? (
+          <p className="text-muted-foreground">Checking the Vault...</p>
+        ) : hasVault ? (
           <form className="flex flex-col gap-4" onSubmit={handleUnlock}>
             <Field>
               <FieldLabel htmlFor="globalUnlockPassphrase">

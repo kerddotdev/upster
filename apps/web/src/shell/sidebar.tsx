@@ -3,7 +3,6 @@ import { Link } from "@tanstack/react-router"
 import {
   ChevronsUpDownIcon,
   CloudIcon,
-  ExternalLinkIcon,
   FolderKanbanIcon,
   KeyRoundIcon,
   LockIcon,
@@ -16,6 +15,7 @@ import {
 import { scopesIncludeAll, type AccessScope } from "@upster/core"
 
 import { BrandMark } from "@/components/brand-mark"
+import { GithubIcon } from "@/components/github-icon"
 import { StatusDot } from "@/components/status"
 import {
   DropdownMenu,
@@ -185,13 +185,13 @@ function AccountMenu() {
         <DropdownMenuItem
           render={
             <a
-              href="https://github.com/kerdofficial"
+              href="https://github.com/kerddotdev/upster"
               target="_blank"
               rel="noreferrer"
             />
           }
         >
-          <ExternalLinkIcon />
+          <GithubIcon />
           GitHub
         </DropdownMenuItem>
         <DropdownMenuSeparator />

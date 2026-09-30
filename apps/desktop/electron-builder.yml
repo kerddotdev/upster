@@ -1,6 +1,6 @@
-appId: com.kerdofficial.upster
+appId: com.kerddotdev.upster
 productName: Upster
-copyright: kerdofficial
+copyright: kerddotdev
 directories:
   output: release
   buildResources: build
@@ -35,11 +35,11 @@ linux:
   artifactName: Upster-${version}-${arch}.${ext}
   category: Development
   target: [AppImage, deb]
-  maintainer: kerdofficial
+  maintainer: kerddotdev
   synopsis: Publish short-lived mini apps through Cloudflare Tunnel
 deb:
   packageName: upster
 publish:
   provider: github
-  owner: kerdofficial
+  owner: kerddotdev
   repo: upster

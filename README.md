@@ -29,20 +29,20 @@ run the control plane from the published Docker image.
 The `upster` CLI is a client for the local Upster control plane:
 
 ```bash
-brew install kerdofficial/tap/upster
+brew install kerddotdev/tap/upster
 upster --version
 ```
 
 ### Control plane (Docker)
 
 The dashboard and its libSQL database run as containers. The dashboard image is
-published to `ghcr.io/kerdofficial/upster`. Download the compose file and env
+published to `ghcr.io/kerddotdev/upster`. Download the compose file and env
 template, configure `.env`, then start the stack:
 
 ```bash
 mkdir upster && cd upster
-curl -LO https://github.com/kerdofficial/upster/releases/latest/download/docker-compose.yaml
-curl -Lo .env https://github.com/kerdofficial/upster/releases/latest/download/env.example
+curl -LO https://github.com/kerddotdev/upster/releases/latest/download/docker-compose.yaml
+curl -Lo .env https://github.com/kerddotdev/upster/releases/latest/download/env.example
 # edit .env with your settings, then:
 docker compose up -d
 ```
@@ -70,6 +70,10 @@ app, the CLI and the browser are all clients of that one service.
 bun run package:desktop   # builds the app for the current platform
 upster service install --bundle <server-bundle-dir>   # headless, no app
 ```
+
+The desktop onboarding can migrate an existing Docker install (admin, pills,
+logs, vault, capsules); the Docker data is left untouched. `Reset Upster...` in
+the app menu starts over.
 
 Native installs give up the container boundary; read the "Native (non-Docker)
 installs" section in `SECURITY.md` first. Windows keeps using Docker.
