@@ -50,3 +50,18 @@ jobs:
 
       - name: Built desktop smoke test
         run: xvfb-run --auto-servernum bun run --cwd apps/desktop test:smoke
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the dashboard image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
