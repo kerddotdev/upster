@@ -28,8 +28,8 @@ const execFileAsync = promisify(execFile)
 
 export function serviceLabel(env: NodeJS.ProcessEnv = process.env) {
   return isDevFlavor(env)
-    ? "com.kerdofficial.upster.dev"
-    : "com.kerdofficial.upster"
+    ? "com.kerddotdev.upster.dev"
+    : "com.kerddotdev.upster"
 }
 
 export function systemdUnit(env: NodeJS.ProcessEnv = process.env) {

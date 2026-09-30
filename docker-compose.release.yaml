@@ -1,6 +1,6 @@
 services:
   upster:
-    image: ghcr.io/kerdofficial/upster:${UPSTER_VERSION:-latest}
+    image: ghcr.io/kerddotdev/upster:${UPSTER_VERSION:-latest}
     environment:
       UPSTER_PORT: "${UPSTER_PORT:-3377}"
       UPSTER_BIND_HOST: "${UPSTER_BIND_HOST:-127.0.0.1}"

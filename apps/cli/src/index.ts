@@ -1080,7 +1080,7 @@ function startDaemon(options: CliOptions) {
 
   if (!existsSync(join(process.cwd(), "apps", "web", "package.json"))) {
     throw new Error(
-      "Start the control plane with `upster service start` (native install) or `docker compose up -d` in a directory that has the Upster docker-compose.yaml. See https://github.com/kerdofficial/upster."
+      "Start the control plane with `upster service start` (native install) or `docker compose up -d` in a directory that has the Upster docker-compose.yaml. See https://github.com/kerddotdev/upster."
     )
   }
 

@@ -48,14 +48,14 @@ if (!app.isPackaged) {
 }
 
 const appName = "Upster"
-const homepage = "https://github.com/kerdofficial/upster"
+const homepage = "https://github.com/kerddotdev/upster"
 
 app.setName(appName)
 app.setPath("userData", join(dataDir(), "desktop"))
 app.setAboutPanelOptions({
   applicationName: appName,
   applicationVersion: app.getVersion(),
-  copyright: "kerdofficial",
+  copyright: "kerddotdev",
   website: homepage,
 })
 

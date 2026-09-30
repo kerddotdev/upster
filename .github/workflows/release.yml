@@ -112,7 +112,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           mkdir -p release-assets
-          sed "s|image: ghcr.io/kerdofficial/upster:.*|image: ghcr.io/kerdofficial/upster:$VERSION|" \
+          sed "s|image: ghcr.io/kerddotdev/upster:.*|image: ghcr.io/kerddotdev/upster:$VERSION|" \
             docker-compose.release.yaml > release-assets/docker-compose.yaml
           cp .env.example release-assets/env.example
 
@@ -136,8 +136,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/kerdofficial/upster:${{ steps.version.outputs.version }}
-            ghcr.io/kerdofficial/upster:latest
+            ghcr.io/kerddotdev/upster:${{ steps.version.outputs.version }}
+            ghcr.io/kerddotdev/upster:latest
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -164,7 +164,7 @@ jobs:
           LINUX_ARM64=$(sha256sum upster-linux-arm64.tar.gz | cut -d' ' -f1)
           LINUX_X64=$(sha256sum upster-linux-x64.tar.gz | cut -d' ' -f1)
           gh workflow run update-upster-formula.yml \
-            --repo kerdofficial/homebrew-tap \
+            --repo kerddotdev/homebrew-tap \
             -f version="$VERSION" \
             -f sha256_macos_arm64="$MACOS_ARM64" \
             -f sha256_macos_x64="$MACOS_X64" \

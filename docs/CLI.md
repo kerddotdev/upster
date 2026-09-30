@@ -24,12 +24,12 @@ In this document, `upster` means the installed or built CLI. When running from a
 Install the CLI with Homebrew. No source checkout is required:
 
 ```sh
-brew install kerdofficial/tap/upster
+brew install kerddotdev/tap/upster
 upster --version
 ```
 
 The CLI is a client for the Upster control plane, which runs with Docker (the
-dashboard image is published to `ghcr.io/kerdofficial/upster`). See the project
+dashboard image is published to `ghcr.io/kerddotdev/upster`). See the project
 README for the control plane install and first-time setup.
 
 ## Control Plane Model

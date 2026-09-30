@@ -13,7 +13,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import electron from "electron"
 
-const launcherVersion = 1
+const launcherVersion = 2
 const desktopDirectory = dirname(fileURLToPath(import.meta.url))
 
 function compileIcon(source, output) {
@@ -75,7 +75,7 @@ function developmentBundle() {
   const info = {
     CFBundleName: "Upster Dev",
     CFBundleDisplayName: "Upster Dev",
-    CFBundleIdentifier: "com.kerdofficial.upster.dev.local",
+    CFBundleIdentifier: "com.kerddotdev.upster.dev.local",
   }
   let iconReady = false
   try {
