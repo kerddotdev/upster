@@ -14,6 +14,11 @@
           oklch(98.8% 0.003 84.6),
           oklch(23.3% 0.011 254.1)
         );
+        --panel: light-dark(
+          oklch(95.6% 0.004 84.6),
+          oklch(27.4% 0.011 254.1)
+        );
+        --line: light-dark(oklch(89% 0.006 84.6), oklch(34% 0.011 254.1));
         --foreground: light-dark(
           oklch(23.2% 0.006 78.2),
           oklch(93.2% 0.007 80.7)
@@ -30,11 +35,11 @@
       body {
         height: 100%;
         margin: 0;
-        overflow: hidden;
       }
       body {
         display: grid;
         place-items: center;
+        overflow-y: auto;
         background: var(--surface);
         color: var(--foreground);
         font:
@@ -53,12 +58,19 @@
         -webkit-app-region: drag;
       }
       main {
-        max-width: 400px;
-        padding: 32px;
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 480px;
+        padding: 56px 32px 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+      header {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 12px;
+        gap: 8px;
         text-align: center;
       }
       svg {
@@ -77,8 +89,50 @@
         margin: 0;
         color: var(--muted);
       }
+      .choices {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .card {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px 18px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--panel);
+      }
+      .card h2 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--foreground);
+      }
+      .meta {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding-top: 10px;
+        border-top: 1px solid var(--line);
+        font-size: 12px;
+      }
+      .meta span {
+        color: var(--muted);
+      }
+      .meta strong {
+        color: var(--foreground);
+        font-weight: 500;
+        word-break: break-all;
+        user-select: text;
+      }
+      .card-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 32px;
+      }
       button {
-        margin-top: 12px;
         height: 32px;
         padding: 0 18px;
         border: 0;
@@ -101,33 +155,25 @@
       button:disabled {
         opacity: 0.5;
       }
-      section {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-      }
-      .actions {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-      }
       button.secondary {
         background: transparent;
         color: var(--foreground);
-        box-shadow: inset 0 0 0 1px var(--muted);
+        box-shadow: inset 0 0 0 1px var(--line);
       }
-      #migrate:not([hidden]) ~ #install {
-        background: transparent;
-        color: var(--foreground);
-        box-shadow: inset 0 0 0 1px var(--muted);
+      button.small {
+        height: 26px;
+        padding: 0 12px;
+        font-size: 12px;
       }
       button.link {
+        align-self: center;
         height: auto;
-        margin-top: 24px;
         padding: 0;
         background: transparent;
         color: var(--muted);
+        font-size: 12px;
+      }
+      #status {
         font-size: 12px;
       }
       [hidden] {
@@ -136,6 +182,7 @@
       #error {
         color: var(--danger);
         user-select: text;
+        text-align: center;
       }
       @media (prefers-reduced-motion: reduce) {
         button {
@@ -147,37 +194,68 @@
   <body>
     <div class="drag"></div>
     <main>
-      <svg viewBox="0 0 1024 1024" aria-hidden="true">
-        <defs>
-          <linearGradient id="bg" x1="0" y1="0" x2="0.6" y2="1">
-            <stop stop-color="#d91d4e" />
-            <stop offset="1" stop-color="#a91138" />
-          </linearGradient>
-        </defs>
-        <rect width="1024" height="1024" rx="230" fill="url(#bg)" />
-        <path
-          fill="#ffe8ee"
-          fill-rule="evenodd"
-          d="M222 832V478C222 302 340 192 512 192C684 192 802 302 802 478V832ZM384 832L450 562H350L512 370L674 562H574L640 832Z"
-        />
-      </svg>
-      <h1 id="title">Set up Upster</h1>
-      <p id="lead">
-        Upster runs as a background service on this computer, so your pills and
-        remote access keep working even when this window is closed.
-      </p>
-      <section id="docker" hidden>
-        <p id="dockerSummary"></p>
-        <p id="dockerNote" hidden></p>
-        <button id="pickWorkspace" class="secondary" type="button" hidden>
-          Choose workspace folder
-        </button>
-      </section>
-      <div class="actions">
-        <button id="migrate" type="button" hidden>Migrate from Docker</button>
-        <button id="install" type="button">Install Upster service</button>
+      <header>
+        <svg viewBox="0 0 1024 1024" aria-hidden="true">
+          <defs>
+            <linearGradient id="bg" x1="0" y1="0" x2="0.6" y2="1">
+              <stop stop-color="#d91d4e" />
+              <stop offset="1" stop-color="#a91138" />
+            </linearGradient>
+          </defs>
+          <rect width="1024" height="1024" rx="230" fill="url(#bg)" />
+          <path
+            fill="#ffe8ee"
+            fill-rule="evenodd"
+            d="M222 832V478C222 302 340 192 512 192C684 192 802 302 802 478V832ZM384 832L450 562H350L512 370L674 562H574L640 832Z"
+          />
+        </svg>
+        <h1>Set up Upster</h1>
+        <p>
+          Upster runs as a background service on this computer, so your pills
+          and remote access keep working even when this window is closed. Both
+          options below install and start that service for you.
+        </p>
+      </header>
+
+      <div class="choices">
+        <section id="dockerCard" class="card" hidden>
+          <div>
+            <h2>Migrate from Docker</h2>
+            <p>
+              Bring over your admin account, pills, logs, Vault and capsules
+              from your Docker install. Your Docker data is left untouched.
+            </p>
+          </div>
+          <div class="meta">
+            <div><span>Docker project: </span><strong id="project"></strong></div>
+            <div>
+              <span>Workspace folder: </span
+              ><strong id="workspace">not found</strong>
+            </div>
+            <p id="dockerNote" hidden></p>
+          </div>
+          <div class="card-actions">
+            <button id="migrate" type="button">Migrate and install</button>
+            <button id="pickWorkspace" class="secondary small" type="button" hidden>
+              Choose workspace folder
+            </button>
+            <span id="status" role="status" hidden></span>
+          </div>
+        </section>
+
+        <section id="freshCard" class="card">
+          <div>
+            <h2 id="freshTitle">Install Upster</h2>
+            <p id="freshText">
+              Install the background service with a clean, empty setup.
+            </p>
+          </div>
+          <div class="card-actions">
+            <button id="install" type="button">Install Upster service</button>
+          </div>
+        </section>
       </div>
-      <p id="progress" role="status" hidden></p>
+
       <p id="error" role="alert" hidden></p>
       <button id="reset" class="link" type="button">Reset setup...</button>
     </main>
@@ -188,7 +266,7 @@
       const migrateButton = $("migrate")
       const pickButton = $("pickWorkspace")
       const error = $("error")
-      const progress = $("progress")
+      const status = $("status")
       let instance = null
       let workspaceRoot = null
 
@@ -199,13 +277,25 @@
       }
 
       function setBusy(busy) {
-        for (const button of [installButton, migrateButton, pickButton, $("reset")]) {
+        for (const button of [
+          installButton,
+          migrateButton,
+          pickButton,
+          $("reset"),
+        ]) {
           button.disabled = busy
         }
       }
 
       function refreshMigrate() {
         migrateButton.disabled = !workspaceRoot
+      }
+
+      function setWorkspace(path) {
+        workspaceRoot = path
+        $("workspace").textContent = path ?? "not found"
+        pickButton.hidden = Boolean(path)
+        refreshMigrate()
       }
 
       const initial = new URLSearchParams(location.search).get("error")
@@ -221,29 +311,23 @@
           if (!instance) {
             return
           }
-          workspaceRoot = instance.workspaceRoot
-          $("title").textContent = "Set up Upster"
-          $("docker").hidden = false
-          $("dockerSummary").textContent =
-            "Found your Docker install (" +
-            instance.project +
-            "). You can bring its pills, logs, vault and settings over."
+          $("dockerCard").hidden = false
+          $("project").textContent = instance.project
+          setWorkspace(instance.workspaceRoot)
           const notes = []
           if (instance.running) {
-            notes.push("The Docker containers will be stopped first. Nothing is deleted.")
+            notes.push("The running Docker containers will be stopped first.")
           }
           if (detection.nativeHasData) {
-            notes.push("Existing data on this computer is backed up first.")
-          }
-          if (workspaceRoot) {
-            notes.push("Workspace folder: " + workspaceRoot)
+            notes.push("Data already on this computer is backed up first.")
           }
           $("dockerNote").textContent = notes.join(" ")
           $("dockerNote").hidden = notes.length === 0
-          pickButton.hidden = Boolean(workspaceRoot)
-          migrateButton.hidden = false
+          $("freshTitle").textContent = "Start fresh"
+          $("freshText").textContent =
+            "Install the background service with a clean, empty setup instead. Your Docker data stays untouched."
           installButton.textContent = "Start fresh"
-          refreshMigrate()
+          installButton.classList.add("secondary")
         } catch {
           // Docker detection is optional
         }
@@ -252,21 +336,18 @@
       pickButton.addEventListener("click", async () => {
         const picked = await bridge.pickFolder()
         if (picked) {
-          workspaceRoot = picked
-          $("dockerNote").textContent = "Workspace folder: " + picked
-          $("dockerNote").hidden = false
-          refreshMigrate()
+          setWorkspace(picked)
         }
       })
 
       migrateButton.addEventListener("click", async () => {
         setBusy(true)
         error.hidden = true
-        progress.hidden = false
-        progress.textContent = "Starting..."
+        status.hidden = false
+        status.textContent = "Starting..."
         const stop = bridge.onMigrationEvent((event) => {
           if (event.type === "step") {
-            progress.textContent = event.label + "..."
+            status.textContent = event.label + "..."
           }
         })
         try {
@@ -277,7 +358,7 @@
           })
         } catch (cause) {
           showError(cause)
-          progress.hidden = true
+          status.hidden = true
           setBusy(false)
           refreshMigrate()
         } finally {
@@ -293,7 +374,9 @@
           await bridge.installService()
         } catch (cause) {
           showError(cause)
-          installButton.textContent = instance ? "Start fresh" : "Install Upster service"
+          installButton.textContent = instance
+            ? "Start fresh"
+            : "Install Upster service"
           setBusy(false)
           refreshMigrate()
         }
