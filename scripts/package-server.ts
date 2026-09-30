@@ -142,6 +142,20 @@ run(
   webDir
 )
 
+run(
+  "bun",
+  [
+    "build",
+    join(root, "packages", "migration", "src", "cli.ts"),
+    "--target=node",
+    "--external",
+    "@libsql/client",
+    "--outfile",
+    join(appDir, "migrate.mjs"),
+  ],
+  root
+)
+
 const webPackage = JSON.parse(
   readFileSync(join(webDir, "package.json"), "utf-8")
 ) as { dependencies: Record<string, string> }

@@ -38,13 +38,23 @@ export async function waitForRuntime() {
   throw new Error("The Upster service did not become ready in time.")
 }
 
-export async function installBundledService(bundleDir: string) {
+export async function installBundledService(
+  bundleDir: string,
+  extraWorkspaceRoots: Array<string> = []
+) {
   const existing = readInstalledConfig(dataDir())
+  const workspaceRoots = [
+    ...new Set([
+      ...(existing?.workspaceRoots ??
+        (extraWorkspaceRoots.length ? [] : [homedir()])),
+      ...extraWorkspaceRoots,
+    ]),
+  ]
   await installFromBundle({
     bundleDir,
     dataDir: dataDir(),
     port: existing?.port ?? defaultPort(),
-    workspaceRoots: existing?.workspaceRoots ?? [homedir()],
+    workspaceRoots,
   })
   return waitForRuntime()
 }
@@ -64,6 +74,17 @@ export async function ensureServiceRunning(bundleDir: string) {
 
 export async function stopService() {
   await controlService("stop")
+}
+
+export async function waitForStopped() {
+  const deadline = Date.now() + READY_TIMEOUT_MS
+  while (Date.now() < deadline) {
+    if (!readRuntimeState(dataDir())) {
+      return
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+  throw new Error("The Upster service did not stop in time.")
 }
 
 export async function startService() {

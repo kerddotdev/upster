@@ -101,6 +101,38 @@
       button:disabled {
         opacity: 0.5;
       }
+      section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      button.secondary {
+        background: transparent;
+        color: var(--foreground);
+        box-shadow: inset 0 0 0 1px var(--muted);
+      }
+      #migrate:not([hidden]) ~ #install {
+        background: transparent;
+        color: var(--foreground);
+        box-shadow: inset 0 0 0 1px var(--muted);
+      }
+      button.link {
+        height: auto;
+        margin-top: 24px;
+        padding: 0;
+        background: transparent;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      [hidden] {
+        display: none !important;
+      }
       #error {
         color: var(--danger);
         user-select: text;
@@ -129,36 +161,153 @@
           d="M222 832V478C222 302 340 192 512 192C684 192 802 302 802 478V832ZM384 832L450 562H350L512 370L674 562H574L640 832Z"
         />
       </svg>
-      <h1>Set up Upster</h1>
-      <p>
+      <h1 id="title">Set up Upster</h1>
+      <p id="lead">
         Upster runs as a background service on this computer, so your pills and
         remote access keep working even when this window is closed.
       </p>
-      <button id="install" type="button">Install Upster service</button>
+      <section id="docker" hidden>
+        <p id="dockerSummary"></p>
+        <p id="dockerNote" hidden></p>
+        <button id="pickWorkspace" class="secondary" type="button" hidden>
+          Choose workspace folder
+        </button>
+      </section>
+      <div class="actions">
+        <button id="migrate" type="button" hidden>Migrate from Docker</button>
+        <button id="install" type="button">Install Upster service</button>
+      </div>
+      <p id="progress" role="status" hidden></p>
       <p id="error" role="alert" hidden></p>
+      <button id="reset" class="link" type="button">Reset setup...</button>
     </main>
     <script>
-      const button = document.getElementById("install")
-      const error = document.getElementById("error")
+      const bridge = window.upsterDesktop
+      const $ = (id) => document.getElementById(id)
+      const installButton = $("install")
+      const migrateButton = $("migrate")
+      const pickButton = $("pickWorkspace")
+      const error = $("error")
+      const progress = $("progress")
+      let instance = null
+      let workspaceRoot = null
+
+      function showError(cause) {
+        error.textContent =
+          cause instanceof Error ? cause.message : String(cause)
+        error.hidden = false
+      }
+
+      function setBusy(busy) {
+        for (const button of [installButton, migrateButton, pickButton, $("reset")]) {
+          button.disabled = busy
+        }
+      }
+
+      function refreshMigrate() {
+        migrateButton.disabled = !workspaceRoot
+      }
+
       const initial = new URLSearchParams(location.search).get("error")
       if (initial) {
         error.textContent = initial
         error.hidden = false
       }
-      button.addEventListener("click", async () => {
-        button.disabled = true
-        button.textContent = "Installing..."
-        error.hidden = true
+
+      async function detect() {
         try {
-          await window.upsterDesktop.installService()
-        } catch (cause) {
-          error.textContent =
-            cause instanceof Error ? cause.message : String(cause)
-          error.hidden = false
-          button.disabled = false
-          button.textContent = "Install Upster service"
+          const detection = await bridge.detectDockerInstance()
+          instance = detection.instances[0] ?? null
+          if (!instance) {
+            return
+          }
+          workspaceRoot = instance.workspaceRoot
+          $("title").textContent = "Set up Upster"
+          $("docker").hidden = false
+          $("dockerSummary").textContent =
+            "Found your Docker install (" +
+            instance.project +
+            "). You can bring its pills, logs, vault and settings over."
+          const notes = []
+          if (instance.running) {
+            notes.push("The Docker containers will be stopped first. Nothing is deleted.")
+          }
+          if (detection.nativeHasData) {
+            notes.push("Existing data on this computer is backed up first.")
+          }
+          if (workspaceRoot) {
+            notes.push("Workspace folder: " + workspaceRoot)
+          }
+          $("dockerNote").textContent = notes.join(" ")
+          $("dockerNote").hidden = notes.length === 0
+          pickButton.hidden = Boolean(workspaceRoot)
+          migrateButton.hidden = false
+          installButton.textContent = "Start fresh"
+          refreshMigrate()
+        } catch {
+          // Docker detection is optional
+        }
+      }
+
+      pickButton.addEventListener("click", async () => {
+        const picked = await bridge.pickFolder()
+        if (picked) {
+          workspaceRoot = picked
+          $("dockerNote").textContent = "Workspace folder: " + picked
+          $("dockerNote").hidden = false
+          refreshMigrate()
         }
       })
+
+      migrateButton.addEventListener("click", async () => {
+        setBusy(true)
+        error.hidden = true
+        progress.hidden = false
+        progress.textContent = "Starting..."
+        const stop = bridge.onMigrationEvent((event) => {
+          if (event.type === "step") {
+            progress.textContent = event.label + "..."
+          }
+        })
+        try {
+          await bridge.migrateFromDocker({
+            project: instance.project,
+            workspaceRoot,
+            stopContainers: true,
+          })
+        } catch (cause) {
+          showError(cause)
+          progress.hidden = true
+          setBusy(false)
+          refreshMigrate()
+        } finally {
+          stop()
+        }
+      })
+
+      installButton.addEventListener("click", async () => {
+        setBusy(true)
+        installButton.textContent = "Installing..."
+        error.hidden = true
+        try {
+          await bridge.installService()
+        } catch (cause) {
+          showError(cause)
+          installButton.textContent = instance ? "Start fresh" : "Install Upster service"
+          setBusy(false)
+          refreshMigrate()
+        }
+      })
+
+      $("reset").addEventListener("click", async () => {
+        try {
+          await bridge.resetSetup()
+        } catch (cause) {
+          showError(cause)
+        }
+      })
+
+      detect()
     </script>
   </body>
 </html>

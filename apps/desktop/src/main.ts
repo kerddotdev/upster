@@ -16,8 +16,9 @@ import {
 import { autoUpdater } from "electron-updater"
 import type { IpcMainInvokeEvent, MenuItemConstructorOptions } from "electron"
 
-import type { DesktopWindowEvent } from "@upster/core"
+import type { DesktopWindowEvent, MigrationOptions } from "@upster/core"
 import { readRuntimeState } from "@upster/core/node"
+import { uninstallService } from "@upster/service"
 
 import { installCliShim } from "./cli-shim"
 import { platformWindowOptions, titleBarOverlay } from "./chrome"
@@ -28,7 +29,9 @@ import {
   installBundledService,
   startService,
   stopService,
+  waitForStopped,
 } from "./service-control"
+import { clearDataDir, detectDocker, runMigration } from "./migration"
 
 const appPath = app.getAppPath()
 const repoRoot = join(appPath, "..", "..")
@@ -120,6 +123,13 @@ function buildAppMenu() {
           click: () => {
             showWindow()
             sendToRenderer({ type: "navigate", to: "/settings/runtime" })
+          },
+        },
+        {
+          label: "Reset Upster...",
+          click: () => {
+            showWindow()
+            void resetSetup()
           },
         },
         { type: "separator" },
@@ -326,7 +336,76 @@ function createTray() {
   setInterval(() => void refreshTray(), 15_000).unref()
 }
 
+async function migrateFromDocker(options: MigrationOptions) {
+  const installed = (await getServiceState()).installed
+  if (installed) {
+    await stopService().catch(() => undefined)
+    await waitForStopped()
+  }
+
+  try {
+    const summary = await runMigration(bundlePath(), options, (event) =>
+      mainWindow?.webContents.send("upster:migration", event)
+    )
+    const runtime = await installBundledService(bundlePath(), [
+      summary.workspaceRoot,
+    ])
+    await mainWindow?.loadURL(runtime.origin)
+    await refreshTray()
+    void dialog.showMessageBox({
+      type: "info",
+      message: "Your Docker data was migrated.",
+      detail: [
+        `${summary.pills} pills, ${summary.capsules} capsules, ${summary.runs} runs and ${summary.logLines} log lines.`,
+        "The Docker volumes were not touched. Do not start the Docker stack again while this app runs, since both would use the same Cloudflare tunnels.",
+        "Tailscale remote access now uses this computer's Tailscale: turn Serve on again under Remote Access.",
+        summary.backupPath
+          ? `Previous data was saved to ${summary.backupPath}.`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+    })
+    return summary
+  } catch (error) {
+    if (installed) {
+      await startService().catch(() => undefined)
+    }
+    throw error
+  }
+}
+
+async function resetSetup() {
+  const options = {
+    type: "warning" as const,
+    buttons: ["Cancel", "Delete Upster data"],
+    defaultId: 0,
+    cancelId: 0,
+    message: "Reset Upster?",
+    detail: `This stops the background service and deletes everything in ${dataDir()}: pills, logs, capsules and the vault. Docker data is not affected.`,
+  }
+  const { response } = mainWindow
+    ? await dialog.showMessageBox(mainWindow, options)
+    : await dialog.showMessageBox(options)
+  if (response !== 1) {
+    return false
+  }
+
+  await uninstallService()
+  await waitForStopped().catch(() => undefined)
+  clearDataDir(dataDir())
+  await mainWindow?.loadURL(onboardingUrl)
+  await refreshTray()
+  return true
+}
+
 function registerIpc() {
+  handle("desktop:detect-docker", () => detectDocker(bundlePath()))
+  handle("desktop:migrate-docker", (_event, options) =>
+    migrateFromDocker(options as MigrationOptions)
+  )
+  handle("desktop:reset-setup", () => resetSetup())
+
   handle("desktop:pick-folder", async (event) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     const options = {

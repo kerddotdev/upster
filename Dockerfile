@@ -20,6 +20,7 @@ COPY apps/web/package.json apps/web/package.json
 COPY apps/cli/package.json apps/cli/package.json
 COPY packages/core/package.json packages/core/package.json
 COPY packages/service/package.json packages/service/package.json
+COPY packages/migration/package.json packages/migration/package.json
 RUN bun install --frozen-lockfile
 
 COPY . .
