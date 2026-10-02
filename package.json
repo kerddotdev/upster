@@ -10,7 +10,7 @@
     "cli:build": "bun run --cwd apps/cli build",
     "cli:test": "bun run --cwd apps/cli test",
     "preview": "UPSTER_DATA_DIR=${UPSTER_DATA_DIR:-$PWD/.upster} UPSTER_WORKSPACE_ROOTS=${UPSTER_WORKSPACE_ROOTS:-$PWD} bun run --cwd apps/web preview",
-    "test": "bun run --cwd packages/core test && bun run --cwd packages/service test && bun run --cwd packages/migration test && bun run --cwd apps/desktop test && bun run --cwd apps/web test && bun run --cwd apps/cli test",
+    "test": "bun test scripts && bun run --cwd packages/core test && bun run --cwd packages/service test && bun run --cwd packages/migration test && bun run --cwd apps/desktop test && bun run --cwd apps/web test && bun run --cwd apps/cli test",
     "lint": "bun run --cwd apps/web lint",
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx}\" \"packages/**/*.{ts,tsx,js,jsx}\" \"scripts/**/*.ts\"",
     "check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx}\" \"packages/**/*.{ts,tsx,js,jsx}\" \"scripts/**/*.ts\"",
