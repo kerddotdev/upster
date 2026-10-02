@@ -8,7 +8,7 @@ on:
         type: string
         required: true
       publish:
-        description: Upload the artifacts to the GitHub release
+        description: Upload the artifacts to the draft GitHub release
         type: boolean
         default: false
   workflow_dispatch:
@@ -87,6 +87,7 @@ jobs:
           ulimit -n 65536
           export APPLE_API_KEY="$RUNNER_TEMP/AuthKey.p8"
           if [ "${{ inputs.publish }}" = "true" ]; then
+            bun run scripts/check-release.ts prepare "$UPSTER_VERSION"
             bun run package:desktop --publish
           else
             bun run package:desktop
@@ -104,6 +105,7 @@ jobs:
           path: |
             apps/desktop/release/*.dmg
             apps/desktop/release/*.zip
+          if-no-files-found: error
           retention-days: 7
 
   linux:
@@ -138,6 +140,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "${{ inputs.publish }}" = "true" ]; then
+            bun run scripts/check-release.ts prepare "$UPSTER_VERSION"
             bun run package:desktop --publish
           else
             bun run package:desktop
@@ -149,4 +152,5 @@ jobs:
           path: |
             apps/desktop/release/*.AppImage
             apps/desktop/release/*.deb
+          if-no-files-found: error
           retention-days: 7

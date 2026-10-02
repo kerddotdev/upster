@@ -41,6 +41,6 @@ deb:
   packageName: upster
 publish:
   provider: github
-  releaseType: release
+  releaseType: draft
   owner: kerddotdev
   repo: upster
